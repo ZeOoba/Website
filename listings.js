@@ -175,13 +175,15 @@
   }
 
   // ── Unit row HTML ────────────────────────────────────────────────────────────
-  function unitRowHTML(u, pId) {
+  function unitRowHTML(u, pId, pName) {
+    var subject = pName ? pName + ' Suite ' + u.suite : 'Suite ' + u.suite;
+    var label = pName ? 'Inquire about Suite ' + u.suite + ' at ' + pName : 'Inquire about Suite ' + u.suite;
     return '<div class="as-unit" data-pid="' + pId + '" data-suite="' + u.suite + '">' +
       '<div class="as-unit__suite"><span class="as-unit__label">Suite</span>' + u.suite + '</div>' +
       '<div class="as-unit__sf"><span class="as-unit__label">Size</span>' + u.sfLabel + '</div>' +
       '<div class="as-unit__use"><span class="as-unit__label">Use</span>' + u.use + '</div>' +
       '<div class="as-unit__rate"><span class="as-unit__label">Asking</span>' + u.rate + ' <span class="as-unit__rate-type">' + u.rateType + '</span></div>' +
-      '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20Suite%20' + encodeURIComponent(u.suite) + '" class="as-unit__inquire">Inquire</a>' +
+      '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(subject) + '" class="as-unit__inquire" aria-label="' + label + '">Inquire</a>' +
       '</div>';
   }
 
@@ -217,7 +219,7 @@
         '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 4.5L6 7.5L9 4.5"/></svg>' +
         '</button>';
       html += '<div class="as-card__units' + (isExpanded ? ' as-card__units--open' : '') + '">';
-      p.units.forEach(function (u) { html += unitRowHTML(u, p.id); });
+      p.units.forEach(function (u) { html += unitRowHTML(u, p.id, p.name); });
       html += '</div>';
     } else {
       // Single unit — show details inline
@@ -232,7 +234,7 @@
     }
 
     html += '<div class="as-card__footer">' +
-      '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(p.name) + '" class="as-card__cta">Inquire</a>' +
+      '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(p.name) + '" class="as-card__cta" aria-label="Inquire about ' + p.name + '">Inquire</a>' +
       '<a href="tel:+13015126125" class="as-card__phone" title="Call 301.512.6125">' +
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>' +
       '</a>' +
@@ -257,7 +259,7 @@
           '<td class="as-table__sf">' + u.sfLabel + '</td>' +
           '<td>' + u.use + '</td>' +
           '<td class="as-table__rate">' + u.rate + ' ' + u.rateType + '</td>' +
-          '<td><a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(p.name + ' Suite ' + u.suite) + '" class="as-table__action">Inquire</a></td>' +
+          '<td><a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(p.name + ' Suite ' + u.suite) + '" class="as-table__action" aria-label="Inquire about ' + p.name + ' Suite ' + u.suite + '">Inquire</a></td>' +
           '</tr>';
       });
     });
@@ -398,6 +400,7 @@
       unitsHTML +
       '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px">' +
       '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(p.name) + '" ' +
+      'aria-label="Inquire about ' + p.name + '" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:var(--as-navy);color:#fff;font-family:var(--as-font-body);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;border-radius:4px">Inquire About This Space</a>' +
       '<a href="tel:+13015126125" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border:1.5px solid var(--as-navy);color:var(--as-navy);font-family:var(--as-font-body);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;border-radius:4px">301.512.6125</a>' +

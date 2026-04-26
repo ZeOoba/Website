@@ -102,7 +102,7 @@ function Hero({ setPage }) {
           <div>
             <div className="status">
               <span className="live" />
-              Live · Q1 2026 · Targeting $15M+ in acquisitions
+              Live · Q2 2026 · Targeting $15M+ in acquisitions
             </div>
             <h1>
               Private capital for <em>industrial</em> real estate.
@@ -472,7 +472,7 @@ function Home({ setPage }) {
       <section className="dark">
         <div className="container">
           <div className="section-eyebrow">Track Record</div>
-          <h2 className="section-h2">Twenty years. <em>Zero</em> failed closings.</h2>
+          <h2 className="section-h2">Twenty-one years. <em>Zero</em> failed closings.</h2>
           <CaseGrid setPage={setPage} />
         </div>
       </section>
@@ -520,60 +520,314 @@ function StubPage({ title, eyebrow, lede, children }) {
 }
 
 function FirmPage() {
+  const timeline = [
+    ['2005', 'Founded', 'Eric Goldberg founds Oxford Realty Advisors in Potomac, MD as a commercial real estate advisory practice.'],
+    ['2008', 'Principal investing', 'Shifts from advisory to direct principal acquisition of value-add industrial real estate.'],
+    ['2021', 'Columbus entry', 'Acquires the Sepich Portfolio (110,000 SF, 8 buildings) — first major out-of-region platform.'],
+    ['2022', '400K SF · three markets', 'Surpasses 400,000 SF under ownership across Maryland, Columbus, and the Eastern Shore.'],
+    ['2024', 'Kansas City', 'Expands into the Midwest with first Kansas City acquisition (9620 State Route 350).'],
+    ['Today', '600K SF · 140+ tenants', 'Four core markets, 27+ properties, 100% family capital, 15% portfolio LTV.'],
+  ];
   return <StubPage eyebrow="The Firm" title={<>Private capital. <em>Permanent</em> holdings.</>}
-    lede="Founded 2005 in Potomac, MD. Family-owned. 100% proprietary capital. Permanent holdings.">
-    <p style={{ marginTop: 40, color: 'var(--ink)', maxWidth: 720, fontSize: 16, lineHeight: 1.7 }}>
-      This page mirrors the live <i>The Firm</i> section — leadership bios for Eric and Gabriel Goldberg,
-      criteria, and extended team. The interactive enhancements are concentrated on the homepage; this page
-      keeps the live site's editorial restraint with reveal-on-scroll animations layered in.
-    </p>
+    lede="Founded 2005 in Potomac, MD. Family-owned. 100% proprietary capital. No outside investors. No fund structure. Permanent holdings.">
+    <div style={{ marginTop: 64, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
+      <div>
+        <div className="section-eyebrow">Founder</div>
+        <h3 style={{ fontFamily: 'var(--serif)', fontSize: 28, margin: '12px 0 16px', fontWeight: 500 }}>Eric Goldberg</h3>
+        <p style={{ color: 'var(--ink)', fontSize: 15, lineHeight: 1.7 }}>
+          Eric founded Oxford Realty Advisors in 2005 after a career in commercial real estate advisory and accounting.
+          Graduate of Washington University in St. Louis (Accounting). Has overseen every Oxford acquisition since
+          inception and remains the firm's principal capital allocator.
+        </p>
+      </div>
+      <div>
+        <div className="section-eyebrow">VP, Acquisitions</div>
+        <h3 style={{ fontFamily: 'var(--serif)', fontSize: 28, margin: '12px 0 16px', fontWeight: 500 }}>Gabriel Goldberg</h3>
+        <p style={{ color: 'var(--ink)', fontSize: 15, lineHeight: 1.7 }}>
+          Gabriel leads Oxford's acquisition pipeline — sourcing, underwriting, and closing. Graduate of Cornell
+          University (Economics). Single decision-maker for broker submissions; reachable directly at
+          ggoldberg@oxfordra.net.
+        </p>
+      </div>
+    </div>
+    <div style={{ marginTop: 80 }}>
+      <div className="section-eyebrow">History</div>
+      <h3 style={{ fontFamily: 'var(--serif)', fontSize: 32, margin: '12px 0 32px', fontWeight: 500, letterSpacing: '-0.015em' }}>Twenty-one years. <em style={{ color: 'var(--gold)' }}>One thesis.</em></h3>
+      <div style={{ display: 'grid', gap: 16 }}>
+        {timeline.map(([year, title, body], i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 24, padding: '20px 0', borderTop: i === 0 ? 'none' : '1px solid var(--rule-light)' }}>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 14, color: 'var(--gold)', letterSpacing: '0.05em' }}>{year}</div>
+            <div>
+              <div style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 500, marginBottom: 4 }}>{title}</div>
+              <div style={{ fontSize: 14, color: 'var(--ink-faint)', lineHeight: 1.6 }}>{body}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   </StubPage>;
 }
 
 function PortfolioPage() {
+  const properties = [
+    ['Maryland', [
+      ['9050 Red Branch Road', 'Columbia, MD', '90,000 SF'],
+      ['55 New Plant Court', 'Owings Mills, MD', '34,500 SF'],
+      ['29000 Information Lane', 'Eastern Shore, MD', '49,500 SF'],
+      ['2203–2207 Northwood Dr', 'Eastern Shore, MD', '53,700 SF'],
+      ['1900 North Broadway', 'Baltimore, MD', '26,000 SF · Medical Retail'],
+      ['401 Sunburst Highway', 'Eastern Shore, MD', '5,100 SF · Auto-Service'],
+    ]],
+    ['Columbus, OH', [
+      ['3540 E Fifth Avenue', 'Columbus, OH', '36,000 SF'],
+      ['1100 Rarig Avenue', 'Columbus, OH', '21,000 SF'],
+      ['2800–2826 Banwick Rd', 'Columbus, OH', '24,000 SF'],
+      ['2000–2008 Zettler Rd', 'Columbus, OH', '29,600 SF'],
+      ['2012–2026 Zettler Rd', 'Columbus, OH', '16,800 SF'],
+      ['384–420 Morrison Rd', 'Columbus, OH', '31,200 SF'],
+      ['3034 Westerville Rd', 'Columbus, OH', '18,360 SF + IOS'],
+      ['7658 Fishel Drive N', 'Dublin, OH', '24,000 SF'],
+      ['3875–3883 E Livingston', 'Columbus, OH', '10,950 SF + IOS'],
+      ['4601 E Fifth Avenue', 'Columbus, OH', '3,300 SF · Office/Retail'],
+      ['4595 E Fifth Avenue', 'Columbus, OH', '4,100 SF + IOS'],
+    ]],
+    ['Kansas City', [
+      ['9620 State Route 350', 'Raytown, MO', '34,560 SF'],
+    ]],
+  ];
   return <StubPage eyebrow="Portfolio" title={<>27+ properties. <em>Four</em> markets.</>}
-    lede="Filtered, photo-driven grid identical in IA to the live site, with the new map at top and animated load-in.">
+    lede="Shallow-bay industrial and flex across the Mid-Atlantic and Midwest. 600,000+ SF. 140+ tenants. 100% family-owned, permanently held.">
     <div style={{ marginTop: 56 }}><MarketMap setPage={() => { }} /></div>
+    <div style={{ marginTop: 80 }}>
+      {properties.map(([market, items], mi) => (
+        <div key={mi} style={{ marginBottom: 56 }}>
+          <div className="section-eyebrow">{market} · {items.length} {items.length === 1 ? 'property' : 'properties'}</div>
+          <div style={{ marginTop: 20, display: 'grid', gap: 0 }}>
+            {items.map(([name, loc, sf], i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 24, padding: '18px 0', borderBottom: '1px solid var(--rule-light)' }}>
+                <div style={{ fontFamily: 'var(--serif)', fontSize: 18, fontWeight: 500 }}>{name}</div>
+                <div style={{ fontSize: 14, color: 'var(--ink-faint)' }}>{loc}</div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--ink)', textAlign: 'right' }}>{sf}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      <div style={{ marginTop: 24, padding: 20, background: 'var(--paper-2)', border: '1px solid var(--rule-light)', fontSize: 14, color: 'var(--ink-faint)' }}>
+        <b style={{ color: 'var(--gold)' }}>Indianapolis · Pipeline.</b> Targeting first acquisition 2026. Same criteria — sub-$10M, sub-50K SF, Class B/C shallow-bay industrial.
+      </div>
+    </div>
   </StubPage>;
 }
 
 function TrackPage() {
+  const deals = [
+    {
+      tag: 'Featured · Realized',
+      name: '3540 E. Fifth Avenue',
+      loc: 'Columbus, OH · 36,000 SF',
+      summary: 'Functionally obsolete truck repair facility. Acquired $1.3M, ~$1.0M renovation, Ohio EPA vapor mitigation. Re-leased to a global fragrance manufacturer on a 10-year NNN lease.',
+      stats: [['$1.3M', 'Acquisition'], ['~12%', 'Going-in Cap'], ['~2×', 'Value Created']],
+    },
+    {
+      tag: 'Current',
+      name: 'Sepich Portfolio',
+      loc: 'Columbus, OH · 110,000 SF · 8 buildings',
+      summary: 'Eight-building shallow-bay platform acquired 2021 at $42/SF. Re-set rents from $6 to $13 PSF gross. Currently 100% occupied; estimated value $12M.',
+      stats: [['$42', 'Basis / SF'], ['2.0×', 'NOI Growth'], ['~2.6×', 'Equity Multiple']],
+    },
+    {
+      tag: 'Current',
+      name: '9050 Red Branch Road',
+      loc: 'Columbia, MD · 90,000 SF',
+      summary: 'Class B industrial in Howard County. NOI grown from $613K to ~$1.1M (1.8×). Declined unsolicited offers near $200/SF; underwritten as long-term hold.',
+      stats: [['$85', 'Basis / SF'], ['1.8×', 'NOI Growth'], ['30%', 'Cash-on-Cash']],
+    },
+    {
+      tag: 'Current',
+      name: '29000 Information Lane',
+      loc: 'Eastern Shore, MD · 48,000 SF · 5 buildings',
+      summary: 'Acquired at 33% occupancy, $42/SF. Now 100% leased with rents reset $8 → $15 PSF. ~$7M estimated value, ~3.5× equity multiple.',
+      stats: [['6.3×', 'NOI Growth'], ['33→100%', 'Occupancy'], ['~3.5×', 'Equity Mult.']],
+    },
+    {
+      tag: 'Current',
+      name: '1900 North Broadway',
+      loc: 'Baltimore, MD · 26,000 SF · Medical Retail',
+      summary: 'Acquired at $48/SF, 77% occupied. Added $175K NOI by signing a dialysis tenant. 100% occupied; estimated value $5.5M+, ~4.2× equity multiple.',
+      stats: [['$48', 'Basis / SF'], ['3.5×', 'NOI Growth'], ['~4.2×', 'Equity Mult.']],
+    },
+    {
+      tag: 'Realized · 2020',
+      name: 'Fairground Village Center',
+      loc: 'Westminster, MD · 30,000 SF',
+      summary: 'Five-year hold. Acquired at $75/SF, sold 2020 at $4.5M. Realized 4.5× equity multiple, 63%+ unlevered IRR.',
+      stats: [['4.5×', 'Equity Mult.'], ['63%+', 'IRR'], ['5 yr', 'Hold']],
+    },
+  ];
   return <StubPage eyebrow="Track Record" title={<>Performance. <em>Proven.</em></>}
-    lede="Featured case (3540 E. Fifth Avenue) with the new before/after scrubber, then the live case grid.">
+    lede="Twenty-one years. Zero failed closings. Below find six representative deals — five active, one realized — spanning Maryland and Columbus.">
     <div style={{ marginTop: 56 }}><BeforeAfter /></div>
-    <CaseGrid setPage={() => { }} />
+    <p style={{ fontSize: 14, color: 'var(--ink-faint)', marginTop: 24, maxWidth: 720 }}>
+      <b>3540 E. Fifth Avenue</b> — acquired $1.3M, ~$1.0M renovation, ~12% going-in cap rate, 10-year lease to a global fragrance manufacturer.
+    </p>
+    <div style={{ marginTop: 80 }}>
+      {deals.map((d, i) => (
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 40, padding: '40px 0', borderTop: '1px solid var(--rule-light)' }}>
+          <div>
+            <div className="section-eyebrow" style={{ color: 'var(--gold)' }}>{d.tag}</div>
+            <h3 style={{ fontFamily: 'var(--serif)', fontSize: 26, fontWeight: 500, margin: '12px 0 6px', letterSpacing: '-0.015em' }}>{d.name}</h3>
+            <div style={{ fontSize: 14, color: 'var(--ink-faint)' }}>{d.loc}</div>
+          </div>
+          <div>
+            <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--ink)', marginTop: 0 }}>{d.summary}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 24 }}>
+              {d.stats.map(([v, l], j) => (
+                <div key={j} style={{ borderLeft: '2px solid var(--gold)', paddingLeft: 14 }}>
+                  <div style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 500 }}>{v}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+    <div style={{ marginTop: 80, padding: '40px 0', borderTop: '1px solid var(--rule-light)' }}>
+      <div className="section-eyebrow">Broker Testimonials</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 32, marginTop: 24 }}>
+        {[
+          ['I\'ve worked with Oxford for about 13 years and we\'ve completed half a dozen transactions together. They consistently perform as capable buyers — professional, easy to work with, and very responsive.', 'Nathan Pealer', 'Managing Director Investments — Marcus & Millichap'],
+          ['From day one it has felt more like a partnership than a typical owner/manager relationship.', 'Paul Trautman', 'KRG Real Estate'],
+          ['Oxford Realty operates in a highly professional fashion. Leasing, management, and asset care are taken in a balanced approach.', 'Carl Truitt', 'Property Manager'],
+          ['Eric and Gabriel are wonderful to work with.', 'Terry Declerq', 'Miller & Diversified'],
+        ].map(([q, n, t], i) => (
+          <div key={i} style={{ padding: 24, background: 'var(--paper-2)', border: '1px solid var(--rule-light)' }}>
+            <p style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 16, lineHeight: 1.6, margin: 0 }}>&ldquo;{q}&rdquo;</p>
+            <div style={{ marginTop: 16, fontSize: 13 }}>
+              <b>{n}</b>
+              <div style={{ color: 'var(--ink-faint)', marginTop: 2 }}>{t}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   </StubPage>;
 }
 
 function BrokersPage() {
+  const incentives = [
+    ['01', 'Co-Investment', 'Brokers who source qualifying deals can participate as equity partners alongside Oxford — sharing in the long-term upside, not just the closing fee.'],
+    ['02', 'Buyside Compensation', 'Competitive buyside commission paid in full at closing. No lender holdback. No escrow waits. No retrade tied to commission.'],
+    ['03', 'Commission Protection Pledge', 'Once we sign an LOI, your commission is protected through diligence and closing. We do not retrade brokers.'],
+  ];
+  const stats = [['30–45 d', 'Days to Close'], ['100%', 'Family Capital'], ['$0', 'Financing Contingency'], ['15%', 'Portfolio LTV']];
   return <StubPage eyebrow="For Brokers" title={<>One call. One <em>decision-maker.</em></>}
-    lede="Investment Participation, Buyside Compensation, Commission Protection — same content as live, with the live scorecard demo and animated close timeline.">
-    <Scorecard />
+    lede="Broker-first. Relationship-driven. No exceptions. All-cash closings in 30–45 days. Reach Gabriel directly at ggoldberg@oxfordra.net.">
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0, marginTop: 56, border: '1px solid var(--rule-light)' }}>
+      {stats.map(([v, l], i) => (
+        <div key={i} style={{ padding: '28px 24px', borderRight: i < 3 ? '1px solid var(--rule-light)' : 'none' }}>
+          <div style={{ fontFamily: 'var(--serif)', fontSize: 32, fontWeight: 500, color: 'var(--gold)' }}>{v}</div>
+          <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-faint)', marginTop: 4 }}>{l}</div>
+        </div>
+      ))}
+    </div>
+    <div style={{ marginTop: 80 }}>
+      <div className="section-eyebrow">Three Ways We Reward Brokers</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginTop: 24 }}>
+        {incentives.map(([n, t, d], i) => (
+          <div key={i} style={{ padding: 28, background: 'var(--paper-2)', border: '1px solid var(--rule-light)' }}>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--gold)', letterSpacing: '0.1em' }}>{n}</div>
+            <h3 style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 500, margin: '12px 0 12px', letterSpacing: '-0.015em' }}>{t}</h3>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-faint)', lineHeight: 1.6 }}>{d}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div style={{ marginTop: 80 }}>
+      <div className="section-eyebrow">Acquisition Criteria</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 24, fontSize: 14 }}>
+        {[
+          ['Deal size', '$1M – $10M'],
+          ['Building size', '< 50,000 SF'],
+          ['Asset type', 'Class B/C industrial · flex · shallow-bay · IOS'],
+          ['Clear height', '18\'+'],
+          ['Mid-Atlantic markets', 'DC · Baltimore City · Eastern Shore'],
+          ['Midwest markets', 'Columbus · Indianapolis · Kansas City'],
+          ['Strategy', 'Value-add · long-term hold · below replacement cost'],
+          ['Comfort with', 'Vacancy · deferred maintenance · environmental · legal'],
+        ].map(([k, v], i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 16, padding: '14px 0', borderBottom: '1px solid var(--rule-light)' }}>
+            <span style={{ color: 'var(--ink-faint)' }}>{k}</span>
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 13 }}>{v}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div style={{ marginTop: 80 }}>
+      <Scorecard />
+    </div>
     <div style={{ marginTop: 56 }}><CloseTimeline /></div>
   </StubPage>;
 }
 
 function TenantsPage() {
+  const cards = [
+    ['Find Available Space', 'Browse open spaces by market and size. Filter by Maryland, Columbus, or Kansas City; sort by SF.', 'Browse spaces →'],
+    ['Maintenance Request', 'Submit a request to your local property manager. Photo upload supported. One business day response guaranteed.', 'maintenance@oxfordra.net'],
+    ['Emergency Contact', 'After-hours and weekend emergencies — water, fire, security, structural. Reach a human, every time.', '301.512.6125'],
+  ];
+  const steps = [
+    ['01', 'Tell us what you need', 'Square footage, target market, ideal move-in. We respond within one business day.'],
+    ['02', 'We match you', 'Tour appropriate spaces in our portfolio. Lease terms 1–10 years.'],
+    ['03', 'Tour & move in', 'Application takes ~15 minutes online; we respond within two business days.'],
+  ];
   return <StubPage eyebrow="For Tenants" title={<>A landlord who <em>answers.</em></>}
-    lede="Tenant Resources + Available Space + Maintenance Request — consolidated on a single page (currently three).">
+    lede="Oxford owns and operates 600,000+ SF across 27 properties. We manage in-house and locally — no national call center, no out-of-state asset manager. One business day response, guaranteed.">
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginTop: 56 }}>
-      {[
-        ['Available Space', 'Browse open spaces by market with live square-footage totals.'],
-        ['Tenant Application', 'Online application with auto-save and document upload.'],
-        ['Maintenance Request', 'Submit, track status, photo upload — local PM responds < 1 day.'],
-      ].map(([t, d], i) => (
+      {cards.map(([t, d, c], i) => (
         <div key={i} style={{ padding: 28, background: 'var(--paper-2)', border: '1px solid var(--rule-light)' }}>
           <div className="section-eyebrow" style={{ color: 'var(--ink-faint)' }}>{String(i + 1).padStart(2, '0')}</div>
-          <h3 style={{ fontFamily: 'var(--serif)', fontSize: 26, margin: '12px 0 10px', fontWeight: 500, letterSpacing: '-0.015em' }}>{t}</h3>
+          <h3 style={{ fontFamily: 'var(--serif)', fontSize: 24, margin: '12px 0 10px', fontWeight: 500, letterSpacing: '-0.015em' }}>{t}</h3>
           <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-faint)', lineHeight: 1.55 }}>{d}</p>
+          <div style={{ marginTop: 16, fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--gold)' }}>{c}</div>
         </div>
       ))}
+    </div>
+    <div style={{ marginTop: 80 }}>
+      <div className="section-eyebrow">How Leasing Works</div>
+      <h3 style={{ fontFamily: 'var(--serif)', fontSize: 28, margin: '12px 0 24px', fontWeight: 500, letterSpacing: '-0.015em' }}>Three steps. <em style={{ color: 'var(--gold)' }}>One business day.</em></h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+        {steps.map(([n, t, d], i) => (
+          <div key={i} style={{ padding: '24px 0', borderTop: '1px solid var(--rule-light)' }}>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--gold)', letterSpacing: '0.1em' }}>{n}</div>
+            <h4 style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 500, margin: '12px 0 10px' }}>{t}</h4>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-faint)', lineHeight: 1.55 }}>{d}</p>
+          </div>
+        ))}
+      </div>
     </div>
   </StubPage>;
 }
 
 function ContactPage() {
-  return <StubPage eyebrow="Contact" title={<>Get in <em>touch.</em></>} lede="9510 Persimmon Tree Road, Suite 200 · Potomac, MD 20854 · 301.512.6125 · info@oxfordra.net">
+  const rows = [
+    ['Office', '9510 Persimmon Tree Road, Suite 200 · Potomac, MD 20854'],
+    ['General', 'info@oxfordra.net · 301.512.6125'],
+    ['Brokers · acquisitions', 'Gabriel Goldberg · ggoldberg@oxfordra.net'],
+    ['Tenant maintenance', 'maintenance@oxfordra.net'],
+    ['Response time', 'One business day, guaranteed.'],
+  ];
+  return <StubPage eyebrow="Contact" title={<>Get in <em>touch.</em></>}
+    lede="Oxford operates from a single office in Potomac, MD. One decision-maker on every transaction. No outsourced call centers; no rotating asset managers.">
+    <div style={{ marginTop: 56, maxWidth: 720 }}>
+      {rows.map(([k, v], i) => (
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 24, padding: '20px 0', borderBottom: '1px solid var(--rule-light)' }}>
+          <div className="section-eyebrow">{k}</div>
+          <div style={{ fontSize: 15, color: 'var(--ink)', lineHeight: 1.55 }}>{v}</div>
+        </div>
+      ))}
+    </div>
   </StubPage>;
 }
 

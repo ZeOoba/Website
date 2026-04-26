@@ -119,6 +119,11 @@ h3{font-size:22px;margin-bottom:8px}
 @media(max-width:768px){.hero{min-height:auto;padding:110px 24px 60px}.hero h1{font-size:36px}.hero__sub{font-size:18px}}
 </style>
 <link rel="stylesheet" href="/assets/chat.css">
+<style id="v2-polish-brokers">
+.faq-subhead{font-family:var(--font-body);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--gold-accessible,#9A7D4E);margin:0 0 12px;padding-top:8px;border-top:none}
+.faq-list > .faq-subhead:not(:first-child){margin-top:32px;padding-top:24px;border-top:1px solid rgba(27,42,74,.08)}
+.broker-form__assurance{font-family:var(--font-body);font-size:14px;color:var(--slate);text-align:center;margin:0 0 28px;padding:14px 20px;background:var(--parchment);border-left:2px solid var(--gold);border-radius:var(--radius-card)}
+</style>
 </head>
 <body>
 
@@ -334,6 +339,7 @@ h3{font-size:22px;margin-bottom:8px}
 <p class="section__intro">Receive a Graded Investment Score</p>
 </div>
 <div class="animate-on-scroll" style="max-width:680px;margin:0 auto;">
+<p class="broker-form__assurance">All submissions are reviewed by a member of the acquisitions team. Confidential. Response within one business day.</p>
 <form enctype='multipart/form-data' method='POST' name='broker-network'>
 <input type="hidden" name="form-name" value="broker-network">
 <input type="hidden" name="score-results" value="">
@@ -398,9 +404,10 @@ h3{font-size:22px;margin-bottom:8px}
 <div class="container">
 <div class="section__header animate-on-scroll">
 <span class="section__label">FAQ</span>
-<h2>Common Questions</h2>
+<h2>Common Broker Questions</h2>
 </div>
-<div class="faq-list animate-on-scroll">
+<div class="faq-list">
+<h3 class="faq-subhead">Process &amp; Timing</h3>
 
 
 
@@ -428,6 +435,7 @@ h3{font-size:22px;margin-bottom:8px}
 </div>
 </div>
 
+<h3 class="faq-subhead">What We Buy</h3>
 <div class="faq-item">
 <button class="faq-item__trigger" aria-expanded="false" aria-controls="faq-3">
 <span>Does Oxford consider properties with environmental issues?</span>

@@ -319,55 +319,81 @@ h3{font-size:22px;margin-bottom:8px}
 </section>
 
 <!-- Financing Gap -->
-<section class="section section--parchment" aria-label="The financing gap is our market">
+<style>
+.fg-section{background:var(--white)}
+.fg-header{text-align:center;margin-bottom:40px}
+.fg-rule{display:block;width:48px;height:1px;background:var(--gold);margin:20px auto 0}
+.fg-lede{max-width:720px;margin:0 auto 56px;text-align:center}
+.fg-lede__primary{font-family:var(--font-display);font-size:20px;line-height:1.55;color:var(--charcoal);margin-bottom:18px}
+.fg-lede__close{font-family:var(--font-display);font-style:italic;font-size:20px;line-height:1.45;color:var(--navy);margin:0}
+.fg-table-wrap{max-width:1080px;margin:0 auto}
+.fg-table{width:100%;border-collapse:collapse;background:transparent}
+.fg-table thead th{font-family:var(--font-body);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-accessible,#9A7D4E);text-align:left;padding:14px 20px;border-bottom:1px solid var(--navy)}
+.fg-table tbody tr{border-bottom:1px solid rgba(27,42,74,.08)}
+.fg-table tbody tr:last-child{border-bottom:none}
+.fg-table tbody th{font-family:var(--font-display);font-size:19px;font-weight:500;color:var(--navy);text-align:left;padding:20px;vertical-align:top;width:28%;line-height:1.3}
+.fg-table tbody td{font-family:var(--font-body);font-size:14px;line-height:1.55;color:var(--slate);padding:20px;vertical-align:top;width:36%}
+@media(max-width:720px){
+  .fg-lede__primary,.fg-lede__close{font-size:17px}
+  .fg-table thead{display:none}
+  .fg-table,.fg-table tbody,.fg-table tr{display:block;width:100%}
+  .fg-table tbody tr{padding:20px 0;border-bottom:1px solid rgba(27,42,74,.1)}
+  .fg-table tbody th,.fg-table tbody td{display:block;width:100%;padding:0 0 6px}
+  .fg-table tbody th{font-size:18px;margin-bottom:10px}
+  .fg-table tbody td{position:relative;padding:8px 0 4px;color:var(--charcoal)}
+  .fg-table tbody td::before{content:attr(data-label);display:block;font-family:var(--font-body);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-accessible,#9A7D4E);margin-bottom:4px}
+}
+</style>
+<section class="section fg-section" aria-label="The financing gap is our market">
 <div class="container">
-<div class="section__header animate-on-scroll">
+<div class="fg-header animate-on-scroll">
 <span class="section__label">Structural Advantage</span>
 <h2>The Financing Gap Is Our Market</h2>
+<span class="fg-rule" aria-hidden="true"></span>
 </div>
-<div class="animate-on-scroll" style="max-width:760px;margin:0 auto 48px;text-align:center">
-<p style="font-family:var(--font-display);font-size:20px;line-height:1.55;color:var(--charcoal);margin-bottom:20px">Most industrial properties in the $1M&ndash;$10M range are unfinanceable &mdash; not because they lack value, but because they fail a lender&rsquo;s checklist. Significant vacancy eliminates DSCR coverage. Environmental conditions trigger lender exclusions. Deferred maintenance fails property condition minimums. Short lease terms don&rsquo;t meet WALT requirements.</p>
-<p style="font-family:var(--font-display);font-size:20px;line-height:1.55;color:var(--charcoal)">Oxford&rsquo;s all-cash structure removes the lender entirely. We underwrite intrinsic merit &mdash; location, replacement cost basis, and long-term income potential &mdash; not a bank&rsquo;s eligibility criteria. The result: we close deals that no financed buyer can.</p>
+<div class="fg-lede animate-on-scroll">
+<p class="fg-lede__primary">Most industrial properties in the $1M&ndash;$10M range are unfinanceable &mdash; not because they lack value, but because they fail a lender&rsquo;s checklist. Significant vacancy eliminates DSCR coverage. Environmental conditions trigger lender exclusions. Deferred maintenance fails property condition minimums. Short lease terms don&rsquo;t meet WALT requirements.</p>
+<p class="fg-lede__close">Our all-cash structure removes the lender entirely. We close deals that no financed buyer can.</p>
 </div>
-<div class="animate-on-scroll" style="max-width:1080px;margin:0 auto;overflow-x:auto">
-<table style="width:100%;border-collapse:collapse;font-size:15px;background:var(--white)" role="table" aria-label="Why lenders walk versus why Oxford closes">
+<div class="fg-table-wrap animate-on-scroll">
+<table class="fg-table" role="table" aria-label="Why lenders walk versus why Oxford closes">
 <thead>
 <tr>
-<th scope="col" style="font-family:var(--font-body);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);text-align:left;padding:14px 20px;border-bottom:1px solid var(--navy)">Category</th>
-<th scope="col" style="font-family:var(--font-body);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);text-align:left;padding:14px 20px;border-bottom:1px solid var(--navy)">Why Lenders Walk</th>
-<th scope="col" style="font-family:var(--font-body);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);text-align:left;padding:14px 20px;border-bottom:1px solid var(--navy)">Why Oxford Closes</th>
+<th scope="col">Category</th>
+<th scope="col">Why Lenders Walk</th>
+<th scope="col">Why Oxford Closes</th>
 </tr>
 </thead>
 <tbody>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="font-family:var(--font-display);font-size:17px;font-weight:500;color:var(--navy);text-align:left;padding:18px 20px;vertical-align:top;width:28%">High Vacancy</th>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">DSCR insufficient for loan sizing</td>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">No minimum occupancy threshold</td>
-</tr>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="font-family:var(--font-display);font-size:17px;font-weight:500;color:var(--navy);text-align:left;padding:18px 20px;vertical-align:top">Environmental Conditions</th>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">Lender exclusion lists; agency restrictions</td>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">Phase I/II experience; we evaluate on merits</td>
-</tr>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="font-family:var(--font-display);font-size:17px;font-weight:500;color:var(--navy);text-align:left;padding:18px 20px;vertical-align:top">Deferred Maintenance</th>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">Fails property condition report minimums</td>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">CapEx priced into basis; no lender holdbacks</td>
-</tr>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="font-family:var(--font-display);font-size:17px;font-weight:500;color:var(--navy);text-align:left;padding:18px 20px;vertical-align:top">Short or M-T-M Leases</th>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">WALT below lender minimums</td>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">Cash flow risk absorbed in underwriting</td>
-</tr>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="font-family:var(--font-display);font-size:17px;font-weight:500;color:var(--navy);text-align:left;padding:18px 20px;vertical-align:top">Legal or Title Complexity</th>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">Title insurer won&rsquo;t clear; lender walks</td>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">Counsel engaged early; complexity is pricing dislocation</td>
+<tr>
+<th scope="row">High Vacancy</th>
+<td data-label="Why Lenders Walk">DSCR insufficient for loan sizing</td>
+<td data-label="Why Oxford Closes">No minimum occupancy threshold</td>
 </tr>
 <tr>
-<th scope="row" style="font-family:var(--font-display);font-size:17px;font-weight:500;color:var(--navy);text-align:left;padding:18px 20px;vertical-align:top">Sub-$3M Deal Size</th>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">Below minimum loan sizes for most lenders</td>
-<td style="padding:18px 20px;color:var(--charcoal);vertical-align:top">Our sweet spot; $1M&ndash;$10M is our entire range</td>
+<th scope="row">Environmental Conditions</th>
+<td data-label="Why Lenders Walk">Lender exclusion lists; agency restrictions</td>
+<td data-label="Why Oxford Closes">Phase I/II experience; we evaluate on merits</td>
+</tr>
+<tr>
+<th scope="row">Deferred Maintenance</th>
+<td data-label="Why Lenders Walk">Fails property condition report minimums</td>
+<td data-label="Why Oxford Closes">CapEx priced into basis; no lender holdbacks</td>
+</tr>
+<tr>
+<th scope="row">Short or M-T-M Leases</th>
+<td data-label="Why Lenders Walk">WALT below lender minimums</td>
+<td data-label="Why Oxford Closes">Cash flow risk absorbed in underwriting</td>
+</tr>
+<tr>
+<th scope="row">Legal or Title Complexity</th>
+<td data-label="Why Lenders Walk">Title insurer won&rsquo;t clear; lender walks</td>
+<td data-label="Why Oxford Closes">Counsel engaged early; complexity is pricing dislocation</td>
+</tr>
+<tr>
+<th scope="row">Sub-$3M Deal Size</th>
+<td data-label="Why Lenders Walk">Below minimum loan sizes for most lenders</td>
+<td data-label="Why Oxford Closes">Our sweet spot; $1M&ndash;$10M is our entire range</td>
 </tr>
 </tbody>
 </table>

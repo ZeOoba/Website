@@ -1,0 +1,22 @@
+# Netlify config — keep _headers + _redirects as the source of truth for
+# headers/redirects (do not duplicate here). This file exists for
+# edge-function and serverless-function routing.
+
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+
+[functions."chat-lead"]
+  included_files = []
+
+[[edge_functions]]
+  path = "/api/chat"
+  function = "chat"
+
+[[redirects]]
+  from = "/api/chat-lead"
+  to = "/.netlify/functions/chat-lead"
+  status = 200
+  force = true

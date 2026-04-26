@@ -1,0 +1,17 @@
+# Enforce non-www
+https://www.oxfordra.net/* https://oxfordra.net/:splat 301!
+
+# Legacy Squarespace paths
+/broker-network    /for-brokers    301
+/brokers           /for-brokers    301
+/tenants           /tenant-resources 301
+/leasing           /available-space 301
+/team              /about          301
+/leadership        /about          301
+/the-firm          /about          301
+/investments       /portfolio      301
+/properties        /portfolio      301
+/case-studies      /track-record   301
+
+# SPA-style: serve 404.html for unknown paths
+/*                 /404.html       404

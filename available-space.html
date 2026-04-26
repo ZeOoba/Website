@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Available Space | Oxford Realty Advisors</title>
+  <meta name="description" content="Browse available industrial and flex space from Oxford Realty Advisors. Shallow-bay warehouse and flex units across the Mid-Atlantic and Midwest.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://oxfordra.net/available-space">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Available Space | Oxford Realty Advisors">
+  <meta property="og:description" content="Browse available industrial and flex space from Oxford Realty Advisors. Shallow-bay warehouse and flex units across the Mid-Atlantic and Midwest.">
+  <meta property="og:image" content="https://oxfordra.net/images/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+  <meta property="og:url" content="https://oxfordra.net/available-space">
+  <meta property="og:type" content="website">
+<meta property="og:site_name" content="Oxford Realty Advisors">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://oxfordra.net/images/og-image.png">
+
+  <!-- Favicons -->
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="theme-color" content="#1B2A4A">
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Preload critical fonts -->
+  <link rel="preload" href="/fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/ibm-plex-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/eb-garamond-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/eb-garamond-italic-latin.woff2" crossorigin>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
+<!-- Stylesheets -->
+  <link rel="stylesheet" href="/styles.css?v=13">
+  <link rel="stylesheet" href="/available-space.css?v=5">
+  <!-- Inline @font-face declarations -->
+  <style>
+    @font-face {
+      font-family: 'DM Sans';
+      src: url('/fonts/dm-sans-latin.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'EB Garamond';
+      src: url('/fonts/eb-garamond-latin.woff2') format('woff2');
+      font-weight: 400 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    /* Critical inline CSS for nav + hero to prevent layout shift */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(27, 42, 74, 0.97);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      height: 72px;
+    }
+    .nav__inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+    .as-hero {
+      padding-top: 140px;
+      padding-bottom: 48px;
+      background-color: #1B2A4A;
+    }
+    .nav__links{display:flex;gap:0;align-items:center}
+    .nav__link{font-family:var(--font-body);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.8);padding:6px 14px;transition:color .3s;text-decoration:none}
+    .nav__link:hover,.nav__link:focus{color:#C9A96E;text-decoration:none}
+    .nav__link--active{color:#C9A96E}
+    .nav__link--cta{background:#C9A96E;color:#1B2A4A;border-radius:6px;padding:8px 18px;font-size:12px;letter-spacing:.14em;font-weight:500;text-transform:uppercase;margin-left:8px}
+    .nav__link--cta:hover{background:#b8963e;color:#1B2A4A;text-decoration:none}
+    .nav__mobile-btn{display:none;background:none;border:0;cursor:pointer;padding:8px}
+    .nav__mobile-btn span{display:block;width:22px;height:2px;background:#fff;margin-bottom:5px;transition:transform .3s}
+    .nav__mobile-btn span:last-child{width:16px;background:#C9A96E;margin-bottom:0}
+    .nav__mobile{display:none;background:#1B2A4A;padding:16px 40px 24px}
+    .nav__mobile.is-open{display:block}
+    .nav__mobile a{display:block;padding:12px 0;font-family:var(--font-body);font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:#fff;border-bottom:1px solid rgba(255,255,255,.06);text-decoration:none}
+    .nav__mobile a:hover{color:#C9A96E;text-decoration:none}
+    .nav__logo img{height:auto;width:auto;max-height:28px;display:block}
+    @media(max-width:960px){.nav__links{display:none}.nav__mobile-btn{display:block}.nav__inner{padding:0 24px}}
+  </style>
+
+  <!-- Structured Data: Breadcrumbs -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://oxfordra.net/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Available Space",
+        "item": "https://oxfordra.net/available-space"
+      }
+    ]
+  }
+  </script>
+<link rel="stylesheet" href="/assets/chat.css">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Navigation -->
+  <header role="banner">
+<div class="announcement-bar" role="region" aria-label="What we're buying now">
+<span class="announcement-bar__label">What We're Buying Now</span>
+<span class="announcement-bar__sep" aria-hidden="true">·</span>
+<span class="announcement-bar__rotator" aria-live="polite">
+<span class="announcement-bar__item is-active">Actively seeking $1M&ndash;$10M acquisitions</span>
+<span class="announcement-bar__item">Shallow-bay industrial / flex</span>
+<span class="announcement-bar__item">Mid-Atlantic and Midwest</span>
+<span class="announcement-bar__item">All-cash closings in 30&ndash;45 days</span>
+</span>
+</div>
+<nav class="nav" aria-label="Primary navigation">
+<div class="nav__inner">
+<a href="/" class="nav__logo" aria-label="Oxford Realty Advisors &#8212; Home">
+<img src="/images/oxford-logo-white.png" alt="Oxford Realty Advisors" width="448" height="56" decoding="async">
+</a>
+<div class="nav__links">
+<a href="/about" class="nav__link">The Firm</a>
+<a href="/portfolio" class="nav__link">Portfolio</a>
+<a href="/track-record" class="nav__link">Track Record</a>
+<a href="/for-brokers" class="nav__link">Broker Network</a>
+<a href="/available-space" class="nav__link nav__link--active" aria-current="page">Available Space</a>
+<a href="/tenant-resources" class="nav__link">Tenant Resources</a>
+<a href="/contact" class="nav__link">Contact</a>
+<a href="/tenant-application" class="nav__link nav__link--cta">Apply Now</a>
+</div>
+<button class="nav__mobile-btn" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+</div>
+<div class="nav__mobile" id="mobileNav" aria-label="Mobile navigation">
+<a href="/about">The Firm</a>
+<a href="/portfolio">Portfolio</a>
+<a href="/track-record">Track Record</a>
+<a href="/for-brokers">Broker Network</a>
+<a href="/available-space">Available Space</a>
+<a href="/tenant-resources">Tenant Resources</a>
+<a href="/contact">Contact</a>
+<a href="/tenant-application">Apply Now</a>
+</div>
+</nav>
+</header>
+
+  <main id="main-content">
+    <!-- Hero -->
+    <section class="as-hero" aria-label="Available space">
+      <div class="as-hero__inner">
+        <h1>Available Space</h1>
+        <p>Browse our current availabilities across the Mid-Atlantic and Midwest. Industrial, flex, and warehouse space for lease.</p>
+      </div>
+    </section>
+
+    <!-- Stats Bar -->
+    <div class="as-stats" aria-label="Listing statistics">
+      <div class="as-stats__item">
+        <span class="as-stats__value" id="statListings">&mdash;</span>
+        <span class="as-stats__label">Available Spaces</span>
+      </div>
+      <div class="as-stats__item">
+        <span class="as-stats__value" id="statSF">&mdash;</span>
+        <span class="as-stats__label">Total SF Available</span>
+      </div>
+      <div class="as-stats__item">
+        <span class="as-stats__value" id="statRange">&mdash;</span>
+        <span class="as-stats__label">Rate Range ($/SF)</span>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="as-toolbar">
+      <div class="as-toolbar__filters">
+        <input type="text" id="searchInput" class="as-search" placeholder="Search properties..." aria-label="Search properties">
+        <select id="filterMarket" aria-label="Filter by market">
+          <option value="">All Markets</option>
+        </select>
+        <select id="filterType" aria-label="Filter by property type">
+          <option value="">All Types</option>
+        </select>
+        <select id="filterSize" aria-label="Filter by size">
+          <option value="">Any Size</option>
+          <option value="0-2000">Under 2,000 SF</option>
+          <option value="2000-5000">2,000 &ndash; 5,000 SF</option>
+          <option value="5000-10000">5,000 &ndash; 10,000 SF</option>
+          <option value="10000-999999">10,000+ SF</option>
+        </select>
+        <select id="sortBy" aria-label="Sort listings">
+          <option value="featured">Featured</option>
+          <option value="sf-desc">Size: Large to Small</option>
+          <option value="sf-asc">Size: Small to Large</option>
+          <option value="name">Name: A to Z</option>
+        </select>
+      </div>
+      <div class="as-toolbar__actions">
+        <span class="as-toolbar__count" id="resultsCount"></span>
+        <div class="as-toolbar__view">
+          <button class="as-view-btn as-view-btn--active" id="viewCards" aria-label="Card view" title="Card view">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+          </button>
+          <button class="as-view-btn" id="viewTable" aria-label="Table view" title="Table view">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><line x1="1" y1="3" x2="17" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="1" y1="9" x2="17" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="1" y1="15" x2="17" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content: Listings + Map -->
+    <div class="as-content">
+      <div class="as-listings" id="listingsPanel">
+        <div class="as-no-results" id="noResults" style="display:none;">
+          <p>No listings match your filters. Try adjusting your search criteria.</p>
+        </div>
+      </div>
+      <div class="as-map-panel">
+        <div id="map" role="application" aria-label="Property locations map"></div>
+      </div>
+    </div>
+
+    <!-- Detail Overlay -->
+    <div class="as-overlay" id="detailOverlay" role="dialog" aria-modal="true" aria-label="Property details" style="display:none;">
+      <div class="as-overlay__panel">
+        <button class="as-overlay__close" id="detailClose" aria-label="Close details">&times;</button>
+        <div class="as-overlay__hero" id="detailHero"></div>
+        <div class="as-overlay__body" id="detailBody"></div>
+      </div>
+    </div>
+    <script type="application/ld+json" id="listing-schema">{}</script>
+
+    <!-- Hidden form for Netlify detection -->
+    <form hidden method='post' name='listing-inquiry'>
+      <input type="hidden" name="form-name" value="listing-inquiry">
+      <input name="listing">
+      <input name="name">
+      <input name="email">
+      <input name="phone">
+      <input name="company">
+      <textarea name="message"></textarea>
+    </form>
+
+    <!-- Share Toast -->
+    <div class="as-toast" id="shareToast" role="alert" style="display:none;">Link copied to clipboard</div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+<div class="footer__inner container">
+<div class="footer__brand">
+<img src="/images/oxford-logo-white.png" alt="Oxford Realty Advisors" width="448" height="56" loading="lazy" decoding="async">
+<p>A family-owned real estate investment firm targeting value-add industrial properties across the Mid-Atlantic and Midwest. 100% proprietary capital. Permanent holdings.</p>
+</div>
+<div class="footer__nav">
+<p class="footer__heading">Navigate</p>
+<a href="/about">The Firm</a>
+<a href="/portfolio">Portfolio</a>
+<a href="/track-record">Track Record</a>
+<a href="/for-brokers">Broker Network</a>
+<a href="/contact">Contact</a>
+</div>
+<div class="footer__tenants">
+<p class="footer__heading">For Tenants</p>
+<a href="/tenant-resources">Tenant Resources</a>
+<a href="/available-space">Available Space</a>
+<a href="mailto:maintenance@oxfordra.net?subject=Maintenance%20Request">Maintenance Request</a>
+</div>
+<div class="footer__connect">
+<p class="footer__heading">Connect</p>
+<a href="tel:+13015126125">301.512.6125</a>
+<a href="mailto:info@oxfordra.net">info@oxfordra.net</a>
+<p>9510 Persimmon Tree Road, Suite 200<br>Potomac, MD 20854</p>
+</div>
+</div>
+<div class="footer__bottom container">
+<p>&copy; 2026 Oxford Realty Advisors, LLC. All rights reserved.</p>
+<div class="footer__legal">
+<a href="/privacy">Privacy Policy</a>
+<a href="/terms">Terms</a>
+</div>
+</div>
+</footer>
+
+  <!-- Leaflet JS -->
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
+  <!-- Listings JS -->
+  <script defer src="/listings.js?v=4"></script>
+<!-- Analytics (deferred to reduce main-thread blocking) -->
+<script>
+(function(){
+  function loadAnalytics(){
+    // GA4
+    var g=document.createElement('script');g.async=true;
+    g.src='https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX';
+    document.head.appendChild(g);
+    window.dataLayer=window.dataLayer||[];
+    function gtag(){dataLayer.push(arguments)}
+    gtag('js',new Date());gtag('config','G-XXXXXXXXXX');
+    window.gtag=gtag;
+    // LinkedIn
+    window._linkedin_partner_id='XXXXXXX';
+    window._linkedin_data_partner_ids=window._linkedin_data_partner_ids||[];
+    window._linkedin_data_partner_ids.push(window._linkedin_partner_id);
+    var li=document.createElement('script');li.async=true;
+    li.src='https://snap.licdn.com/li.lss/insight.min.js';
+    document.head.appendChild(li);
+  }
+  if('requestIdleCallback' in window){requestIdleCallback(loadAnalytics)}
+  else{setTimeout(loadAnalytics,3000)}
+})();
+</script>
+<script defer src="/assets/chat.js"></script>
+</body>
+</html>

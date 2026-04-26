@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /success
+Disallow: /success.html
+
+Sitemap: https://oxfordra.net/sitemap.xml

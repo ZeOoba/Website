@@ -34,10 +34,10 @@
 <!-- Preload hero image (LCP candidate) -->
 <link rel="preload" as="image" href="/images/02-1100-rarig-exterior-1.avif" type="image/avif" fetchpriority="high">
 
-<!-- Preload hero-critical fonts (italic Garamond is on the LCP path via hero italics + financing-gap lede) -->
+<!-- Preload hero-critical fonts only (italic Garamond + mono load via CSS - not on LCP path) -->
 <link rel="preload" as="font" href="/fonts/dm-sans-latin.woff2" type="font/woff2" crossorigin>
 <link rel="preload" as="font" href="/fonts/eb-garamond-latin.woff2" type="font/woff2" crossorigin>
-<link rel="preload" as="font" href="/fonts/eb-garamond-italic-latin.woff2" type="font/woff2" crossorigin>
+
 <link rel="preload" as="font" href="/fonts/ibm-plex-mono-latin.woff2" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/styles.css?v=13">
 
@@ -157,8 +157,7 @@ h3{font-size:22px;margin-bottom:8px}
 @media(max-width:768px){.hero{min-height:auto;padding:110px 24px 60px}.hero h1{font-size:36px}.hero__sub{font-size:18px}.hero__stats{gap:24px}.hero__stat-value{font-size:28px}.hero__ctas{flex-direction:column;align-items:center}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms;animation-iteration-count:1;transition-duration:.01ms;scroll-behavior:auto}.animate-on-scroll{opacity:1;transform:none}}
 </style>
-<link rel="stylesheet" href="/assets/chat.css" media="print" id="chat-css-async">
-<script>(function(){var l=document.getElementById('chat-css-async');if(l){requestAnimationFrame(function(){l.media='all';l.removeAttribute('id')})}})();</script>
+<link rel="stylesheet" href="/assets/chat.css">
 <style id="v2-polish">
 /* V2 polish: hero secondary links */
 .hero__links{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:48px}
@@ -849,18 +848,13 @@ h3{font-size:22px;margin-bottom:8px}
   targets.forEach(function(t){obs.observe(t)});
 })();
 
-/* 3D Card Tilt — desktop hover-capable devices only. Rect cached on enter to avoid layout thrash. */
+/* 3D Card Tilt — desktop hover-capable devices only */
 (function(){
   if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
   if(!window.matchMedia('(hover: hover) and (pointer: fine)').matches)return;
   document.querySelectorAll('.grid-2 > div').forEach(function(card){
-    var rect=null;
-    card.addEventListener('mouseenter',function(){
-      rect=card.getBoundingClientRect();
-      card.style.transition='none';
-    });
     card.addEventListener('mousemove',function(e){
-      if(!rect)return;
+      var rect=card.getBoundingClientRect();
       var x=(e.clientX-rect.left)/rect.width-.5;
       var y=(e.clientY-rect.top)/rect.height-.5;
       card.style.transform='perspective(800px) rotateY('+x*4+'deg) rotateX('+-y*4+'deg)';
@@ -868,24 +862,23 @@ h3{font-size:22px;margin-bottom:8px}
     card.addEventListener('mouseleave',function(){
       card.style.transform='perspective(800px) rotateY(0) rotateX(0)';
       card.style.transition='transform .4s ease';
-      rect=null;
+    });
+    card.addEventListener('mouseenter',function(){
+      card.style.transition='none';
     });
   });
 })();
 
-/* Scroll Progress Bar — measure deferred off the critical path to avoid forced reflow */
+/* Scroll Progress Bar — cached layout reads to avoid forced reflow */
 (function(){
   var bar=document.getElementById('scrollProgress');
   if(!bar)return;
-  var docHeight=0,ticking=false,measured=false;
+  var docHeight=0,ticking=false;
   function measure(){
     var h=document.documentElement;
     docHeight=h.scrollHeight-h.clientHeight;
-    measured=true;
   }
-  /* Defer first measure to idle/next frame so it doesn't reflow during initial parse */
-  if('requestIdleCallback' in window){requestIdleCallback(measure,{timeout:1000})}
-  else{requestAnimationFrame(measure)}
+  measure();
   window.addEventListener('resize',measure,{passive:true});
   window.addEventListener('load',measure);
   window.addEventListener('scroll',function(){

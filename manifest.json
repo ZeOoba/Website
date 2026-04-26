@@ -1,0 +1,21 @@
+{
+  "name": "Oxford Realty Advisors",
+  "short_name": "Oxford RA",
+  "description": "Private industrial real estate investment firm — Maryland, Ohio, Missouri, Indiana.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#F5F3EF",
+  "theme_color": "#1B2A4A",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

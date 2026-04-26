@@ -102,6 +102,13 @@ h3{font-size:22px;margin-bottom:8px}
 .section__intro{font-family:var(--font-display);font-size:18px;color:var(--slate);margin-top:-8px}
 .section--navy .section__intro{color:rgba(255,255,255,.6)}
 .section__desc{font-size:15px;color:var(--slate);max-width:640px;margin:16px auto 0;line-height:1.7}
+.criteria-list{display:grid;grid-template-columns:1fr;gap:0;margin:0 auto;max-width:1080px}
+.criteria-list__item{display:grid;grid-template-columns:1fr;align-items:baseline;gap:6px 24px;padding:18px 0;border-bottom:1px solid rgba(27,42,74,.08)}
+.criteria-list__key{font-family:var(--font-body);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:var(--gold-accessible,#9A7D4E);margin:0;text-align:left}
+.criteria-list__key::before{content:"\2014\00a0";color:var(--gold-accessible,#9A7D4E)}
+.criteria-list__value{font-family:var(--font-display);font-size:17px;color:var(--navy);line-height:1.45;margin:0}
+@media(min-width:560px){.criteria-list__item{grid-template-columns:170px 1fr}}
+@media(min-width:768px){.criteria-list{grid-template-columns:1fr 1fr;column-gap:64px}.criteria-list__item{grid-template-columns:165px 1fr}}
 .animate-on-scroll{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
 .animate-on-scroll.is-visible{opacity:1;transform:translateY(0)}
 .hidden{display:none}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
@@ -265,53 +272,48 @@ h3{font-size:22px;margin-bottom:8px}
 </section>
 
 <!-- Investment Criteria -->
-<section class="section" aria-label="Investment criteria">
+<section class="section section--parchment" aria-label="Investment criteria">
 <div class="container">
-<div class="section__header animate-on-scroll">
+<div class="section__header section__header--left animate-on-scroll" style="text-align:left;max-width:1080px;margin-left:auto;margin-right:auto">
 <span class="section__label">Criteria</span>
-<h2>Investment Criteria</h2>
-<p class="section__intro">What We Look For</p>
+<h2>What We Look For</h2>
 </div>
-<div class="animate-on-scroll" style="max-width:720px;margin:0 auto">
-<table style="width:100%;border-collapse:collapse;font-size:15px" role="table" aria-label="Investment criteria details">
-<tbody>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="padding:14px 16px 14px 0;font-weight:500;color:var(--navy);white-space:nowrap;vertical-align:top;text-align:left;width:40%">Deal Size</th>
-<td style="padding:14px 0;color:var(--charcoal)">$1M &ndash; $10M</td>
-</tr>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="padding:14px 16px 14px 0;font-weight:500;color:var(--navy);white-space:nowrap;vertical-align:top;text-align:left">Property Type</th>
-<td style="padding:14px 0;color:var(--charcoal)">Class B/C Industrial, Flex, Shallow-Bay, IOS</td>
-</tr>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="padding:14px 16px 14px 0;font-weight:500;color:var(--navy);white-space:nowrap;vertical-align:top;text-align:left">Building Size</th>
-<td style="padding:14px 0;color:var(--charcoal)">&lt; 50,000 SF per building</td>
-</tr>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="padding:14px 16px 14px 0;font-weight:500;color:var(--navy);white-space:nowrap;vertical-align:top;text-align:left">Clear Height</th>
-<td style="padding:14px 0;color:var(--charcoal)">18'+ preferred</td>
-</tr>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="padding:14px 16px 14px 0;font-weight:500;color:var(--navy);white-space:nowrap;vertical-align:top;text-align:left">Markets</th>
-<td style="padding:14px 0;color:var(--charcoal)">Mid-Atlantic &middot; Midwest</td>
-</tr>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="padding:14px 16px 14px 0;font-weight:500;color:var(--navy);white-space:nowrap;vertical-align:top;text-align:left">Strategy</th>
-<td style="padding:14px 0;color:var(--charcoal)">Value-Add, Long-Term Hold</td>
-</tr>
-<tr style="border-bottom:1px solid var(--light-gray)">
-<th scope="row" style="padding:14px 16px 14px 0;font-weight:500;color:var(--navy);white-space:nowrap;vertical-align:top;text-align:left">Acquisition Basis</th>
-<td style="padding:14px 0;color:var(--charcoal)">Significantly below replacement cost</td>
-</tr>
-<tr>
-<th scope="row" style="padding:14px 16px 14px 0;font-weight:500;color:var(--navy);white-space:nowrap;vertical-align:top;text-align:left">Complexity Tolerance</th>
-<td style="padding:14px 0;color:var(--charcoal)">Vacancy, deferred maintenance, environmental &amp; legal issues</td>
-</tr>
-</tbody>
-</table>
-<div style="text-align:center;margin-top:40px">
+<dl class="criteria-list animate-on-scroll" aria-label="Investment criteria details">
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Deal Size</dt>
+<dd class="criteria-list__value">$1M &ndash; $10M</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Property Type</dt>
+<dd class="criteria-list__value">Class B/C Industrial, Flex, Shallow-Bay, IOS</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Building Size</dt>
+<dd class="criteria-list__value">&lt; 50,000 SF per building</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Clear Height</dt>
+<dd class="criteria-list__value">18'+ preferred</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Markets</dt>
+<dd class="criteria-list__value">Mid-Atlantic &middot; Midwest</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Strategy</dt>
+<dd class="criteria-list__value">Value-Add, Long-Term Hold</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Acquisition Basis</dt>
+<dd class="criteria-list__value">Significantly below replacement cost</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Complexity</dt>
+<dd class="criteria-list__value">Vacancy &middot; deferred maintenance &middot; environmental &amp; legal issues</dd>
+</div>
+</dl>
+<div style="text-align:center;margin-top:48px">
 <a href="/for-brokers" class="btn btn--gold">Explore Our Broker Program</a>
-</div>
 </div>
 </div>
 </section>

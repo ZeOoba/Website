@@ -1,0 +1,279 @@
+/* ============================================================
+   Oxford — Tweak modes
+   Three knobs reshape the feel. Variables cascade from <body>.
+   ============================================================ */
+
+/* --------------------------------------------------------
+   DENSITY — overall whitespace + type scale
+   -------------------------------------------------------- */
+[data-tw-density="stately"] {
+  --tw-pad-section: 1.55;     /* multiplier on section margins */
+  --tw-hero-min: 92vh;
+  --tw-hero-pad: 88px 56px 120px;
+  --tw-h1-scale: 1.18;
+  --tw-h2-scale: 1.12;
+  --tw-lede-size: 20px;
+  --tw-stamp-gap: 56px;
+  --tw-line-gap: 16px;
+}
+[data-tw-density="standard"] {
+  --tw-pad-section: 1;
+  --tw-hero-min: 78vh;
+  --tw-hero-pad: 48px 40px 72px;
+  --tw-h1-scale: 1;
+  --tw-h2-scale: 1;
+  --tw-lede-size: 18px;
+  --tw-stamp-gap: 40px;
+  --tw-line-gap: 10px;
+}
+[data-tw-density="compact"] {
+  --tw-pad-section: 0.62;
+  --tw-hero-min: 64vh;
+  --tw-hero-pad: 28px 32px 44px;
+  --tw-h1-scale: 0.86;
+  --tw-h2-scale: 0.88;
+  --tw-lede-size: 16px;
+  --tw-stamp-gap: 24px;
+  --tw-line-gap: 6px;
+}
+
+[data-direction="oxford"] .oxf-hero {
+  padding: var(--tw-hero-pad);
+}
+[data-direction="oxford"] .oxf-hero-inner {
+  min-height: var(--tw-hero-min);
+  gap: calc(72px * var(--tw-pad-section));
+}
+[data-direction="oxford"] .oxf-hero h1 {
+  font-size: clamp(40px, calc(6.2vw * var(--tw-h1-scale)), 120px);
+}
+[data-direction="oxford"] .oxf-hero .lede {
+  font-size: var(--tw-lede-size);
+  margin: calc(36px * var(--tw-pad-section)) 0 calc(40px * var(--tw-pad-section));
+}
+[data-direction="oxford"] .oxf-hero .stamp {
+  margin-top: var(--tw-stamp-gap);
+  padding-top: calc(20px * var(--tw-pad-section));
+}
+
+/* Section margins all scale */
+[data-direction="oxford"] .oxf-mandate { margin-top: calc(120px * var(--tw-pad-section)); }
+[data-direction="oxford"] .oxf-numbers { margin-top: calc(72px * var(--tw-pad-section)); padding: calc(32px * var(--tw-pad-section)) 40px; }
+[data-direction="oxford"] .oxf-edit { margin: calc(140px * var(--tw-pad-section)) auto; gap: calc(80px * var(--tw-pad-section)); }
+[data-direction="oxford"] .oxf-geo { margin: calc(140px * var(--tw-pad-section)) auto; }
+[data-direction="oxford"] .oxf-marquee { margin-top: calc(80px * var(--tw-pad-section)); padding: calc(28px * var(--tw-pad-section)) 0; }
+[data-direction="oxford"] .oxf-cases { margin: calc(140px * var(--tw-pad-section)) auto; }
+[data-direction="oxford"] .oxf-quote { margin: calc(160px * var(--tw-pad-section)) auto; }
+[data-direction="oxford"] .oxf-space { margin: calc(140px * var(--tw-pad-section)) auto; }
+[data-direction="oxford"] .oxf-timeline { margin: calc(140px * var(--tw-pad-section)) auto; }
+[data-direction="oxford"] .oxf-broker { margin: calc(120px * var(--tw-pad-section)) auto; }
+
+[data-direction="oxford"] .oxf-mandate h2,
+[data-direction="oxford"] .oxf-geo h2,
+[data-direction="oxford"] .oxf-cases h2,
+[data-direction="oxford"] .oxf-space h2 {
+  font-size: clamp(32px, calc(4.8vw * var(--tw-h2-scale)), 92px);
+}
+
+[data-direction="oxford"] .oxf-monitor-body { padding: calc(6px * var(--tw-pad-section)) 0; }
+[data-direction="oxford"] .oxf-line {
+  padding: var(--tw-line-gap) 18px;
+}
+
+/* Compact gets a tighter case grid */
+[data-tw-density="compact"][data-direction="oxford"] .oxf-case-grid { gap: 20px; }
+[data-tw-density="stately"][data-direction="oxford"] .oxf-case-grid { gap: 44px; }
+
+/* --------------------------------------------------------
+   TEMPERAMENT — accent dominance + italic frequency
+   -------------------------------------------------------- */
+[data-tw-temper="reserved"] {
+  --accent: #6b3a30;          /* desaturated oxblood */
+  --tw-italic-disp: normal;   /* italics → upright */
+  --tw-italic-weight: 400;
+  --tw-grain-opacity: 0.02;
+  --tw-accent-cap-color: var(--ink);  /* drop cap stays ink */
+  --tw-rule-emph: var(--rule);
+}
+[data-tw-temper="editorial"] {
+  --accent: #a33524;
+  --tw-italic-disp: italic;
+  --tw-italic-weight: 500;
+  --tw-grain-opacity: 0.04;
+  --tw-accent-cap-color: var(--accent);
+  --tw-rule-emph: var(--rule);
+}
+[data-tw-temper="vivid"] {
+  --accent: #d4361f;          /* brighter oxblood/vermillion */
+  --tw-italic-disp: italic;
+  --tw-italic-weight: 600;
+  --tw-grain-opacity: 0.06;
+  --tw-accent-cap-color: var(--accent);
+  --tw-rule-emph: color-mix(in srgb, var(--accent) 30%, var(--rule));
+}
+
+/* Italic emphasis — reserved makes them upright */
+[data-direction="oxford"][data-tw-temper="reserved"] .oxf-hero h1 em,
+[data-direction="oxford"][data-tw-temper="reserved"] .oxf-mandate h2 em,
+[data-direction="oxford"][data-tw-temper="reserved"] .oxf-geo h2 em,
+[data-direction="oxford"][data-tw-temper="reserved"] .oxf-cases h2 em,
+[data-direction="oxford"][data-tw-temper="reserved"] .oxf-space h2 em,
+[data-direction="oxford"][data-tw-temper="reserved"] .oxf-broker-box h3 em,
+[data-direction="oxford"][data-tw-temper="reserved"] .oxf-marquee em {
+  font-style: normal;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* Vivid pumps emphasis weight up */
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-hero h1 em,
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-mandate h2 em,
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-geo h2 em,
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-cases h2 em,
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-space h2 em,
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-broker-box h3 em {
+  font-weight: 600;
+}
+
+/* Vivid: hero gets an accent rule + warmer paper */
+[data-direction="oxford"][data-tw-temper="vivid"] {
+  --paper: #faf3e3;
+}
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-numbers {
+  border-top-color: color-mix(in srgb, var(--accent) 50%, var(--rule));
+  border-bottom-color: color-mix(in srgb, var(--accent) 50%, var(--rule));
+}
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-numbers .metric-value {
+  color: var(--accent);
+}
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-numbers .metric-value em {
+  color: var(--accent);
+}
+
+/* Vivid: marquee gets accent fill */
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-marquee {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-marquee .track,
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-marquee .track em,
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-marquee .track .sep {
+  color: var(--paper);
+}
+
+/* Reserved: desaturate the entire palette including bg */
+[data-direction="oxford"][data-tw-temper="reserved"] {
+  --bg:   #f0ede5;
+  --bg-2: #e8e3d4;
+  --paper:#f6f3ea;
+}
+[data-direction="oxford"][data-tw-temper="reserved"] body {
+  background: var(--bg);
+}
+[data-direction="oxford"][data-tw-temper="reserved"] .oxf-quote blockquote::before,
+[data-direction="oxford"][data-tw-temper="reserved"] .oxf-quote blockquote::after {
+  color: var(--ink);
+}
+[data-direction="oxford"][data-tw-temper="reserved"] .oxf-edit .body p:first-child::first-letter {
+  color: var(--ink);
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* Reserved: drop the cursor halo */
+[data-direction="oxford"][data-tw-temper="reserved"] .cursor-halo {
+  display: none;
+}
+
+/* Vivid: enhance the cursor halo */
+[data-direction="oxford"][data-tw-temper="vivid"] .cursor-halo {
+  width: 580px; height: 580px;
+  opacity: 0.7;
+}
+
+/* Grain — only oxford direction surfaces it */
+[data-direction="oxford"] body::after {
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: var(--tw-grain-opacity, 0.04);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>");
+  mix-blend-mode: multiply;
+}
+
+/* Vivid: numbers + cases stats use accent more aggressively */
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-tile .cat,
+[data-direction="oxford"][data-tw-temper="vivid"] .oxf-case .stats .stat b {
+  color: var(--accent);
+}
+
+/* --------------------------------------------------------
+   PULSE — animation cadence
+   -------------------------------------------------------- */
+[data-tw-pulse="still"] {
+  --tw-ribbon-dur: 0s;
+  --tw-pulse-dur: 0s;
+  --tw-marquee-dur: 0s;
+  --tw-monitor-flash: 0;     /* multiplier — 0 disables */
+  --tw-hover-lift: 0px;
+}
+[data-tw-pulse="living"] {
+  --tw-ribbon-dur: 80s;
+  --tw-pulse-dur: 1.8s;
+  --tw-marquee-dur: 90s;
+  --tw-monitor-flash: 1;
+  --tw-hover-lift: 6px;
+}
+[data-tw-pulse="restless"] {
+  --tw-ribbon-dur: 28s;
+  --tw-pulse-dur: 0.9s;
+  --tw-marquee-dur: 32s;
+  --tw-monitor-flash: 1;
+  --tw-hover-lift: 10px;
+}
+
+[data-direction="oxford"] .ribbon-track { animation-duration: var(--tw-ribbon-dur, 80s); }
+[data-direction="oxford"] .oxf-marquee .track { animation-duration: var(--tw-marquee-dur, 90s); }
+
+[data-direction="oxford"][data-tw-pulse="still"] .ribbon-track,
+[data-direction="oxford"][data-tw-pulse="still"] .oxf-marquee .track {
+  animation: none;
+}
+
+/* All pulse-driven dots */
+[data-direction="oxford"] .ribbon-track .dot,
+[data-direction="oxford"] .oxf-hero .live-dot,
+[data-direction="oxford"] .oxf-monitor-head .live::before {
+  animation-duration: var(--tw-pulse-dur, 1.8s);
+}
+[data-direction="oxford"][data-tw-pulse="still"] .ribbon-track .dot,
+[data-direction="oxford"][data-tw-pulse="still"] .oxf-hero .live-dot,
+[data-direction="oxford"][data-tw-pulse="still"] .oxf-monitor-head .live::before {
+  animation: none;
+  opacity: 1;
+}
+
+/* Restless: hover lift bigger, transitions faster */
+[data-direction="oxford"][data-tw-pulse="restless"] .oxf-case:hover {
+  transform: translateY(calc(-1 * var(--tw-hover-lift, 6px)));
+}
+[data-direction="oxford"][data-tw-pulse="still"] .oxf-case:hover {
+  transform: none;
+}
+
+/* Restless: cursor halo is always lively */
+[data-direction="oxford"][data-tw-pulse="restless"] .cursor-halo {
+  width: 520px; height: 520px;
+}
+[data-direction="oxford"][data-tw-pulse="still"] .cursor-halo {
+  display: none;
+}
+
+/* Reduce motion respect */
+@media (prefers-reduced-motion: reduce) {
+  [data-direction="oxford"] .ribbon-track,
+  [data-direction="oxford"] .oxf-marquee .track {
+    animation: none;
+  }
+}

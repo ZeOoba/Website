@@ -94,7 +94,8 @@ h3{font-size:22px;margin-bottom:8px}
 .skip-link{position:absolute;top:-100px;left:0;z-index:1001;background:var(--gold);color:var(--navy);padding:12px 24px;font-family:var(--font-body);font-size:14px;font-weight:500;border-radius:0 0 6px 0}
 .skip-link:focus{top:0}
 </style>
-<link rel="stylesheet" href="/assets/chat.css">
+<link rel="stylesheet" href="/assets/chat.css" media="print" id="chat-css-async">
+<script>(function(){var l=document.getElementById("chat-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 </head>
 <body>
 

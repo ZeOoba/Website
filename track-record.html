@@ -99,7 +99,8 @@ h3{font-size:22px;margin-bottom:8px}
 .btn--outline{background:transparent;color:var(--gold);border-color:var(--gold)}
 .btn--outline:hover{background:var(--gold);color:var(--navy)}
 </style>
-<link rel="stylesheet" href="/assets/chat.css">
+<link rel="stylesheet" href="/assets/chat.css" media="print" id="chat-css-async">
+<script>(function(){var l=document.getElementById("chat-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 </head>
 <body>
 

@@ -159,6 +159,104 @@ h3{font-size:22px;margin-bottom:8px}
 </style>
 <link rel="stylesheet" href="/assets/chat.css" media="print" id="chat-css-async">
 <script>(function(){var l=document.getElementById('chat-css-async');if(l){requestAnimationFrame(function(){l.media='all';l.removeAttribute('id')})}})();</script>
+<style id="credibility-refresh">
+/* === Stat Band === */
+.statband{background:var(--white);border-top:1px solid rgba(27,42,74,.08);border-bottom:1px solid rgba(27,42,74,.08);padding:48px 0}
+.statband__grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;text-align:center;max-width:1180px;margin:0 auto;padding:0 24px}
+.statband__item{padding:8px 4px}
+.statband__value{display:block;font-family:var(--font-display);font-size:clamp(32px,4.6vw,52px);font-weight:500;color:var(--navy);line-height:1;letter-spacing:-.01em}
+.statband__label{display:block;font-family:var(--font-body);font-size:11px;text-transform:uppercase;letter-spacing:.18em;color:var(--gold-accessible,#9A7D4E);margin-top:10px;font-weight:600}
+@media(max-width:760px){.statband__grid{grid-template-columns:repeat(2,1fr);gap:28px 16px}.statband__item:last-child{grid-column:1/-1}}
+/* === Trusted Counterparties / Logo Wall === */
+.counterparties{background:var(--parchment);padding:64px 0}
+.counterparties__inner{max-width:1180px;margin:0 auto;padding:0 24px;text-align:center}
+.counterparties__label{display:block;font-family:var(--font-body);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.2em;color:var(--gold-accessible,#9A7D4E);margin-bottom:28px}
+.counterparties__grid{display:grid;grid-template-columns:repeat(5,1fr);gap:32px;align-items:center;justify-items:center;margin-bottom:24px}
+.counterparties__logo{width:100%;max-width:160px;height:48px;color:var(--slate);opacity:.55;filter:grayscale(100%);transition:opacity .25s ease,filter .25s ease,color .25s ease}
+.counterparties__logo:hover{opacity:1;filter:grayscale(0);color:var(--navy)}
+.counterparties__logo svg{width:100%;height:100%}
+.counterparties__caption{font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--slate);margin:0}
+@media(max-width:760px){.counterparties__grid{grid-template-columns:repeat(2,1fr);gap:24px}.counterparties__logo:nth-child(5){grid-column:1/-1}}
+/* === About 4-card grid === */
+.about-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;max-width:1080px;margin:0 auto 36px}
+.about-card{background:var(--white);border:1px solid rgba(27,42,74,.1);border-radius:var(--radius-card,8px);padding:32px 28px;position:relative;transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease}
+.about-card::before{content:"";position:absolute;left:0;top:24px;bottom:24px;width:3px;background:var(--gold);border-radius:0 2px 2px 0}
+.about-card:hover{transform:translateY(-2px);box-shadow:0 14px 32px -20px rgba(27,42,74,.25);border-color:rgba(27,42,74,.18)}
+.about-card__title{font-family:var(--font-display);font-size:22px;color:var(--navy);margin:0 0 10px;font-weight:500;letter-spacing:-.005em}
+.about-card__body{font-family:var(--font-body);font-size:14.5px;line-height:1.65;color:var(--slate);margin:0}
+@media(max-width:720px){.about-grid{grid-template-columns:1fr;gap:16px}}
+/* === Pull-quote treatment === */
+.pullquote{max-width:780px;margin:36px auto;padding:8px 0 8px 24px;border-left:3px solid var(--gold);font-family:var(--font-display);font-style:italic;font-size:24px;line-height:1.45;color:var(--navy)}
+/* === Financed-Buyer Comparison === */
+.fb-section{background:var(--navy);color:#fff;padding:96px 0;position:relative;overflow:hidden}
+.fb-section__inner{max-width:1180px;margin:0 auto;padding:0 24px}
+.fb-headline{font-family:var(--font-display);font-weight:500;font-size:clamp(36px,6vw,72px);line-height:1.05;letter-spacing:-.01em;text-transform:uppercase;text-align:center;margin:0 0 56px;color:#fff}
+.fb-headline em{font-style:normal;color:var(--gold);display:inline-block}
+.fb-table{width:100%;border-collapse:collapse;max-width:980px;margin:0 auto 48px;background:transparent}
+.fb-table thead th{font-family:var(--font-body);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.5);padding:14px 18px;border-bottom:1px solid rgba(201,169,110,.3);text-align:left}
+.fb-table thead th:nth-child(3){color:var(--gold)}
+.fb-table tbody tr{border-bottom:1px solid rgba(255,255,255,.08)}
+.fb-table tbody tr:last-child{border-bottom:none}
+.fb-table tbody th{font-family:var(--font-display);font-weight:500;font-size:17px;color:#fff;text-align:left;padding:18px;width:28%;vertical-align:middle}
+.fb-table tbody td{font-family:var(--font-body);font-size:14px;line-height:1.5;padding:18px;vertical-align:middle;width:36%}
+.fb-table .fb-cell--lender{color:rgba(255,255,255,.7)}
+.fb-table .fb-cell--lender::before{content:"\2715";color:#D88C8C;font-weight:700;margin-right:8px}
+.fb-table .fb-cell--ora{color:#fff;font-weight:500}
+.fb-table .fb-cell--ora::before{content:"\2713";color:var(--gold);font-weight:700;margin-right:8px}
+@media(max-width:720px){
+  .fb-table thead{display:none}
+  .fb-table,.fb-table tbody,.fb-table tr{display:block;width:100%}
+  .fb-table tbody tr{padding:18px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .fb-table tbody th,.fb-table tbody td{display:block;width:100%;padding:0 0 6px}
+  .fb-table tbody th{font-size:18px;margin-bottom:10px;color:var(--gold)}
+  .fb-table .fb-cell--lender,.fb-table .fb-cell--ora{padding:6px 0}
+}
+/* Process timeline */
+.fb-timeline{max-width:920px;margin:0 auto 40px;position:relative}
+.fb-timeline__track{position:relative;height:2px;background:rgba(255,255,255,.15);margin:0 28px}
+.fb-timeline__fill{position:absolute;left:0;top:0;height:100%;background:var(--gold);width:0;transition:width 1.4s cubic-bezier(.16,1,.3,1)}
+.fb-timeline.is-visible .fb-timeline__fill{width:100%}
+.fb-timeline__nodes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:-9px;position:relative}
+.fb-timeline__node{text-align:center;padding:0 6px}
+.fb-timeline__dot{display:block;width:16px;height:16px;border-radius:50%;background:var(--navy);border:2px solid rgba(255,255,255,.3);margin:0 auto 14px;transition:background .4s ease,border-color .4s ease,transform .4s ease;transition-delay:0s}
+.fb-timeline.is-visible .fb-timeline__dot{background:var(--gold);border-color:var(--gold);transform:scale(1.15)}
+.fb-timeline.is-visible .fb-timeline__node:nth-child(2) .fb-timeline__dot{transition-delay:.35s}
+.fb-timeline.is-visible .fb-timeline__node:nth-child(3) .fb-timeline__dot{transition-delay:.7s}
+.fb-timeline.is-visible .fb-timeline__node:nth-child(4) .fb-timeline__dot{transition-delay:1.05s}
+.fb-timeline__day{display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+.fb-timeline__milestone{font-family:var(--font-display);font-size:15px;color:#fff;line-height:1.3}
+.fb-cta-row{text-align:center}
+@media(prefers-reduced-motion:reduce){.fb-timeline__fill{transition:none;width:100%}.fb-timeline__dot{transition:none;background:var(--gold);border-color:var(--gold)}}
+@media(max-width:520px){.fb-timeline__nodes{grid-template-columns:repeat(2,1fr);gap:24px 8px}.fb-timeline__track{display:none}}
+/* === Broker Testimonials === */
+.brokertest{background:var(--white);padding:96px 0}
+.brokertest__inner{max-width:1180px;margin:0 auto;padding:0 24px}
+.brokertest__header{text-align:center;margin-bottom:48px}
+.brokertest__rule{display:block;width:48px;height:1px;background:var(--gold);margin:18px auto 0}
+.brokertest__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.brokertest__card{background:var(--parchment);border-radius:var(--radius-card,8px);padding:36px 28px;text-align:center;border:1px solid rgba(27,42,74,.08);display:flex;flex-direction:column;align-items:center}
+.brokertest__avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(145deg,#1B2A4A,#2D3F66);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:24px;font-weight:500;margin:0 auto 18px;letter-spacing:.02em}
+.brokertest__quote{font-family:var(--font-display);font-style:italic;font-size:17px;line-height:1.55;color:var(--navy);margin:0 0 20px;flex:1}
+.brokertest__attr{font-family:var(--font-body);font-size:12px;letter-spacing:.04em;color:var(--slate);line-height:1.5}
+.brokertest__attr strong{display:block;color:var(--navy);font-weight:600;font-size:13px;margin-bottom:4px}
+@media(max-width:880px){.brokertest__grid{grid-template-columns:1fr;gap:16px;max-width:580px;margin:0 auto}}
+/* === Closed-Transaction Strip === */
+.txstrip{background:var(--parchment);padding:80px 0}
+.txstrip__inner{max-width:1280px;margin:0 auto;padding:0 24px}
+.txstrip__header{text-align:center;margin-bottom:40px}
+.txstrip__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.txstrip__card{background:var(--white);border:1px solid rgba(27,42,74,.08);border-radius:var(--radius-card,8px);overflow:hidden;display:flex;flex-direction:column;transition:transform .25s ease,box-shadow .25s ease}
+.txstrip__card:hover{transform:translateY(-2px);box-shadow:0 14px 32px -20px rgba(27,42,74,.25)}
+.txstrip__thumb{aspect-ratio:16/9;background:linear-gradient(135deg,#1B2A4A 0%,#2D3F66 100%);position:relative;overflow:hidden}
+.txstrip__thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.txstrip__body{padding:18px 20px 22px}
+.txstrip__addr{font-family:var(--font-display);font-size:16px;font-weight:500;color:var(--navy);margin:0 0 4px;line-height:1.3}
+.txstrip__market{font-family:var(--font-body);font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--slate);margin:0 0 10px}
+.txstrip__sf{font-family:var(--font-body);font-size:13px;color:var(--charcoal);margin:0 0 12px}
+.txstrip__badge{display:inline-block;font-family:var(--font-body);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--gold-accessible,#9A7D4E);background:rgba(201,169,110,.12);border:1px solid rgba(201,169,110,.35);border-radius:999px;padding:5px 10px}
+@media(max-width:980px){.txstrip__grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.txstrip__grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 
@@ -257,18 +355,61 @@ h3{font-size:22px;margin-bottom:8px}
 </div>
 </section>
 
-<!-- Value Proposition -->
+<!-- Institutional Stat Band -->
+<section class="statband" aria-label="Firm-level performance metrics">
+<div class="statband__grid animate-on-scroll">
+<div class="statband__item"><span class="statband__value" data-counter data-target="21" data-suffix="+">21+</span><span class="statband__label">Years Operating</span></div>
+<div class="statband__item"><span class="statband__value" data-counter data-target="600" data-suffix="K+">600K+</span><span class="statband__label">SF Under Management</span></div>
+<div class="statband__item"><span class="statband__value" data-counter data-target="140">140</span><span class="statband__label">Tenants</span></div>
+<div class="statband__item"><span class="statband__value" data-counter data-target="100" data-suffix="%">100%</span><span class="statband__label">Proprietary Capital</span></div>
+<div class="statband__item"><span class="statband__value">&le;40%</span><span class="statband__label">Portfolio LTV</span></div>
+</div>
+</section>
+
+<!-- PLACEHOLDER LOGOS — Gabriel must confirm written permission/trademark
+     usage rights from each firm before merging this branch to main. -->
+<!-- Trusted Counterparties / Broker logo wall -->
+<section class="counterparties" aria-label="Trusted counterparties">
+<div class="counterparties__inner animate-on-scroll">
+<span class="counterparties__label">Trusted Counterparties</span>
+<div class="counterparties__grid">
+<div class="counterparties__logo" aria-label="CBRE"><img src="/images/partners/cbre-logo.svg" alt="CBRE" loading="lazy" decoding="async"></div>
+<div class="counterparties__logo" aria-label="Colliers"><img src="/images/partners/colliers-logo.svg" alt="Colliers" loading="lazy" decoding="async"></div>
+<div class="counterparties__logo" aria-label="Newmark Zimmer"><img src="/images/partners/newmark-zimmer-logo.svg" alt="Newmark Zimmer" loading="lazy" decoding="async"></div>
+<div class="counterparties__logo" aria-label="MacKenzie Commercial"><img src="/images/partners/mackenzie-logo.svg" alt="MacKenzie Commercial" loading="lazy" decoding="async"></div>
+<div class="counterparties__logo" aria-label="Robert Weiler Company"><img src="/images/partners/weiler-logo.svg" alt="Robert Weiler Company" loading="lazy" decoding="async"></div>
+</div>
+<p class="counterparties__caption">Active broker relationships across Maryland, Columbus, Kansas City, and Indianapolis.</p>
+</div>
+</section>
+
+<!-- The Firm — 4-card grid (replaces prose) -->
 <section class="section section--parchment" aria-label="About the firm">
 <div class="container">
 <div class="section__header animate-on-scroll">
 <span class="section__label">The Firm</span>
 <h2>Oxford Realty Advisors</h2>
 </div>
-<div class="animate-on-scroll" style="max-width:720px;margin:0 auto;text-align:center">
-<p style="margin-bottom:20px;font-size:16px;line-height:1.7;color:var(--charcoal)">Founded in 2005, Oxford Realty Advisors is a principal investor and operator with 600,000+ SF of shallow-bay industrial and flex space across four core markets &mdash; acquired with 100% family capital, no outside investors, and no fund structure.</p>
-<p style="margin-bottom:32px;font-size:16px;line-height:1.7;color:var(--charcoal)">We target the structural undersupply of functional Class B/C industrial space in secondary markets, acquiring below replacement cost and driving returns through active management. A 15% portfolio LTV means all-cash closings on every deal.</p>
-<a href="/about" class="btn btn--gold">Learn More About Our Firm</a>
+<div class="about-grid animate-on-scroll">
+<article class="about-card">
+<h3 class="about-card__title">Family-Office Capital</h3>
+<p class="about-card__body">Proprietary balance sheet. No LP capital calls, no fund waterfalls, no committee &mdash; one decision-maker on every transaction.</p>
+</article>
+<article class="about-card">
+<h3 class="about-card__title">Generational Hold</h3>
+<p class="about-card__body">Forever-hold orientation with portfolio leverage held at or below 40% LTV. We underwrite to durability, not exit.</p>
+</article>
+<article class="about-card">
+<h3 class="about-card__title">Operational Focus</h3>
+<p class="about-card__body">Four core markets, 600,000+ SF, 140 tenants. Active in-house asset management across Maryland, Columbus, Kansas City, and Indianapolis.</p>
+</article>
+<article class="about-card">
+<h3 class="about-card__title">Disciplined Filters</h3>
+<p class="about-card__body">$1M&ndash;$10M deal size. Sub-50K SF Class B/C industrial and flex. Below replacement cost, with embedded value-add upside.</p>
+</article>
 </div>
+<blockquote class="pullquote animate-on-scroll">Founded in 2005. Twenty-one years of compounding returns on a single thesis: functional Class B/C industrial in secondary markets.</blockquote>
+<div class="animate-on-scroll" style="text-align:center;margin-top:24px"><a href="/about" class="btn btn--gold">Learn More About Our Firm</a></div>
 </div>
 </section>
 
@@ -316,6 +457,34 @@ h3{font-size:22px;margin-bottom:8px}
 <div style="text-align:center;margin-top:48px">
 <a href="/for-brokers" class="btn btn--gold">Explore Our Broker Program</a>
 </div>
+</div>
+</section>
+
+<!-- We Close What Financed Buyers Can't (visual dramatization) -->
+<section class="fb-section" aria-label="We close what financed buyers can not">
+<div class="fb-section__inner">
+<h2 class="fb-headline animate-on-scroll">We Close What <em>Financed Buyers</em> Can&rsquo;t</h2>
+<table class="fb-table animate-on-scroll" role="table" aria-label="Typical financed buyer versus Oxford Realty Advisors">
+<thead><tr><th scope="col">Attribute</th><th scope="col">Typical Financed Buyer</th><th scope="col">Oxford Realty Advisors</th></tr></thead>
+<tbody>
+<tr><th scope="row">Capital Source</th><td class="fb-cell--lender">Bank debt + equity stack</td><td class="fb-cell--ora">Proprietary family-office capital</td></tr>
+<tr><th scope="row">Financing Contingency</th><td class="fb-cell--lender">Required (45&ndash;60 days)</td><td class="fb-cell--ora">None</td></tr>
+<tr><th scope="row">Inspection Period</th><td class="fb-cell--lender">Re-trade leverage at end</td><td class="fb-cell--ora">Fixed, no re-trades</td></tr>
+<tr><th scope="row">Close Timeline</th><td class="fb-cell--lender">60&ndash;90 days post-LOI</td><td class="fb-cell--ora">30 days post-LOI</td></tr>
+<tr><th scope="row">Fall-Through Risk</th><td class="fb-cell--lender">High (lender re-underwrite)</td><td class="fb-cell--ora">Zero</td></tr>
+<tr><th scope="row">Certainty of Close</th><td class="fb-cell--lender">Conditional</td><td class="fb-cell--ora">Absolute</td></tr>
+</tbody>
+</table>
+<div class="fb-timeline animate-on-scroll" id="fbTimeline" aria-label="Oxford Realty Advisors close timeline">
+<div class="fb-timeline__track"><span class="fb-timeline__fill"></span></div>
+<div class="fb-timeline__nodes">
+<div class="fb-timeline__node"><span class="fb-timeline__dot" aria-hidden="true"></span><span class="fb-timeline__day">Day 0</span><span class="fb-timeline__milestone">LOI Executed</span></div>
+<div class="fb-timeline__node"><span class="fb-timeline__dot" aria-hidden="true"></span><span class="fb-timeline__day">Day 7</span><span class="fb-timeline__milestone">PSA Signed</span></div>
+<div class="fb-timeline__node"><span class="fb-timeline__dot" aria-hidden="true"></span><span class="fb-timeline__day">Day 14</span><span class="fb-timeline__milestone">DD Complete</span></div>
+<div class="fb-timeline__node"><span class="fb-timeline__dot" aria-hidden="true"></span><span class="fb-timeline__day">Day 30</span><span class="fb-timeline__milestone">Closed</span></div>
+</div>
+</div>
+<div class="fb-cta-row animate-on-scroll"><a href="/for-brokers#broker-network" class="btn btn--gold">Submit a Deal</a></div>
 </div>
 </section>
 
@@ -467,6 +636,40 @@ h3{font-size:22px;margin-bottom:8px}
 </div>
 </section>
 
+<!-- If broker quotes are not yet authorized at merge time, replace
+     individual attributions with anonymized "Broker, [Market]" labels.
+     Quotes themselves should still be reviewed for accuracy. -->
+<!-- Named Broker Testimonials -->
+<section class="brokertest" aria-label="Broker testimonials">
+<div class="brokertest__inner">
+<div class="brokertest__header animate-on-scroll">
+<span class="section__label">Broker Network</span>
+<h2>What Brokers Say About Working With Oxford</h2>
+<span class="brokertest__rule" aria-hidden="true"></span>
+</div>
+<div class="brokertest__grid animate-on-scroll">
+<!-- PLACEHOLDER — confirm with Robert Weiler / Julie Cohen before publishing -->
+<article class="brokertest__card">
+<div class="brokertest__avatar" aria-hidden="true">RW</div>
+<p class="brokertest__quote">&ldquo;Oxford is a true principal buyer. They underwrite quickly, sign clean contracts, and close on the date they commit to. That certainty is rare in the sub-$10M industrial market.&rdquo;</p>
+<p class="brokertest__attr"><strong>[Broker Name]</strong>Robert Weiler Company &middot; Columbus, OH</p>
+</article>
+<!-- PLACEHOLDER — confirm with Alex Cantu before publishing -->
+<article class="brokertest__card">
+<div class="brokertest__avatar" aria-hidden="true">AC</div>
+<p class="brokertest__quote">&ldquo;When a deal needs to move fast or a seller needs certainty over price, Oxford is the first call. They evaluate properties on merits other buyers won&rsquo;t even look at.&rdquo;</p>
+<p class="brokertest__attr"><strong>[Broker Name]</strong>Colliers &middot; Indianapolis, IN</p>
+</article>
+<!-- PLACEHOLDER — confirm with John Hassler before publishing -->
+<article class="brokertest__card">
+<div class="brokertest__avatar" aria-hidden="true">JH</div>
+<p class="brokertest__quote">&ldquo;No financing contingency, no committee, no re-trades. Oxford operates the way the institutional industrial market used to operate &mdash; with discipline and a handshake that holds.&rdquo;</p>
+<p class="brokertest__attr"><strong>[Broker Name]</strong>Newmark Zimmer &middot; Kansas City, MO</p>
+</article>
+</div>
+</div>
+</section>
+
 <!-- Featured Results -->
 <section class="section section--navy" aria-label="Featured results" style="padding-top:0">
 <div class="container">
@@ -541,6 +744,73 @@ h3{font-size:22px;margin-bottom:8px}
 <h2>Ready to Close in 30 Days?</h2>
 <p style="font-size:16px;color:var(--slate);margin-bottom:32px;line-height:1.7">Submit your deal and get a preliminary indication of interest within 48 hours.</p>
 <a href="/for-brokers#broker-network" class="btn btn--gold">Submit Your Deal</a>
+</div>
+</div>
+</section>
+
+<!-- PLACEHOLDER DEAL DATA — confirm SF / day-count accuracy before merge -->
+<!-- Closed-Transaction Reference Strip -->
+<section class="txstrip" aria-label="Recently closed transactions">
+<div class="txstrip__inner">
+<div class="txstrip__header animate-on-scroll">
+<span class="section__label">Recent Closings</span>
+<h2>A Track Record of Certainty</h2>
+</div>
+<div class="txstrip__grid animate-on-scroll">
+<article class="txstrip__card">
+<div class="txstrip__thumb"><img src="/images/02-1100-rarig-exterior-1.jpg" alt="1100 Rarig Avenue industrial property exterior, Columbus, Ohio" loading="lazy" decoding="async" width="800" height="450"></div>
+<div class="txstrip__body">
+<h3 class="txstrip__addr">1100 Rarig Avenue</h3>
+<p class="txstrip__market">Columbus, OH</p>
+<p class="txstrip__sf">62,000 SF &middot; Multi-tenant flex</p>
+<span class="txstrip__badge">All-cash &middot; Closed in 28 days</span>
+</div>
+</article>
+<article class="txstrip__card">
+<div class="txstrip__thumb"><img src="/images/01-2800-2826-banwick-exterior.jpg" alt="2800-2826 Banwick Road industrial portfolio exterior, Columbus, Ohio" loading="lazy" decoding="async" width="800" height="450"></div>
+<div class="txstrip__body">
+<h3 class="txstrip__addr">2800&ndash;2826 Banwick Road</h3>
+<p class="txstrip__market">Columbus, OH</p>
+<p class="txstrip__sf">110,000 SF &middot; 8-building portfolio</p>
+<span class="txstrip__badge">All-cash &middot; Closed in 30 days</span>
+</div>
+</article>
+<article class="txstrip__card">
+<div class="txstrip__thumb"><img src="/images/07-2000_2002-front.jpg" alt="2000-2002 Zettler Road industrial property exterior, Columbus, Ohio" loading="lazy" decoding="async" width="800" height="450"></div>
+<div class="txstrip__body">
+<h3 class="txstrip__addr">2000&ndash;2002 Zettler Road</h3>
+<p class="txstrip__market">Columbus, OH</p>
+<p class="txstrip__sf">48,000 SF &middot; Shallow-bay industrial</p>
+<span class="txstrip__badge">All-cash &middot; Closed in 26 days</span>
+</div>
+</article>
+<article class="txstrip__card">
+<div class="txstrip__thumb"><img src="/images/09-3540-rear-exterior-1.jpg" alt="3540 industrial property rear exterior, Indianapolis, Indiana" loading="lazy" decoding="async" width="800" height="450"></div>
+<div class="txstrip__body">
+<h3 class="txstrip__addr">3540 Industrial Boulevard</h3>
+<p class="txstrip__market">Indianapolis, IN</p>
+<p class="txstrip__sf">38,000 SF &middot; Single-tenant industrial</p>
+<span class="txstrip__badge">All-cash &middot; Closed in 24 days</span>
+</div>
+</article>
+<article class="txstrip__card">
+<div class="txstrip__thumb"><img src="/images/10-zettler-2012-2026-exterior-.jpg" alt="2012-2026 Zettler industrial portfolio exterior, Columbus, Ohio" loading="lazy" decoding="async" width="800" height="450"></div>
+<div class="txstrip__body">
+<h3 class="txstrip__addr">2012&ndash;2026 Zettler Road</h3>
+<p class="txstrip__market">Columbus, OH</p>
+<p class="txstrip__sf">44,000 SF &middot; Multi-tenant industrial</p>
+<span class="txstrip__badge">All-cash &middot; Closed in 30 days</span>
+</div>
+</article>
+<article class="txstrip__card">
+<div class="txstrip__thumb"><img src="/images/05-exterior-front.jpg" alt="Industrial property front exterior, Kansas City, Missouri" loading="lazy" decoding="async" width="800" height="450"></div>
+<div class="txstrip__body">
+<h3 class="txstrip__addr">Eastern Shore Portfolio</h3>
+<p class="txstrip__market">Maryland</p>
+<p class="txstrip__sf">52,000 SF &middot; 3-building flex</p>
+<span class="txstrip__badge">All-cash &middot; Closed in 30 days</span>
+</div>
+</article>
 </div>
 </div>
 </section>
@@ -745,6 +1015,42 @@ h3{font-size:22px;margin-bottom:8px}
       ticking=false;
     });
   },{passive:true});
+})();
+
+/* Stat-band counter animation + timeline reveal — IntersectionObserver, motion-aware */
+(function(){
+  var reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* Counters */
+  var counters=document.querySelectorAll('[data-counter]');
+  if(counters.length){
+    var animate=function(el){
+      var target=parseInt(el.getAttribute('data-target'),10);
+      var suffix=el.getAttribute('data-suffix')||'';
+      if(reduced||!target){el.textContent=(target>=1000?(target/1000).toFixed(0)+'K':target)+suffix;return}
+      var dur=1400,start=null;
+      var fmt=function(v){return target>=1000?Math.round(v/1000)+'K':Math.round(v).toString()};
+      var step=function(ts){
+        if(!start)start=ts;
+        var p=Math.min((ts-start)/dur,1);
+        var eased=1-Math.pow(1-p,3);
+        el.textContent=fmt(target*eased)+suffix;
+        if(p<1)requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    var co=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){if(e.isIntersecting){animate(e.target);co.unobserve(e.target)}});
+    },{threshold:0.4});
+    counters.forEach(function(c){co.observe(c)});
+  }
+  /* Timeline reveal */
+  var tl=document.getElementById('fbTimeline');
+  if(tl){
+    var to=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){if(e.isIntersecting){tl.classList.add('is-visible');to.unobserve(tl)}});
+    },{threshold:0.35});
+    to.observe(tl);
+  }
 })();
 
 /* Console Branding */

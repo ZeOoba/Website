@@ -43,6 +43,7 @@ const CARD_IMAGES = [
   '12-aerial-view-3875-livingston',
   '19-4601-e-5th-ave-exterior-1',
   '13-4595-towards-front-drive-in-door_',
+  '05-exterior-front',
 ];
 
 async function exists(p) {

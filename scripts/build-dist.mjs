@@ -29,10 +29,12 @@ const SITE_FILES = [
   'about.html',
   'application-received.html',
   'available-space.html',
+  'broker-ledger-form.html',
   'chat-lead-form.html',
   'contact.html',
   'for-brokers.html',
   'index.html',
+  'pipeline-failures-form.html',
   'portfolio.html',
   'privacy.html',
   'tenant-application.html',
@@ -45,6 +47,7 @@ const SITE_FILES = [
   'styles.css',
   // scripts
   'application-script.js',
+  'broker-upload.js',
   'listings.js',
   'script.js',
   // platform + assets

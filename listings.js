@@ -6,6 +6,11 @@
 (function () {
   'use strict';
 
+  // NOTE: When adding/removing/editing a listing here, also update the static
+  // fallback cards in available-space.html's #listingsPanel (id="listing-schema"
+  // JSON-LD too) — that markup is what AI/search crawlers see before this script
+  // runs, and there is no build step to generate it automatically.
+
   // ── Property Data (current availabilities only) ──────────────────────────────
   var LISTINGS = [
     {

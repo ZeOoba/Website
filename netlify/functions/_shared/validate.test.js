@@ -8,6 +8,8 @@ const {
   isAllowedUpload,
   sanitizeField,
   verifyNetlifyWebhookSignature,
+  signIntakeToken,
+  verifyIntakeToken,
 } = require('./validate.js');
 
 test('checkHoneypot flags a filled bot-field or website field', () => {
@@ -66,4 +68,19 @@ test('verifyNetlifyWebhookSignature accepts a correctly signed body and rejects 
   assert.equal(verifyNetlifyWebhookSignature(rawBody + 'tampered', jws, secret), false);
   assert.equal(verifyNetlifyWebhookSignature(rawBody, jws, 'wrong-secret'), false);
   assert.equal(verifyNetlifyWebhookSignature(rawBody, 'not-a-jws', secret), false);
+});
+
+test('signIntakeToken/verifyIntakeToken round-trip and reject tampering', () => {
+  const secret = 'intake-secret';
+  const token = signIntakeToken({ path: 'Broker Submissions/x', size: 1000, exp: Date.now() + 60_000 }, secret);
+  const verified = verifyIntakeToken(token, secret);
+  assert.equal(verified.path, 'Broker Submissions/x');
+  assert.equal(verifyIntakeToken(token, 'wrong-secret'), null);
+  assert.equal(verifyIntakeToken(token + 'x', secret), null);
+});
+
+test('verifyIntakeToken rejects an expired token', () => {
+  const secret = 'intake-secret';
+  const token = signIntakeToken({ path: 'p', size: 1, exp: Date.now() - 1000 }, secret);
+  assert.equal(verifyIntakeToken(token, secret), null);
 });

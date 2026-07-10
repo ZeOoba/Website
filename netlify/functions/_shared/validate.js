@@ -88,4 +88,21 @@ function verifyNetlifyWebhookSignature(rawBody, signatureHeader, secret) {
   return crypto.timingSafeEqual(Buffer.from(actualBodyHash), Buffer.from(payload.sha256));
 }
 
-module.exports = { checkHoneypot, sniffFileType, isAllowedUpload, sanitizeField, verifyNetlifyWebhookSignature };
+function signIntakeToken(payload, secret) {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', secret).update(encoded).digest('hex');
+  return `${encoded}.${sig}`;
+}
+
+function verifyIntakeToken(token, secret) {
+  if (typeof token !== 'string' || !token.includes('.')) return null;
+  const [encoded, sig] = token.split('.');
+  const expectedSig = crypto.createHmac('sha256', secret).update(encoded).digest('hex');
+  if (sig.length !== expectedSig.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) return null;
+  let payload;
+  try { payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); } catch { return null; }
+  if (typeof payload.exp !== 'number' || payload.exp < Date.now()) return null;
+  return payload;
+}
+
+module.exports = { checkHoneypot, sniffFileType, isAllowedUpload, sanitizeField, verifyNetlifyWebhookSignature, signIntakeToken, verifyIntakeToken };

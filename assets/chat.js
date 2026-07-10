@@ -7,6 +7,67 @@
 (function () {
   'use strict';
 
+  // ---- Markdown (small, sanitizing) ----
+  // Pure string->string; no DOM/browser globals. Kept above the window guard
+  // so it can be unit-tested from Node via the module.exports branch below.
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+  // Bare-URL autolinking (no [label](url) markup) greedily matches up to the
+  // next whitespace, which swallows sentence-ending punctuation the user
+  // typed right after the URL (e.g. "...oxfordra.net/portfolio." -> a 404
+  // href). Split it back off and render it as plain trailing text.
+  var TRAILING_PUNCT_RE = /[.,;:!?)\]]+$/;
+  function splitTrailingPunctuation(url) {
+    var m = url.match(TRAILING_PUNCT_RE);
+    if (!m) return { url: url, trailing: '' };
+    return { url: url.slice(0, -m[0].length), trailing: m[0] };
+  }
+  function renderMarkdown(text) {
+    var safe = escapeHtml(text);
+    // links: [label](url) — only http(s) and mailto
+    safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)/g, function (_, label, url) {
+      return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+    });
+    // bare oxfordra.net URLs and emails
+    safe = safe.replace(/(?<![">/])(https?:\/\/[^\s<]+)/g, function (u) {
+      var split = splitTrailingPunctuation(u);
+      return '<a href="' + split.url + '" target="_blank" rel="noopener noreferrer">' + split.url + '</a>' + split.trailing;
+    });
+    safe = safe.replace(/\b(oxfordra\.net\/[^\s<]+)/g, function (u) {
+      var split = splitTrailingPunctuation(u);
+      return '<a href="https://' + split.url + '" target="_blank" rel="noopener noreferrer">' + split.url + '</a>' + split.trailing;
+    });
+    safe = safe.replace(/\b([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function (e) {
+      return '<a href="mailto:' + e + '">' + e + '</a>';
+    });
+    // bold + italic
+    safe = safe.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    safe = safe.replace(/(^|\W)\*([^*\n]+)\*(\W|$)/g, '$1<em>$2</em>$3');
+    // unordered lists
+    safe = safe.replace(/(?:^|\n)((?:[ \t]*[-*][ \t]+[^\n]+\n?)+)/g, function (_, block) {
+      var items = block.trim().split(/\n/).map(function (l) {
+        return '<li>' + l.replace(/^[ \t]*[-*][ \t]+/, '') + '</li>';
+      }).join('');
+      return '\n<ul>' + items + '</ul>\n';
+    });
+    // paragraphs
+    var paras = safe.split(/\n{2,}/).map(function (p) {
+      if (/^<(ul|ol)>/.test(p.trim())) return p;
+      return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+    }).join('');
+    return paras;
+  }
+
+  // Node test entry point (assets/chat.test.js) — no `window`/`document` here,
+  // so exit before any browser-only code below runs.
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { escapeHtml: escapeHtml, renderMarkdown: renderMarkdown, splitTrailingPunctuation: splitTrailingPunctuation };
+    return;
+  }
+
   if (window.__oraChatLoaded) return;
   window.__oraChatLoaded = true;
 
@@ -39,46 +100,6 @@
     'i have a deal', 'i have space requirements', 'i want to lease',
     'i represent', "i'm a broker", 'capital partner',
   ];
-
-  // ---- Markdown (small, sanitizing) ----
-  function escapeHtml(s) {
-    return s.replace(/[&<>"']/g, function (c) {
-      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
-    });
-  }
-  function renderMarkdown(text) {
-    var safe = escapeHtml(text);
-    // links: [label](url) — only http(s) and mailto
-    safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)/g, function (_, label, url) {
-      return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
-    });
-    // bare oxfordra.net URLs and emails
-    safe = safe.replace(/(?<![">/])(https?:\/\/[^\s<]+)/g, function (u) {
-      return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + u + '</a>';
-    });
-    safe = safe.replace(/\b(oxfordra\.net\/[^\s<]+)/g, function (u) {
-      return '<a href="https://' + u + '" target="_blank" rel="noopener noreferrer">' + u + '</a>';
-    });
-    safe = safe.replace(/\b([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function (e) {
-      return '<a href="mailto:' + e + '">' + e + '</a>';
-    });
-    // bold + italic
-    safe = safe.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-    safe = safe.replace(/(^|\W)\*([^*\n]+)\*(\W|$)/g, '$1<em>$2</em>$3');
-    // unordered lists
-    safe = safe.replace(/(?:^|\n)((?:[ \t]*[-*][ \t]+[^\n]+\n?)+)/g, function (_, block) {
-      var items = block.trim().split(/\n/).map(function (l) {
-        return '<li>' + l.replace(/^[ \t]*[-*][ \t]+/, '') + '</li>';
-      }).join('');
-      return '\n<ul>' + items + '</ul>\n';
-    });
-    // paragraphs
-    var paras = safe.split(/\n{2,}/).map(function (p) {
-      if (/^<(ul|ol)>/.test(p.trim())) return p;
-      return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
-    }).join('');
-    return paras;
-  }
 
   // ---- DOM scaffold ----
   function createTrigger() {

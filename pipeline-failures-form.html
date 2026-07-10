@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<!--
+  Hidden form so Netlify Forms registers the `pipeline-failures` form on
+  deploy. Not linked from anywhere; noindex. tenant-application-processor.js,
+  broker-upload-session.js, and broker-finalize.js forward a row here on any
+  terminal failure so a Graph/OneDrive outage never fails silently — the
+  original defect this whole plan exists to fix.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pipeline Failures (internal)</title>
+<meta name="robots" content="noindex, nofollow">
+</head>
+<body>
+<form name="pipeline-failures" data-netlify="true" hidden>
+  <input type="hidden" name="form-name" value="pipeline-failures">
+  <input type="text" name="source-function">
+  <input type="text" name="error-code">
+  <input type="text" name="submission-id">
+  <textarea name="detail"></textarea>
+  <input type="text" name="occurred-at">
+</form>
+</body>
+</html>

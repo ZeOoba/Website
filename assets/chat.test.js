@@ -27,6 +27,23 @@ test('markdown-style [label](url) links are unaffected by trailing-punctuation t
   assert.match(html, />Available Space</);
 });
 
+test('markdown-style [label](url) for an oxfordra.net URL is not double-processed into a nested anchor', () => {
+  // The bare-oxfordra.net-URL autolinker used to have no guard against
+  // matching text already inside an href="..." produced by the
+  // [label](url) regex that runs just before it, corrupting the markup
+  // into a malformed nested <a>. Assert exactly one anchor is produced.
+  const html = renderMarkdown('[Portfolio](https://oxfordra.net/portfolio)');
+  const anchorOpens = (html.match(/<a /g) || []).length;
+  assert.equal(anchorOpens, 1, 'expected exactly one <a> tag, got: ' + html);
+  assert.equal(html, '<p><a href="https://oxfordra.net/portfolio" target="_blank" rel="noopener noreferrer">Portfolio</a></p>');
+});
+
+test('bare https URL for oxfordra.net is not double-processed by the oxfordra.net-specific regex', () => {
+  const html = renderMarkdown('See https://oxfordra.net/contact for details.');
+  const anchorOpens = (html.match(/<a /g) || []).length;
+  assert.equal(anchorOpens, 1, 'expected exactly one <a> tag, got: ' + html);
+});
+
 test('a bare URL that is the entire message (no trailing punctuation) is untouched', () => {
   const html = renderMarkdown('oxfordra.net/contact');
   assert.match(html, /href="https:\/\/oxfordra\.net\/contact"/);

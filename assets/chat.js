@@ -36,7 +36,10 @@
       var split = splitTrailingPunctuation(u);
       return '<a href="' + split.url + '" target="_blank" rel="noopener noreferrer">' + split.url + '</a>' + split.trailing;
     });
-    safe = safe.replace(/\b(oxfordra\.net\/[^\s<]+)/g, function (u) {
+    // Same not-already-inside-a-tag guard as the https? regex above — without
+    // it this re-matches "oxfordra.net/..." inside the href/label the two
+    // regexes above just produced, corrupting the markup into a nested <a>.
+    safe = safe.replace(/(?<![">/])\b(oxfordra\.net\/[^\s<]+)/g, function (u) {
       var split = splitTrailingPunctuation(u);
       return '<a href="https://' + split.url + '" target="_blank" rel="noopener noreferrer">' + split.url + '</a>' + split.trailing;
     });

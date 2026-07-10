@@ -2,8 +2,16 @@
 # headers/redirects (do not duplicate here). This file exists for
 # edge-function and serverless-function routing.
 
+# The publish dir is ASSEMBLED: the repo root mixes the public site with
+# internal tooling (scripts/, evals/, netlify/ source), so deploys publish only
+# the allowlisted copy in dist/. Deploy with `netlify deploy --build` so dist/
+# is rebuilt first; never deploy --dir=. (that re-publishes the whole repo root).
 [build]
-  publish = "."
+  command = "node scripts/build-dist.mjs"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
 
 [functions]
   directory = "netlify/functions"

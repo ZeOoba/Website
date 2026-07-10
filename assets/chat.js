@@ -1,7 +1,7 @@
 /**
  * Ask ORA — chat widget client
  * Vanilla JS. Mounts into #ora-chat (auto-inserted if missing).
- * Streams from /api/chat as SSE; submits leads to /api/chat-lead.
+ * Streams from /api/chat as SSE; submits leads to /.netlify/functions/chat-lead.
  */
 
 (function () {

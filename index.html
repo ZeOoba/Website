@@ -228,18 +228,6 @@ h3{font-size:22px;margin-bottom:8px}
 .fb-cta-row{text-align:center}
 @media(prefers-reduced-motion:reduce){.fb-timeline__fill{transition:none;width:100%}.fb-timeline__dot{transition:none;background:var(--gold);border-color:var(--gold)}}
 @media(max-width:520px){.fb-timeline__nodes{grid-template-columns:repeat(2,1fr);gap:24px 8px}.fb-timeline__track{display:none}}
-/* === Broker Testimonials === */
-.brokertest{background:var(--white);padding:96px 0}
-.brokertest__inner{max-width:1180px;margin:0 auto;padding:0 24px}
-.brokertest__header{text-align:center;margin-bottom:48px}
-.brokertest__rule{display:block;width:48px;height:1px;background:var(--gold);margin:18px auto 0}
-.brokertest__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.brokertest__card{background:var(--parchment);border-radius:var(--radius-card,8px);padding:36px 28px;text-align:center;border:1px solid rgba(27,42,74,.08);display:flex;flex-direction:column;align-items:center}
-.brokertest__avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(145deg,#1B2A4A,#2D3F66);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:24px;font-weight:500;margin:0 auto 18px;letter-spacing:.02em}
-.brokertest__quote{font-family:var(--font-display);font-style:italic;font-size:17px;line-height:1.55;color:var(--navy);margin:0 0 20px;flex:1}
-.brokertest__attr{font-family:var(--font-body);font-size:12px;letter-spacing:.04em;color:var(--slate);line-height:1.5}
-.brokertest__attr strong{display:block;color:var(--navy);font-weight:600;font-size:13px;margin-bottom:4px}
-@media(max-width:880px){.brokertest__grid{grid-template-columns:1fr;gap:16px;max-width:580px;margin:0 auto}}
 /* === Closed-Transaction Strip === */
 .txstrip{background:var(--parchment);padding:80px 0}
 .txstrip__inner{max-width:1280px;margin:0 auto;padding:0 24px}
@@ -636,42 +624,8 @@ h3{font-size:22px;margin-bottom:8px}
 </div>
 </section>
 
-<!-- If broker quotes are not yet authorized at merge time, replace
-     individual attributions with anonymized "Broker, [Market]" labels.
-     Quotes themselves should still be reviewed for accuracy. -->
-<!-- Named Broker Testimonials -->
-<section class="brokertest" aria-label="Broker testimonials">
-<div class="brokertest__inner">
-<div class="brokertest__header animate-on-scroll">
-<span class="section__label">Broker Network</span>
-<h2>What Brokers Say About Working With Oxford</h2>
-<span class="brokertest__rule" aria-hidden="true"></span>
-</div>
-<div class="brokertest__grid animate-on-scroll">
-<!-- PLACEHOLDER — confirm with Robert Weiler / Julie Cohen before publishing -->
-<article class="brokertest__card">
-<div class="brokertest__avatar" aria-hidden="true">RW</div>
-<p class="brokertest__quote">&ldquo;Oxford is a true principal buyer. They underwrite quickly, sign clean contracts, and close on the date they commit to. That certainty is rare in the sub-$10M industrial market.&rdquo;</p>
-<p class="brokertest__attr"><strong>[Broker Name]</strong>Robert Weiler Company &middot; Columbus, OH</p>
-</article>
-<!-- PLACEHOLDER — confirm with Alex Cantu before publishing -->
-<article class="brokertest__card">
-<div class="brokertest__avatar" aria-hidden="true">AC</div>
-<p class="brokertest__quote">&ldquo;When a deal needs to move fast or a seller needs certainty over price, Oxford is the first call. They evaluate properties on merits other buyers won&rsquo;t even look at.&rdquo;</p>
-<p class="brokertest__attr"><strong>[Broker Name]</strong>Colliers &middot; Indianapolis, IN</p>
-</article>
-<!-- PLACEHOLDER — confirm with John Hassler before publishing -->
-<article class="brokertest__card">
-<div class="brokertest__avatar" aria-hidden="true">JH</div>
-<p class="brokertest__quote">&ldquo;No financing contingency, no committee, no re-trades. Oxford operates the way the institutional industrial market used to operate &mdash; with discipline and a handshake that holds.&rdquo;</p>
-<p class="brokertest__attr"><strong>[Broker Name]</strong>Newmark Zimmer &middot; Kansas City, MO</p>
-</article>
-</div>
-</div>
-</section>
-
 <!-- Featured Results -->
-<section class="section section--navy" aria-label="Featured results" style="padding-top:0">
+<section class="section section--navy" aria-label="Featured results">
 <div class="container">
 <div class="section__header animate-on-scroll">
 <span class="section__label section__label--light">Results</span>

@@ -1,0 +1,8 @@
+{
+  "name": "oxfordra-website",
+  "private": true,
+  "description": "Deploy tooling for oxfordra.net. No site build step — netlify.toml publishes the repo root (or dist/, once fix/publish-dist-exclude-internal merges). This package.json exists solely to pin netlify-cli to a tested version so deploys resolve a local install instead of depending on npx's evictable cache.",
+  "devDependencies": {
+    "netlify-cli": "26.2.0"
+  }
+}

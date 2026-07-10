@@ -1,0 +1,7 @@
+node_modules/
+
+# Assembled Netlify publish directory (built by scripts/build-dist.mjs)
+dist/
+
+# Netlify CLI local state
+.netlify/

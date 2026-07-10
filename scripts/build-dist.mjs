@@ -61,7 +61,7 @@ const SITE_FILES = [
 
 // Root entries that exist and must stay unpublished. An entry in neither list
 // fails the build until it is classified.
-const EXPECTED_EXCLUSIONS = ['evals', 'netlify', 'netlify.toml', 'node_modules', 'package-lock.json', 'package.json', 'scripts'];
+const EXPECTED_EXCLUSIONS = ['docs', 'evals', 'netlify', 'netlify.toml', 'node_modules', 'package-lock.json', 'package.json', 'scripts'];
 
 // Belt-and-braces: fail rather than ship an incomplete or leaking dist/.
 const REQUIRED = ['index.html', '404.html', '_headers', '_redirects', 'styles.css', 'script.js'];

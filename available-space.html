@@ -36,7 +36,7 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
 <!-- Stylesheets -->
-  <link rel="stylesheet" href="/styles.css?v=13">
+  <link rel="stylesheet" href="/styles.css?v=14">
   <link rel="stylesheet" href="/available-space.css?v=5">
   <!-- Inline @font-face declarations -->
   <style>
@@ -94,7 +94,7 @@
     .nav__mobile.is-open{display:block}
     .nav__mobile a{display:block;padding:12px 0;font-family:var(--font-body);font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:#fff;border-bottom:1px solid rgba(255,255,255,.06);text-decoration:none}
     .nav__mobile a:hover{color:#C9A96E;text-decoration:none}
-    .nav__logo img{height:auto;width:auto;max-height:28px;display:block}
+    .nav__logo img,.nav__logo svg{height:auto;width:auto;max-height:28px;display:block}
     @media(max-width:960px){.nav__links{display:none}.nav__mobile-btn{display:block}.nav__inner{padding:0 24px}}
   </style>
 
@@ -538,6 +538,7 @@
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
   <!-- Listings JS -->
   <script defer src="/listings.js?v=4"></script>
+  <script defer src="/script.js?v=11"></script>
 <!-- Analytics (deferred to reduce main-thread blocking) -->
 <script>
 (function(){

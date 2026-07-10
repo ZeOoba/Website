@@ -22,9 +22,3 @@
 [[edge_functions]]
   path = "/api/chat"
   function = "chat"
-
-[[redirects]]
-  from = "/api/chat-lead"
-  to = "/.netlify/functions/chat-lead"
-  status = 200
-  force = true

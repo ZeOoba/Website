@@ -1381,3 +1381,6 @@ body{padding-top:36px}
 .skip-link{top:-100px!important}
 .skip-link:focus{top:36px!important}
 @media(max-width:640px){.skip-link:focus{top:32px!important}}
+/* === Narrow-mobile overflow fixes: footer SVG logo + CTA wrap === */
+.footer__brand svg{max-width:100%;height:auto}
+@media(max-width:379px){.btn{white-space:normal}}

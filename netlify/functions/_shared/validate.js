@@ -28,6 +28,14 @@ function extFromFilename(filename) {
   return m ? m[1].toLowerCase() : '';
 }
 
+// Canonicalize extensions that name the same format so a real file is accepted
+// whichever spelling it carries. JPEG has two equally-valid extensions (.jpg /
+// .jpeg — many phones/apps save as .jpeg); sniffFileType only ever emits 'jpg'
+// for the shared magic-byte signature, so 'jpeg' would otherwise never match.
+function canonicalExt(ext) {
+  return ext === 'jpeg' ? 'jpg' : ext;
+}
+
 function isAllowedUpload(filename, buffer, allowedExts) {
   const declaredExt = extFromFilename(filename);
   if (!allowedExts.includes(declaredExt)) return false;
@@ -41,7 +49,7 @@ function isAllowedUpload(filename, buffer, allowedExts) {
     // actual threat this guards against).
     return ['docx', 'xlsx', 'xls', 'doc'].includes(declaredExt);
   }
-  return sniffed.ext === declaredExt;
+  return canonicalExt(sniffed.ext) === canonicalExt(declaredExt);
 }
 
 function sanitizeField(value, maxLen) {

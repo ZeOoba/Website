@@ -1,6 +1,6 @@
 'use strict';
 const crypto = require('node:crypto');
-const { checkHoneypot, sanitizeField } = require('./_shared/validate.js');
+const { checkHoneypot, sanitizeField, signIntakeToken } = require('./_shared/validate.js');
 const { checkRateLimit } = require('./_shared/rate-limit.js');
 const { createUploadSession } = require('./_shared/graph-files.js');
 const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
@@ -16,13 +16,6 @@ function logFailure(fetchImpl, { errorCode, detail }) {
 
 function ok(body) { return { statusCode: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }; }
 function fail(statusCode, error) { return { statusCode, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ok: false, error }) }; }
-
-function signIntakeToken(payload) {
-  const secret = process.env.INTAKE_TOKEN_SECRET;
-  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const sig = crypto.createHmac('sha256', secret).update(encoded).digest('hex');
-  return `${encoded}.${sig}`;
-}
 
 function slugify(value) {
   return String(value || 'submission').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'submission';
@@ -61,6 +54,6 @@ exports.handler = async (event, { fetchImpl = fetch, getStore } = {}) => {
     return fail(502, 'session_failed');
   }
 
-  const intakeToken = signIntakeToken({ path: session.path, size: fileSize, exp: Date.now() + TOKEN_TTL_MS });
+  const intakeToken = signIntakeToken({ path: session.path, size: fileSize, exp: Date.now() + TOKEN_TTL_MS }, process.env.INTAKE_TOKEN_SECRET);
   return ok({ ok: true, uploadUrl: session.uploadUrl, intakeToken });
 };

@@ -327,7 +327,7 @@ h3{font-size:22px;margin-bottom:8px}
 .fg-lede{max-width:760px;margin:0 auto 56px;text-align:center}
 .fg-lede__primary{font-family:var(--font-display);font-size:21px;line-height:1.5;color:var(--charcoal);margin:0}
 .fg-lede__primary em{font-style:italic;color:var(--navy)}
-.fg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1140px;margin:0 auto}
+.fg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1140px;margin:0 auto;padding:0;list-style:none}
 .fg-card{position:relative;background:var(--white);border:1px solid rgba(27,42,74,.1);border-radius:var(--radius-card,4px);padding:28px 26px 30px;display:flex;flex-direction:column;transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease}
 .fg-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gold);border-radius:var(--radius-card,4px) 0 0 var(--radius-card,4px)}
 .fg-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px -18px rgba(27,42,74,.25);border-color:rgba(27,42,74,.18)}
@@ -358,8 +358,8 @@ h3{font-size:22px;margin-bottom:8px}
 <div class="fg-lede animate-on-scroll">
 <p class="fg-lede__primary">Many older Class B/C industrial properties fail lender scrutiny. <em>Our all-cash structure removes the lender: We close what financed buyers can&rsquo;t.</em></p>
 </div>
-<div class="fg-grid animate-on-scroll" role="list" aria-label="Why lenders walk versus why Oxford closes">
-<article class="fg-card" role="listitem">
+<ul class="fg-grid animate-on-scroll" role="list" aria-label="Why lenders walk versus why Oxford closes">
+<li class="fg-card">
 <h3 class="fg-card__category">High Vacancy</h3>
 <div class="fg-card__row fg-card__row--lender">
 <span class="fg-card__label">Lenders Walk</span>
@@ -369,8 +369,8 @@ h3{font-size:22px;margin-bottom:8px}
 <span class="fg-card__label">Oxford Closes</span>
 <span class="fg-card__text">No occupancy minimum</span>
 </div>
-</article>
-<article class="fg-card" role="listitem">
+</li>
+<li class="fg-card">
 <h3 class="fg-card__category">Environmental Conditions</h3>
 <div class="fg-card__row fg-card__row--lender">
 <span class="fg-card__label">Lenders Walk</span>
@@ -380,8 +380,8 @@ h3{font-size:22px;margin-bottom:8px}
 <span class="fg-card__label">Oxford Closes</span>
 <span class="fg-card__text">Phase I/II priced in</span>
 </div>
-</article>
-<article class="fg-card" role="listitem">
+</li>
+<li class="fg-card">
 <h3 class="fg-card__category">Deferred Maintenance</h3>
 <div class="fg-card__row fg-card__row--lender">
 <span class="fg-card__label">Lenders Walk</span>
@@ -391,8 +391,8 @@ h3{font-size:22px;margin-bottom:8px}
 <span class="fg-card__label">Oxford Closes</span>
 <span class="fg-card__text">CapEx priced into basis</span>
 </div>
-</article>
-<article class="fg-card" role="listitem">
+</li>
+<li class="fg-card">
 <h3 class="fg-card__category">Short or M-T-M Leases</h3>
 <div class="fg-card__row fg-card__row--lender">
 <span class="fg-card__label">Lenders Walk</span>
@@ -402,8 +402,8 @@ h3{font-size:22px;margin-bottom:8px}
 <span class="fg-card__label">Oxford Closes</span>
 <span class="fg-card__text">Risk absorbed in underwriting</span>
 </div>
-</article>
-<article class="fg-card" role="listitem">
+</li>
+<li class="fg-card">
 <h3 class="fg-card__category">Legal or Title Complexity</h3>
 <div class="fg-card__row fg-card__row--lender">
 <span class="fg-card__label">Lenders Walk</span>
@@ -413,8 +413,8 @@ h3{font-size:22px;margin-bottom:8px}
 <span class="fg-card__label">Oxford Closes</span>
 <span class="fg-card__text">Counsel engaged early</span>
 </div>
-</article>
-<article class="fg-card" role="listitem">
+</li>
+<li class="fg-card">
 <h3 class="fg-card__category">Sub-$3M Deal Size</h3>
 <div class="fg-card__row fg-card__row--lender">
 <span class="fg-card__label">Lenders Walk</span>
@@ -424,8 +424,8 @@ h3{font-size:22px;margin-bottom:8px}
 <span class="fg-card__label">Oxford Closes</span>
 <span class="fg-card__text">Our entire range</span>
 </div>
-</article>
-</div>
+</li>
+</ul>
 </div>
 </section>
 

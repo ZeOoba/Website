@@ -31,6 +31,13 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   const secret = process.env.NETLIFY_WEBHOOK_SECRET;
   const signature = (event.headers && (event.headers['x-webhook-signature'] || event.headers['X-Webhook-Signature'])) || '';
   if (!verifyNetlifyWebhookSignature(event.body, signature, secret)) {
+    // A rotated/misconfigured NETLIFY_WEBHOOK_SECRET would silently 401 every
+    // legitimate submission — the exact silent failure this pipeline exists to
+    // eliminate — so surface it to the durable ledger. (The 400 malformed-JSON
+    // path below is deliberately left unlogged: it's near-always scanner noise
+    // with no actionable content.) No submission.id is available yet — the body
+    // isn't parsed until after this gate — so submissionId is empty.
+    await logFailure(fetchImpl, { errorCode: 'invalid_signature', submissionId: '', detail: 'webhook signature verification failed' });
     return { statusCode: 401, body: JSON.stringify({ ok: false, error: 'invalid_signature' }) };
   }
 

@@ -5,7 +5,40 @@
    =========================================================== */
 (function(){
   'use strict';
-  var form = document.getElementById('applicationForm');
+
+  /* ---------- File-size budgets (pure, testable units) ----------
+     Netlify Forms caps the ENTIRE submission (all fields + all files) at
+     8 MB total — not per file. These three files previously each allowed
+     "up to 8 MB", so three real documents could jointly exceed the true
+     cap and the submission would fail silently. Budgets below sum to
+     7.0 MB, leaving ~1 MB of headroom for the other ~30 text fields plus
+     multipart encoding overhead.
+
+     Defined at the top of the IIFE (and exported here) so the Node test can
+     require() these names before the DOM-dependent early-return below — an
+     export guard at the file's end would be unreachable in Node, where
+     `document` is undefined and `if(!form) return;` fires first. In a
+     browser this block runs identically; `module` is simply undefined. */
+  var FILE_FIELD_BUDGETS = {
+    'upload-credit-report': 4.0 * 1024 * 1024,
+    'upload-drivers-license': 1.5 * 1024 * 1024,
+    'upload-articles': 1.5 * 1024 * 1024,
+  };
+  var AGGREGATE_BUDGET_BYTES = 7.0 * 1024 * 1024;
+
+  function sumSelectedBytes(inputs) {
+    var total = 0;
+    inputs.forEach(function (input) {
+      if (input.files && input.files[0]) total += input.files[0].size;
+    });
+    return total;
+  }
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { FILE_FIELD_BUDGETS: FILE_FIELD_BUDGETS, AGGREGATE_BUDGET_BYTES: AGGREGATE_BUDGET_BYTES, sumSelectedBytes: sumSelectedBytes };
+  }
+
+  var form = (typeof document !== 'undefined') ? document.getElementById('applicationForm') : null;
   if(!form) return;
 
   var STORAGE_KEY = 'ora_lease_app_draft_v1';
@@ -87,35 +120,40 @@
     });
   }
 
-  /* ---------- File-size preflight (Netlify Forms hard cap = 8 MB / file) ---------- */
-  var MAX_FILE_BYTES = 8 * 1024 * 1024;
-  function fmtMB(bytes){ return (bytes / 1048576).toFixed(1) + ' MB'; }
-  form.querySelectorAll('input[type="file"]').forEach(function(input){
-    var hint = input.parentElement.querySelector('.file-upload-hint');
-    var origHint = hint ? hint.textContent : '';
-    input.addEventListener('change', function(){
-      if(!this.files || !this.files.length){
-        if(hint){ hint.textContent = origHint; hint.style.color = ''; }
-        input.classList.remove('invalid');
-        return;
-      }
-      var f = this.files[0];
-      if(f.size > MAX_FILE_BYTES){
-        if(hint){
-          hint.textContent = '✗ ' + f.name + ' is ' + fmtMB(f.size) + ' — too large. Please compress or re-scan (8 MB max).';
-          hint.style.color = '#B0432F';
-        }
+  /* ---------- File-size preflight (DOM wiring) ----------
+     FILE_FIELD_BUDGETS / AGGREGATE_BUDGET_BYTES / sumSelectedBytes are defined
+     at the top of this IIFE (see the rationale there). This block wires the
+     per-field + aggregate check to the file inputs' change events. */
+  function fmtMB(bytes) { return (bytes / 1048576).toFixed(1) + ' MB'; }
+
+  var fileInputs = Array.prototype.slice.call(form.querySelectorAll('input[type="file"]'));
+
+  function revalidateFileBudgets() {
+    var aggregate = sumSelectedBytes(fileInputs);
+    var overAggregate = aggregate > AGGREGATE_BUDGET_BYTES;
+    fileInputs.forEach(function (input) {
+      var hint = input.parentElement.querySelector('.file-upload-hint');
+      var perFieldCap = FILE_FIELD_BUDGETS[input.name] || AGGREGATE_BUDGET_BYTES;
+      var f = input.files && input.files[0];
+      if (!f) { input.setCustomValidity(''); return; }
+      if (f.size > perFieldCap) {
+        if (hint) { hint.textContent = '✗ ' + f.name + ' is ' + fmtMB(f.size) + ' — too large (' + fmtMB(perFieldCap) + ' max for this field). Please compress or re-scan.'; hint.style.color = '#B0432F'; }
         input.classList.add('invalid');
-        input.setCustomValidity('File exceeds 8 MB limit. Please choose a smaller file.');
+        input.setCustomValidity('File exceeds the per-field limit.');
+      } else if (overAggregate) {
+        if (hint) { hint.textContent = '✗ Combined uploads are ' + fmtMB(aggregate) + ' — must total under ' + fmtMB(AGGREGATE_BUDGET_BYTES) + '. Please compress one or more files.'; hint.style.color = '#B0432F'; }
+        input.classList.add('invalid');
+        input.setCustomValidity('Combined uploads exceed the total limit.');
       } else {
-        if(hint){
-          hint.textContent = '✓ ' + f.name + ' (' + fmtMB(f.size) + ')';
-          hint.style.color = '#3A7D44';
-        }
+        if (hint) { hint.textContent = '✓ ' + f.name + ' (' + fmtMB(f.size) + ')'; hint.style.color = '#3A7D44'; }
         input.classList.remove('invalid');
         input.setCustomValidity('');
       }
     });
+  }
+
+  fileInputs.forEach(function (input) {
+    input.addEventListener('change', revalidateFileBudgets);
   });
 
   /* ---------- Phone input mask (cell + landlord refs) ---------- */

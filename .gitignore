@@ -5,3 +5,9 @@ dist/
 
 # Netlify CLI local state
 .netlify/
+
+# Claude Code local tooling state (machine-local, never committed)
+.claude/launch.json
+
+# Superpowers planning artifacts (session-local, not site content)
+docs/superpowers/

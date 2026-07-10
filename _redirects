@@ -13,5 +13,9 @@ https://www.oxfordra.net/* https://oxfordra.net/:splat 301!
 /properties        /portfolio      301
 /case-studies      /track-record   301
 
+# Legacy Wix paths (pre-2026 rebuild)
+/portfolio-1        /portfolio      301
+/about-us/our-agents /about         301
+
 # SPA-style: serve 404.html for unknown paths
 /*                 /404.html       404

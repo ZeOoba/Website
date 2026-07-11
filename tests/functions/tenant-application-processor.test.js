@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { handler } = require('./tenant-application-processor.js');
+const { handler } = require('../../netlify/functions/tenant-application-processor.js');
 
 // graph-auth.js (Task 2, committed) requires GRAPH_TENANT_ID/CLIENT_ID/CLIENT_SECRET
 // to be set before it will even attempt the token fetch — the tests below stub

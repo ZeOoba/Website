@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { forwardToNetlifyForm } = require('./netlify-forms.js');
+const { forwardToNetlifyForm } = require('../../../netlify/functions/_shared/netlify-forms.js');
 
 test('forwardToNetlifyForm URL-encodes fields and posts form-name to the site root', async () => {
   let captured;

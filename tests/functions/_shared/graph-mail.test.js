@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { sendMail } = require('./graph-mail.js');
+const { sendMail } = require('../../../netlify/functions/_shared/graph-mail.js');
 
 test('sendMail posts to the sendMail endpoint for GRAPH_SEND_FROM with both recipients', async () => {
   process.env.GRAPH_SEND_FROM = 'no-reply@oxfordra.net';

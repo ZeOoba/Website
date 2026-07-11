@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { checkRateLimit } = require('./rate-limit.js');
+const { checkRateLimit } = require('../../../netlify/functions/_shared/rate-limit.js');
 
 function fakeStore(initial = {}) {
   const data = { ...initial };

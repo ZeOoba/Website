@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { getGraphToken, _resetCacheForTests } = require('./graph-auth.js');
+const { getGraphToken, _resetCacheForTests } = require('../../../netlify/functions/_shared/graph-auth.js');
 
 function withEnv(vars, fn) {
   const prev = {};

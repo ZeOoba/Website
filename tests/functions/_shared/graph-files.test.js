@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath } = require('./graph-files.js');
+const { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath } = require('../../../netlify/functions/_shared/graph-files.js');
 
 function withDriveId(fn) {
   const prev = process.env.GRAPH_DRIVE_ID;

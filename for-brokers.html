@@ -337,10 +337,8 @@ h3{font-size:22px;margin-bottom:8px}
 <p class="section__intro">Receive a Graded Investment Score</p>
 </div>
 <div class="animate-on-scroll" style="max-width:680px;margin:0 auto;">
-<form enctype='multipart/form-data' method='POST' name='broker-network'>
-<input type="hidden" name="form-name" value="broker-network">
-<input type="hidden" name="score-results" value="">
-<p class="hidden" aria-hidden="true"><label>Don't fill this out: <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
+<form id="brokerForm">
+<p class="hidden" aria-hidden="true"><label>Don't fill this out: <input name="website" tabindex="-1" autocomplete="off"></label></p>
 <div class="form-row">
 <div class="form-group">
 <label for="broker-name">Name <span class="required" aria-hidden="true">*</span></label>
@@ -381,18 +379,43 @@ h3{font-size:22px;margin-bottom:8px}
 <div class="form-group">
 <label for="broker-doc">Upload Document</label>
 <div class="file-upload" id="fileUploadArea">
-<input type="file" id="broker-doc" name="document" accept=".pdf,.xlsx,.xls,.doc,.docx" class="file-upload__input">
+<input type="file" id="broker-doc" name="document" accept=".pdf,.xlsx,.xls,.doc,.docx" class="file-upload__input" required>
 <div class="file-upload__label">
 <span class="file-upload__text">Drag &amp; drop your file here, or <strong>browse</strong></span>
-<span class="file-upload__hint">PDF, Excel, or Word — 10 MB max</span>
+<span class="file-upload__hint">PDF, Excel, or Word &mdash; up to 30 MB</span>
 </div>
 <div class="file-upload__preview" id="filePreview" style="display:none;"></div>
 </div>
 </div>
-<button type="submit" class="btn btn--gold btn--full">Submit Deal</button>
+<button type="submit" class="btn btn--gold btn--full" id="brokerSubmitBtn">Submit Deal</button>
 <div class="form-success" id="brokerSuccess" role="alert" style="display:none;">Thank you! We'll review your submission and respond within one business day.</div>
+<div class="form-error" id="brokerError" role="alert" style="display:none;color:#B0432F;margin-top:12px;"></div>
 </form>
 </div>
+<script>
+(function(){
+  var form = document.getElementById('brokerForm');
+  if(!form) return;
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var btn = document.getElementById('brokerSubmitBtn');
+    var success = document.getElementById('brokerSuccess');
+    var errorBox = document.getElementById('brokerError');
+    errorBox.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+    window.ORA_BROKER_UPLOAD.submit(form).then(function(){
+      form.style.display = 'none';
+      success.style.display = '';
+    }).catch(function(err){
+      errorBox.textContent = 'Something went wrong submitting your deal. Please email info@oxfordra.net directly, or try again. (' + (err && err.message ? err.message : 'unknown error') + ')';
+      errorBox.style.display = '';
+      btn.disabled = false;
+      btn.textContent = 'Submit Deal';
+    });
+  });
+})();
+</script>
 </div>
 </section>
 
@@ -619,5 +642,6 @@ info@oxfordra.net
 })();
 </script>
 <script defer src="/assets/chat.js"></script>
+<script defer src="/broker-upload.js"></script>
 </body>
 </html>

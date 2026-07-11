@@ -1,0 +1,72 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath } = require('../../../netlify/functions/_shared/graph-files.js');
+
+function withDriveId(fn) {
+  const prev = process.env.GRAPH_DRIVE_ID;
+  process.env.GRAPH_DRIVE_ID = 'drive-1';
+  return Promise.resolve(fn()).finally(() => { process.env.GRAPH_DRIVE_ID = prev; });
+}
+
+test('ensureFolder walks each path segment, creating only missing ones', () => withDriveId(async () => {
+  const calls = [];
+  const fetchImpl = async (url, opts = {}) => {
+    calls.push({ url, method: opts.method || 'GET' });
+    if (url.includes('/root:/Tenant%20Applications') && !url.includes('children')) {
+      return { status: 404, ok: false, json: async () => ({}) };
+    }
+    if (url.includes('/root:/2026-07-10_Doe') && !url.includes('children')) {
+      return { status: 404, ok: false, json: async () => ({}) };
+    }
+    if (url.endsWith(':/children')) {
+      return { status: 201, ok: true, json: async () => ({ id: 'x' }) };
+    }
+    return { status: 200, ok: true, json: async () => ({ id: 'existing' }) };
+  };
+  const result = await ensureFolder('Tenant Applications/2026-07-10_Doe', { fetchImpl, token: 'tok' });
+  assert.equal(result, 'Tenant Applications/2026-07-10_Doe');
+  assert.ok(calls.some((c) => c.method === 'POST'), 'must POST to create a missing segment');
+}));
+
+test('ensureFolder reuses an existing folder without creating it (idempotent)', () => withDriveId(async () => {
+  let postCalls = 0;
+  const fetchImpl = async (url, opts = {}) => {
+    if ((opts.method || 'GET') === 'POST') postCalls += 1;
+    return { status: 200, ok: true, json: async () => ({ id: 'already-there' }) };
+  };
+  await ensureFolder('Broker Submissions/2026-07-10_Acme', { fetchImpl, token: 'tok' });
+  assert.equal(postCalls, 0, 'must not create a folder that already exists');
+}));
+
+test('uploadSmallFile PUTs raw bytes to the content endpoint', () => withDriveId(async () => {
+  const fetchImpl = async (url, opts) => {
+    assert.equal(opts.method, 'PUT');
+    assert.match(url, /:\/content$/);
+    return { ok: true, status: 200, json: async () => ({ webUrl: 'https://contoso.sharepoint.com/x/file.pdf', id: 'item-1' }) };
+  };
+  const result = await uploadSmallFile('Tenant Applications/x', 'credit-report.pdf', Buffer.from('bytes'), { fetchImpl, token: 'tok' });
+  assert.equal(result.webUrl, 'https://contoso.sharepoint.com/x/file.pdf');
+}));
+
+test('uploadSmallFile throws with the status code on failure', () => withDriveId(async () => {
+  const fetchImpl = async () => ({ ok: false, status: 507, json: async () => ({}) });
+  await assert.rejects(() => uploadSmallFile('p', 'f.pdf', Buffer.from('x'), { fetchImpl, token: 'tok' }), /\(507\)/);
+}));
+
+test('createUploadSession posts and returns the uploadUrl', () => withDriveId(async () => {
+  const fetchImpl = async (url, opts) => {
+    assert.equal(opts.method, 'POST');
+    assert.match(url, /:\/createUploadSession$/);
+    return { ok: true, status: 200, json: async () => ({ uploadUrl: 'https://contoso.sharepoint.com/upload/session-1', expirationDateTime: '2026-07-11T00:00:00Z' }) };
+  };
+  const result = await createUploadSession('Broker Submissions/x', 'om.pdf', 30_000_000, { fetchImpl, token: 'tok' });
+  assert.equal(result.uploadUrl, 'https://contoso.sharepoint.com/upload/session-1');
+}));
+
+test('getItemByPath returns null on 404 and the item on 200', () => withDriveId(async () => {
+  const notFound = await getItemByPath('nope', { fetchImpl: async () => ({ status: 404, ok: false }), token: 'tok' });
+  assert.equal(notFound, null);
+  const found = await getItemByPath('yes', { fetchImpl: async () => ({ status: 200, ok: true, json: async () => ({ id: 'i' }) }), token: 'tok' });
+  assert.deepEqual(found, { id: 'i' });
+}));

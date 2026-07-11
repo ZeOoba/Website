@@ -17,5 +17,9 @@ https://www.oxfordra.net/* https://oxfordra.net/:splat 301!
 /portfolio-1        /portfolio      301
 /about-us/our-agents /about         301
 
+# Broker OM upload pipeline (Task 9/10) — clean paths over the raw function URLs
+/api/broker-upload-session  /.netlify/functions/broker-upload-session  200
+/api/broker-finalize        /.netlify/functions/broker-finalize        200
+
 # SPA-style: serve 404.html for unknown paths
 /*                 /404.html       404

@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { handler } = require('./broker-upload-session.js');
+const { handler } = require('../../netlify/functions/broker-upload-session.js');
 
 // graph-auth.js (Task 2, committed) throws unless GRAPH_TENANT_ID/CLIENT_ID/
 // CLIENT_SECRET are present — it checks them BEFORE the login fetch the stubs

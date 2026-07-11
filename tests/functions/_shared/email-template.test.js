@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { renderTenantEmail, renderBrokerEmail } = require('./email-template.js');
+const { renderTenantEmail, renderBrokerEmail } = require('../../../netlify/functions/_shared/email-template.js');
 
 test('renderTenantEmail produces a distinct subject and includes key fields + document links', () => {
   const { subject, html } = renderTenantEmail({

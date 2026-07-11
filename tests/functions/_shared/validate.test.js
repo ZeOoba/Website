@@ -10,7 +10,7 @@ const {
   verifyNetlifyWebhookSignature,
   signIntakeToken,
   verifyIntakeToken,
-} = require('./validate.js');
+} = require('../../../netlify/functions/_shared/validate.js');
 
 test('checkHoneypot flags a filled bot-field or website field', () => {
   assert.equal(checkHoneypot({ 'bot-field': '' }), false);

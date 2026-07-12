@@ -55,6 +55,20 @@ test('mints a session and a verifiable intake token for a valid request', () => 
   assert.ok(parsed.intakeToken.split('.').length === 2, 'intakeToken must be payload.signature');
 }));
 
+test('fails loudly (logged, 502) when the rate-limit check throws, never an uncaught crash', () => withEnv(ENV, async () => {
+  const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.9' }, body: JSON.stringify({ name: 'Bob', company: 'Acme', email: 'b@acme.com', fileName: 'om.pdf', fileSize: 1000, contentType: 'application/pdf' }) };
+  const getStore = () => { throw new Error('MissingBlobsEnvironmentError: The environment has not been configured to use Netlify Blobs.'); };
+  let loggedFailure = false;
+  const fetchImpl = async (url, opts = {}) => {
+    if (url === 'https://oxfordra.net/' && String(opts.body || '').includes('pipeline-failures')) { loggedFailure = true; return { ok: true, status: 200 }; }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await handler(event, { fetchImpl, getStore });
+  assert.equal(res.statusCode, 502);
+  assert.equal(JSON.parse(res.body).error, 'rate_limit_check_failed');
+  assert.equal(loggedFailure, true, 'a rate-limit-check crash must be logged to the failure ledger, not silently dropped');
+}));
+
 test('rate-limits after repeated requests from the same IP', () => withEnv(ENV, async () => {
   const store = fakeStore();
   const getStore = () => store;

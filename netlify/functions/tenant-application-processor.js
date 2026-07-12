@@ -48,9 +48,8 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     return { statusCode: 400, body: JSON.stringify({ ok: false, error: 'invalid_json' }) };
   }
 
-  // NOTE: field names below (form_name/data/id) follow Netlify's documented
-  // submission-created payload envelope — confirm against a real fired
-  // webhook in Task 14 and adjust these three lines only if it differs.
+  // Envelope shape (form_name/data/id) confirmed against a real fired webhook
+  // 2026-07-12 — matches Netlify's documented submission-created payload.
   const formName = submission.form_name;
   const data = submission.data || {};
   const submissionId = submission.id;
@@ -71,12 +70,17 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     // submission, and never email a link to a rejected/broken document.
     const validated = [];
     for (const field of FILE_FIELDS) {
-      const fileUrl = data[field];
-      if (!fileUrl) continue;
+      // Netlify Forms serializes a file-upload field as {filename, type, size,
+      // url} — confirmed against a real fired webhook via the Submissions API
+      // — not the bare URL string the payload docs imply.
+      const upload = data[field];
+      if (!upload) continue;
+      const fileUrl = upload.url;
+      if (!fileUrl) throw new Error(`upload object missing url for field ${field}`);
       const fileRes = await fetchImpl(fileUrl);
       if (!fileRes.ok) throw new Error(`failed to fetch uploaded file for ${field} (${fileRes.status})`);
       const buffer = Buffer.from(await fileRes.arrayBuffer());
-      const declaredName = fileUrl.split('/').pop() || `${field}.bin`;
+      const declaredName = upload.filename || fileUrl.split('/').pop() || `${field}.bin`;
       if (!isAllowedUpload(declaredName, buffer, ALLOWED_EXTS)) {
         await logFailure(fetchImpl, { errorCode: 'file_type_rejected', submissionId, detail: `field=${field} name=${declaredName}` });
         return { statusCode: 422, body: JSON.stringify({ ok: false, error: 'file_type_rejected', field }) };

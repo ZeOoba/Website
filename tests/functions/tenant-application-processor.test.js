@@ -51,9 +51,15 @@ test('ignores submissions for other forms (no-op 200, no Graph calls)', () => wi
 }));
 
 test('processes a valid commercial-lease-application submission end-to-end', () => withEnv(FILE_ALLOWLIST_ENV, async () => {
+  // Netlify Forms serializes file-upload fields as objects — {filename, type,
+  // size, url} — not bare URL strings. Confirmed against a real fired webhook
+  // via the Submissions API (2026-07-12); a bare string here would mask the
+  // production filing_failed bug this fixture exists to catch.
   const data = {
     'applicant-email': 'jane@example.com', 'full-legal-name': 'Jane Doe', 'building-unit': '1100 Rarig Avenue, Columbus, OH',
-    'upload-credit-report': 'https://oxfordra.net/uploads/credit.pdf', 'upload-drivers-license': 'https://oxfordra.net/uploads/dl.pdf', 'upload-articles': 'https://oxfordra.net/uploads/articles.pdf',
+    'upload-credit-report': { filename: 'credit.pdf', type: 'file', size: 111, url: 'https://oxfordra.net/uploads/credit.pdf' },
+    'upload-drivers-license': { filename: 'dl.pdf', type: 'file', size: 222, url: 'https://oxfordra.net/uploads/dl.pdf' },
+    'upload-articles': { filename: 'articles.pdf', type: 'file', size: 333, url: 'https://oxfordra.net/uploads/articles.pdf' },
   };
   const rawBody = JSON.stringify({ form_name: 'commercial-lease-application', id: 'sub-3', data });
   const event = { headers: { 'x-webhook-signature': signBody(rawBody, 'shh') }, body: rawBody };
@@ -80,9 +86,9 @@ test('processes a valid commercial-lease-application submission end-to-end', () 
 test('rejects an upload whose bytes do not match its declared extension', () => withEnv(FILE_ALLOWLIST_ENV, async () => {
   const data = {
     'full-legal-name': 'Jane Doe',
-    'upload-credit-report': 'https://oxfordra.net/uploads/credit.pdf',
-    'upload-drivers-license': 'https://oxfordra.net/uploads/dl.pdf',
-    'upload-articles': 'https://oxfordra.net/uploads/articles.pdf',
+    'upload-credit-report': { filename: 'credit.pdf', type: 'file', size: 111, url: 'https://oxfordra.net/uploads/credit.pdf' },
+    'upload-drivers-license': { filename: 'dl.pdf', type: 'file', size: 222, url: 'https://oxfordra.net/uploads/dl.pdf' },
+    'upload-articles': { filename: 'articles.pdf', type: 'file', size: 333, url: 'https://oxfordra.net/uploads/articles.pdf' },
   };
   const rawBody = JSON.stringify({ form_name: 'commercial-lease-application', id: 'sub-4', data });
   const event = { headers: { 'x-webhook-signature': signBody(rawBody, 'shh') }, body: rawBody };
@@ -97,4 +103,32 @@ test('rejects an upload whose bytes do not match its declared extension', () => 
   const res = await handler(event, { fetchImpl });
   assert.equal(res.statusCode, 422);
   assert.equal(sentMail, false, 'must not email a link to a rejected file');
+}));
+
+test('fails loudly (logged, 502) on a present-but-malformed upload object, never a silent 200', () => withEnv(FILE_ALLOWLIST_ENV, async () => {
+  const data = {
+    'full-legal-name': 'Jane Doe',
+    // filename/type/size present but url missing — the object is truthy, so a
+    // bare `if (!upload) continue;` guard would silently skip this file and
+    // return 200 with the document missing, defeating this pipeline's
+    // explicit no-silent-failure design (see the comment above the try block).
+    'upload-credit-report': { filename: 'credit.pdf', type: 'file', size: 111 },
+    'upload-drivers-license': { filename: 'dl.pdf', type: 'file', size: 222, url: 'https://oxfordra.net/uploads/dl.pdf' },
+    'upload-articles': { filename: 'articles.pdf', type: 'file', size: 333, url: 'https://oxfordra.net/uploads/articles.pdf' },
+  };
+  const rawBody = JSON.stringify({ form_name: 'commercial-lease-application', id: 'sub-5', data });
+  const event = { headers: { 'x-webhook-signature': signBody(rawBody, 'shh') }, body: rawBody };
+  let loggedFailure = false;
+  let sentMail = false;
+  const fetchImpl = async (url, opts = {}) => {
+    if (url === 'https://oxfordra.net/' && String(opts.body || '').includes('pipeline-failures')) { loggedFailure = true; return { ok: true, status: 200 }; }
+    if (url.includes('sendMail')) { sentMail = true; return { ok: true, status: 202 }; }
+    if (url.startsWith('https://oxfordra.net/uploads/')) return { ok: true, status: 200, arrayBuffer: async () => Buffer.from([0x25, 0x50, 0x44, 0x46]) };
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await handler(event, { fetchImpl });
+  assert.equal(res.statusCode, 502);
+  assert.equal(loggedFailure, true, 'a malformed upload must be logged to the failure ledger, not silently dropped');
+  assert.equal(sentMail, false, 'must not email a link when a document silently failed to file');
 }));

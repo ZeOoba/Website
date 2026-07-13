@@ -3,22 +3,37 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { checkRateLimit } = require('../../../netlify/functions/_shared/rate-limit.js');
 
-function fakeStore(initial = {}) {
-  const data = { ...initial };
-  return {
-    async get(key, { type }) {
-      return data[key] === undefined ? null : type === 'json' ? data[key] : JSON.stringify(data[key]);
+// One shared in-memory table per fake client, standing in for a real
+// Postgres connection — mirrors the query shapes issued by rate-limit.js's
+// defaultGetClient (CREATE TABLE / SELECT / INSERT ON CONFLICT / UPDATE).
+function fakeGetClient() {
+  const table = new Map(); // key -> { window_start, count }
+  return async () => ({
+    query: async (text, params) => {
+      if (text.startsWith('CREATE TABLE')) return [];
+      if (text.startsWith('SELECT')) {
+        const row = table.get(params[0]);
+        return row ? [row] : [];
+      }
+      if (text.startsWith('INSERT')) {
+        table.set(params[0], { window_start: params[1], count: 1 });
+        return [];
+      }
+      if (text.startsWith('UPDATE')) {
+        const row = table.get(params[0]);
+        row.count += 1;
+        return [];
+      }
+      throw new Error(`fakeGetClient: unexpected statement: ${text}`);
     },
-    async setJSON(key, value) { data[key] = value; },
-    _data: data,
-  };
+    end: async () => {},
+  });
 }
 
 test('allows the first N requests within the window, then blocks', async () => {
-  const store = fakeStore();
-  const getStore = () => store;
+  const getClient = fakeGetClient();
   let now = 1_000_000;
-  const opts = { getStore, limit: 3, windowMs: 60_000, now: () => now };
+  const opts = { getClient, limit: 3, windowMs: 60_000, now: () => now };
   assert.equal(await checkRateLimit('1.2.3.4', opts), true);
   assert.equal(await checkRateLimit('1.2.3.4', opts), true);
   assert.equal(await checkRateLimit('1.2.3.4', opts), true);
@@ -26,10 +41,9 @@ test('allows the first N requests within the window, then blocks', async () => {
 });
 
 test('resets after the window elapses', async () => {
-  const store = fakeStore();
-  const getStore = () => store;
+  const getClient = fakeGetClient();
   let now = 1_000_000;
-  const opts = { getStore, limit: 1, windowMs: 60_000, now: () => now };
+  const opts = { getClient, limit: 1, windowMs: 60_000, now: () => now };
   assert.equal(await checkRateLimit('5.5.5.5', opts), true);
   assert.equal(await checkRateLimit('5.5.5.5', opts), false);
   now += 61_000;
@@ -37,9 +51,8 @@ test('resets after the window elapses', async () => {
 });
 
 test('tracks different keys independently', async () => {
-  const store = fakeStore();
-  const getStore = () => store;
-  const opts = { getStore, limit: 1, windowMs: 60_000, now: () => 0 };
+  const getClient = fakeGetClient();
+  const opts = { getClient, limit: 1, windowMs: 60_000, now: () => 0 };
   assert.equal(await checkRateLimit('ip-a', opts), true);
   assert.equal(await checkRateLimit('ip-b', opts), true, 'a different key must have its own counter');
 });

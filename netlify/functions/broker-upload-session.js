@@ -21,8 +21,7 @@ function slugify(value) {
   return String(value || 'submission').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'submission';
 }
 
-exports.handler = async (event, context = {}) => {
-  const { fetchImpl = fetch, getStore } = context;
+exports.handler = async (event, { fetchImpl = fetch, getClient } = {}) => {
   if (event.httpMethod !== 'POST') return fail(405, 'method_not_allowed');
 
   let body;
@@ -31,16 +30,10 @@ exports.handler = async (event, context = {}) => {
   const ip = (event.headers && (event.headers['x-forwarded-for'] || event.headers['X-Forwarded-For']) || 'unknown').split(',')[0].trim();
   let allowed;
   try {
-    allowed = await checkRateLimit(ip, { getStore, limit: 10, windowMs: 60 * 60 * 1000 });
+    allowed = await checkRateLimit(ip, { getClient, limit: 10, windowMs: 60 * 60 * 1000 });
   } catch (err) {
-    // TEMPORARY diagnostic (remove once MissingBlobsEnvironmentError root cause
-    // is confirmed) — first-party evidence of what Netlify's runtime actually
-    // injects for this invocation, since external docs/forum reports on this
-    // exact error are inconclusive.
-    const envKeys = Object.keys(process.env).filter((k) => /NETLIFY|BLOB/i.test(k));
-    const diag = `envKeys=${JSON.stringify(envKeys)} contextKeys=${JSON.stringify(Object.keys(context))} globalBlobsCtx=${typeof globalThis.netlifyBlobsContext}`;
-    console.error('[broker-upload-session] checkRateLimit failed', String(err), diag);
-    await logFailure(fetchImpl, { errorCode: 'rate_limit_check_failed', detail: `${String(err)} | ${diag}` });
+    console.error('[broker-upload-session] checkRateLimit failed', String(err));
+    await logFailure(fetchImpl, { errorCode: 'rate_limit_check_failed', detail: String(err) });
     return fail(502, 'rate_limit_check_failed');
   }
   if (!allowed) return fail(429, 'rate_limited');

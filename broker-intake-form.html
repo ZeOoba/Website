@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<!--
+  Hidden form so Netlify Forms registers the `broker-submission-intake` form
+  on deploy. Not linked from anywhere; noindex. broker-upload-session.js
+  forwards a row here as soon as a submission passes validation — BEFORE the
+  Graph upload session is minted — so contact/deal context is never lost even
+  if the browser drops mid-upload or Graph itself is down. broker-finalize.js
+  still forwards the authoritative completion row to broker-network-ledger;
+  this form exists purely to catch attempts that never reach that point.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Broker Submission Intake (internal)</title>
+<meta name="robots" content="noindex, nofollow">
+</head>
+<body>
+<form name="broker-submission-intake" data-netlify="true" hidden>
+  <input type="hidden" name="form-name" value="broker-submission-intake">
+  <input type="text" name="name">
+  <input type="text" name="company">
+  <input type="email" name="email">
+  <input type="text" name="phone">
+  <input type="text" name="market">
+  <textarea name="message"></textarea>
+  <input type="text" name="file-name">
+  <input type="text" name="occurred-at">
+</form>
+</body>
+</html>

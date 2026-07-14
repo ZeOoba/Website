@@ -5,6 +5,7 @@ dist/
 
 # Netlify CLI local state
 .netlify/
+deno.lock
 
 # Claude Code local tooling state (machine-local, never committed)
 .claude/launch.json

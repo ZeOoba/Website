@@ -29,6 +29,7 @@ const SITE_FILES = [
   'about.html',
   'application-received.html',
   'available-space.html',
+  'broker-intake-form.html',
   'broker-ledger-form.html',
   'chat-lead-form.html',
   'contact.html',

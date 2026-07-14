@@ -13,6 +13,16 @@ function logFailure(fetchImpl, { errorCode, detail }) {
   return forwardToNetlifyForm(siteUrl, 'pipeline-failures', { 'source-function': 'broker-upload-session', 'error-code': errorCode, 'submission-id': '', detail: detail || '', 'occurred-at': new Date().toISOString() }, { fetchImpl });
 }
 
+// Logged BEFORE the Graph upload session is minted — a completed
+// broker-network-ledger row only exists once broker-finalize.js runs, so
+// without this, a dropped connection or a Graph outage between here and
+// finalize loses the broker's contact/deal context entirely, leaving (at
+// best) an orphaned, unlabeled file in SharePoint.
+function logIntake(fetchImpl, { name, company, email, phone, market, message, fileName }) {
+  const siteUrl = process.env.URL || 'https://oxfordra.net';
+  return forwardToNetlifyForm(siteUrl, 'broker-submission-intake', { name, company, email, phone, market, message, 'file-name': fileName, 'occurred-at': new Date().toISOString() }, { fetchImpl });
+}
+
 function ok(body) { return { statusCode: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }; }
 function fail(statusCode, error) { return { statusCode, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ok: false, error }) }; }
 
@@ -39,6 +49,16 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   const company = sanitizeField(body.company, 150) || 'Unknown Company';
   const dateStamp = new Date().toISOString().slice(0, 10);
   const folderPath = `Broker Submissions/${dateStamp}_${slugify(company)}_${crypto.randomBytes(4).toString('hex')}`;
+
+  await logIntake(fetchImpl, {
+    name: sanitizeField(body.name, 150),
+    company,
+    email: sanitizeField(body.email, 200),
+    phone: sanitizeField(body.phone, 40),
+    market: sanitizeField(body.market, 60),
+    message: sanitizeField(body.message, 2000),
+    fileName,
+  });
 
   let session;
   try {

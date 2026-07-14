@@ -36,9 +36,11 @@ test('rejects a file over the 60 MB ceiling', () => withEnv(ENV, async () => {
   assert.equal(res.statusCode, 413);
 }));
 
-test('mints a session and a verifiable intake token for a valid request', () => withEnv(ENV, async () => {
+test('mints a session and a verifiable intake token for a valid request, logging intake first', () => withEnv(ENV, async () => {
   const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.9' }, body: JSON.stringify({ name: 'Bob', company: 'Acme', email: 'b@acme.com', market: 'Columbus', message: 'hi', fileName: 'om.pdf', fileSize: 30_000_000, contentType: 'application/pdf' }) };
-  const fetchImpl = async (url, opts) => {
+  let loggedIntake = null;
+  const fetchImpl = async (url, opts = {}) => {
+    if (url === 'https://oxfordra.net/' && String(opts.body || '').includes('broker-submission-intake')) { loggedIntake = opts.body; return { ok: true, status: 200 }; }
     if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
     if (url.includes(':/createUploadSession')) return { ok: true, status: 200, json: async () => ({ uploadUrl: 'https://contoso.sharepoint.com/upload/s1', expirationDateTime: '2026-07-11T00:00:00Z' }) };
     throw new Error(`unexpected fetch: ${url}`);
@@ -48,4 +50,24 @@ test('mints a session and a verifiable intake token for a valid request', () => 
   const parsed = JSON.parse(res.body);
   assert.equal(parsed.uploadUrl, 'https://contoso.sharepoint.com/upload/s1');
   assert.ok(parsed.intakeToken.split('.').length === 2, 'intakeToken must be payload.signature');
+  assert.ok(loggedIntake, 'a broker-submission-intake row must be logged for every validated attempt');
+  assert.ok(loggedIntake.includes('company=Acme'), 'intake row must carry the contact/deal fields');
+}));
+
+test('logs the submission intake even when minting the Graph upload session fails', () => withEnv(ENV, async () => {
+  const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.9' }, body: JSON.stringify({ name: 'Bob', company: 'Acme', email: 'b@acme.com', fileName: 'om.pdf', fileSize: 1000, contentType: 'application/pdf' }) };
+  let loggedIntake = false;
+  let loggedFailure = false;
+  const fetchImpl = async (url, opts = {}) => {
+    if (url === 'https://oxfordra.net/' && String(opts.body || '').includes('broker-submission-intake')) { loggedIntake = true; return { ok: true, status: 200 }; }
+    if (url === 'https://oxfordra.net/' && String(opts.body || '').includes('pipeline-failures')) { loggedFailure = true; return { ok: true, status: 200 }; }
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes(':/createUploadSession')) return { ok: false, status: 503 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await handler(event, { fetchImpl });
+  assert.equal(res.statusCode, 502);
+  assert.equal(JSON.parse(res.body).error, 'session_failed');
+  assert.ok(loggedIntake, 'contact/deal context must be preserved even when Graph itself fails — this is the exact gap being closed');
+  assert.ok(loggedFailure, 'the failure itself must still be logged to pipeline-failures too');
 }));

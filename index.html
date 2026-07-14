@@ -39,7 +39,7 @@
 <link rel="preload" as="font" href="/fonts/eb-garamond-latin.woff2" type="font/woff2" crossorigin>
 <link rel="preload" as="font" href="/fonts/eb-garamond-italic-latin.woff2" type="font/woff2" crossorigin>
 <link rel="preload" as="font" href="/fonts/ibm-plex-mono-latin.woff2" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=14">
+<link rel="stylesheet" href="/styles.css?v=15">
 
 <!-- JSON-LD -->
 <script type="application/ld+json">
@@ -671,7 +671,7 @@ h3{font-size:22px;margin-bottom:8px}
         stats.forEach(function(stat){
           var target=parseInt(stat.getAttribute('data-target'),10);
           var suffix=stat.getAttribute('data-suffix')||'';
-          var duration=1200;
+          var duration=500;
           var start=performance.now();
           function step(now){
             var elapsed=now-start;

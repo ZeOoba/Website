@@ -1,7 +1,6 @@
 'use strict';
 const crypto = require('node:crypto');
 const { checkHoneypot, sanitizeField, signIntakeToken } = require('./_shared/validate.js');
-const { checkRateLimit } = require('./_shared/rate-limit.js');
 const { createUploadSession } = require('./_shared/graph-files.js');
 const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
 
@@ -21,22 +20,11 @@ function slugify(value) {
   return String(value || 'submission').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'submission';
 }
 
-exports.handler = async (event, { fetchImpl = fetch, getClient } = {}) => {
+exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   if (event.httpMethod !== 'POST') return fail(405, 'method_not_allowed');
 
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return fail(400, 'invalid_json'); }
-
-  const ip = (event.headers && (event.headers['x-forwarded-for'] || event.headers['X-Forwarded-For']) || 'unknown').split(',')[0].trim();
-  let allowed;
-  try {
-    allowed = await checkRateLimit(ip, { getClient, limit: 10, windowMs: 60 * 60 * 1000 });
-  } catch (err) {
-    console.error('[broker-upload-session] checkRateLimit failed', String(err));
-    await logFailure(fetchImpl, { errorCode: 'rate_limit_check_failed', detail: String(err) });
-    return fail(502, 'rate_limit_check_failed');
-  }
-  if (!allowed) return fail(429, 'rate_limited');
 
   if (checkHoneypot(body)) return ok({ ok: true }); // silent success, per chat-lead.js convention
 

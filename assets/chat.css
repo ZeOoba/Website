@@ -128,7 +128,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-family: inherit;
-  transition: color 200ms ease-out;
+  transition: color 200ms ease-out, background 200ms ease-out;
 }
 .ora-chat-header__btn:hover,
 .ora-chat-header__btn:focus-visible {
@@ -296,7 +296,7 @@
   border-radius: 4px;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background 200ms ease-out;
+  transition: background 200ms ease-out, color 200ms ease-out;
 }
 .ora-chat-lead__btn--primary { background: #C9A96E; color: #1B2A4A; border-color: #C9A96E; }
 .ora-chat-lead__btn--primary:hover { background: #b8963e; }

@@ -87,7 +87,7 @@ async function main() {
     let raw;
     try {
       raw = await fs.readFile(fullPath, 'utf8');
-    } catch (e) {
+    } catch {
       console.error(`[build-kb] WARN: missing ${p.file}, skipping`);
       continue;
     }

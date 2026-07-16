@@ -20,7 +20,7 @@
   --as-radius: 8px;
   --as-shadow: 0 2px 8px rgba(27, 42, 74, 0.08);
   --as-shadow-hover: 0 8px 24px rgba(27, 42, 74, 0.14);
-  --as-gold-dark: #b8963e;
+  --as-gold-dark: #806339;
   --as-transition: 0.2s ease;
 }
 
@@ -286,11 +286,6 @@
 }
 
 /* Leaflet popup theming to match brand */
-.leaflet-popup-content-wrapper {
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(27, 42, 74, 0.18);
-  padding: 4px;
-}
 .leaflet-popup-tip {
   box-shadow: 0 4px 16px rgba(27, 42, 74, 0.18);
 }
@@ -812,6 +807,7 @@
 .leaflet-popup-content-wrapper {
   border-radius: 6px;
   box-shadow: var(--as-shadow);
+  padding: 4px;
   font-family: var(--as-font-body);
 }
 

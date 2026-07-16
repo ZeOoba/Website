@@ -21,6 +21,47 @@
   <meta property="og:site_name" content="Oxford Realty Advisors">
 
   <link rel="stylesheet" href="/styles.css?v=15">
+  <style>
+  /* === 404 utility-page scoped styles ===
+     Self-contained like application-received.html / privacy.html / terms.html:
+     links styles.css for shared tokens/fonts, then defines its own minimal
+     nav / hero / footer. No announcement bar, no scroll-spy, no JS-driven
+     mobile toggle -- links simply collapse under 960px (same breakpoint as
+     the rest of the site). All colors reference shared :root tokens. */
+  /* styles.css line 25 sets body{padding-top:36px} for the announcement bar;
+     this page has none, so neutralize it. */
+  body{padding-top:0}
+
+  .site-nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--navy);border-bottom:1px solid rgba(201,169,110,.15)}
+  @media(min-width:768px){.site-nav{padding:0 40px}}
+  .site-nav__logo{display:flex;align-items:center}
+  .site-nav__logo svg{display:block;width:auto;height:auto;max-height:28px}
+  .site-nav__links{display:flex;align-items:center;gap:4px;list-style:none}
+  .site-nav__links a{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.8);padding:6px 14px;transition:color var(--transition)}
+  .site-nav__links a:hover{color:var(--gold);text-decoration:none}
+  .site-nav__cta{color:var(--navy);background:var(--gold);border-radius:var(--radius-btn);margin-left:8px}
+  .site-nav__cta:hover{color:var(--navy);background:var(--gold-light)}
+  @media(max-width:960px){.site-nav__links{display:none}}
+
+  .error-hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:120px 24px 64px;background:var(--parchment)}
+  .error-hero__inner{max-width:560px;width:100%}
+  .error-hero__label{font-family:var(--font-mono);font-size:64px;font-weight:700;line-height:1;letter-spacing:-.02em;color:var(--gold-accessible);display:block;margin-bottom:8px}
+  .error-hero h1{font-size:36px;color:var(--navy);margin-bottom:12px}
+  @media(min-width:768px){.error-hero h1{font-size:44px}}
+  .error-hero__desc{font-size:17px;color:var(--charcoal);line-height:1.6;margin-bottom:32px}
+  .error-hero__cta{display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-body);font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;padding:14px 32px;border-radius:var(--radius-btn);border:1px solid var(--gold);background:var(--gold);color:var(--navy);transition:all var(--transition)}
+  .error-hero__cta:hover{background:#b8963e;border-color:#b8963e;color:var(--navy);text-decoration:none}
+  .error-hero__alt{margin-top:24px;font-size:14px;color:var(--slate)}
+  /* WCAG AA: any link on this light background resolves to the accessible gold
+     token (mirrors application-received.html's .confirmation a:not(.btn) rule);
+     the primary CTA is excluded because it is a filled button. */
+  .error-hero a:not(.error-hero__cta){color:var(--gold-accessible)}
+
+  .site-footer{padding:24px;text-align:center;font-size:12px;color:var(--slate);background:var(--white);border-top:1px solid var(--divider)}
+  .site-footer p{margin:0}
+  .site-footer__links{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center}
+  .site-footer__links a{color:var(--gold-accessible)}
+  </style>
 <link rel="preload" href="/fonts/ibm-plex-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="dns-prefetch" href="https://www.googletagmanager.com">
 <link rel="dns-prefetch" href="https://snap.licdn.com">
@@ -36,9 +77,6 @@
     <a href="/" class="site-nav__logo" aria-label="Oxford Realty Advisors home">
       <svg width="180" height="40" viewBox="0 0 448 56" fill="#fff" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g><rect x="28" y="8" width="12" height="12"/><rect x="14" y="22" width="12" height="12"/><rect x="28" y="22" width="12" height="12"/><rect x="0" y="36" width="12" height="12"/><rect x="14" y="36" width="12" height="12"/><rect x="28" y="36" width="12" height="12"/></g><text x="56" y="42" font-family="'EB Garamond', Georgia, serif" font-size="42" font-weight="500" letter-spacing="1">OXFORD</text><text x="252" y="42" font-family="'EB Garamond', Georgia, serif" font-size="40" opacity="0.5">|</text><text x="270" y="42" font-family="'EB Garamond', Georgia, serif" font-size="25" font-style="italic">Realty Advisors</text></svg>
     </a>
-    <button class="nav-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Toggle navigation menu">
-      <span></span><span></span><span></span>
-    </button>
     <ul id="nav-menu" class="site-nav__links" role="list">
       <li><a href="/about">The Firm</a></li>
       <li><a href="/portfolio">Portfolio</a></li>

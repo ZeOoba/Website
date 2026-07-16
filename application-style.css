@@ -14,7 +14,7 @@
 
 /* Progress */
 .app-progress{display:flex;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap}
-.app-progress__label{font-family:var(--font-body);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--gold-accessible,#9A7D4E)}
+.app-progress__label{font-family:var(--font-body);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--gold-accessible,#806339)}
 .app-progress__track{flex:1;height:4px;background:var(--light-gray);border-radius:2px;overflow:hidden;min-width:160px}
 .app-progress__fill{height:100%;background:var(--gold);transition:width .4s ease}
 .app-progress__save{background:transparent;border:1px solid var(--divider);color:var(--slate);padding:6px 14px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;border-radius:4px;cursor:pointer;font-family:var(--font-body);transition:all .2s}

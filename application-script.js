@@ -55,7 +55,6 @@
   var draftStatus  = document.getElementById('draftStatus');
 
   /* ---------- Init: dates, hidden context ---------- */
-  function todayISO(){ return new Date().toISOString().slice(0,10); }
   function todayPretty(){
     var d = new Date();
     return d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});

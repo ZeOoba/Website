@@ -88,14 +88,6 @@
   function totalSF(p) {
     return p.units.reduce(function (s, u) { return s + (u.sfMax || u.sf); }, 0);
   }
-  function totalUnits() {
-    return LISTINGS.reduce(function (s, p) { return s + p.units.length; }, 0);
-  }
-  function totalAvailSF() {
-    return LISTINGS.reduce(function (s, p) {
-      return s + p.units.reduce(function (us, u) { return us + (u.sfMax || u.sf); }, 0);
-    }, 0);
-  }
 
   // ── Populate filter dropdowns ─────────────────────────────────────────────────
   function populateFilters() {
@@ -423,14 +415,6 @@
     var overlay = el('detailOverlay');
     if (overlay) { overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true'); overlay.style.display = 'none'; }
     document.body.style.overflow = '';
-  }
-
-  // ── Share ─────────────────────────────────────────────────────────────────────
-  function showToast() {
-    var t = el('shareToast');
-    if (!t) return;
-    t.style.display = 'flex';
-    setTimeout(function () { t.style.display = 'none'; }, 2400);
   }
 
   // ── View toggle ───────────────────────────────────────────────────────────────

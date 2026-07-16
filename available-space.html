@@ -34,10 +34,13 @@
   <link rel="preload" as="font" type="font/woff2" href="/fonts/eb-garamond-italic-latin.woff2" crossorigin>
 
   <!-- Leaflet CSS -->
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
 <!-- Stylesheets -->
   <link rel="stylesheet" href="/styles.css?v=15">
   <link rel="stylesheet" href="/available-space.css?v=5">
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+  <link rel="dns-prefetch" href="https://snap.licdn.com">
   <!-- Inline @font-face declarations -->
   <style>
     @font-face {
@@ -82,7 +85,7 @@
       background-color: #1B2A4A;
     }
     .nav__links{display:flex;gap:0;align-items:center}
-    .nav__link{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.8);padding:6px 14px;transition:color .3s;text-decoration:none}
+    .nav__link{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.8);padding:6px 14px;transition:color .3s,background .3s;text-decoration:none}
     .nav__link:hover,.nav__link:focus{color:#C9A96E;text-decoration:none}
     .nav__link--active{color:#C9A96E}
     .nav__link--cta{background:#C9A96E;color:#1B2A4A;border-radius:6px;padding:8px 18px;font-size:.75rem;letter-spacing:.14em;font-weight:500;text-transform:uppercase;margin-left:8px}
@@ -92,7 +95,7 @@
     .nav__mobile-btn span:last-child{width:16px;background:#C9A96E;margin-bottom:0}
     .nav__mobile{display:none;background:#1B2A4A;padding:16px 40px 24px}
     .nav__mobile.is-open{display:block}
-    .nav__mobile a{display:block;padding:12px 0;font-family:var(--font-body);font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:#fff;border-bottom:1px solid rgba(255,255,255,.06);text-decoration:none}
+    .nav__mobile a{display:block;padding:12px 0;font-family:var(--font-body);font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:#fff;border-bottom:1px solid rgba(255,255,255,.06);transition:color .3s;text-decoration:none}
     .nav__mobile a:hover{color:#C9A96E;text-decoration:none}
     .nav__logo img,.nav__logo svg{height:auto;width:auto;max-height:28px;display:block}
     @media(max-width:960px){.nav__links{display:none}.nav__mobile-btn{display:block}.nav__inner{padding:0 24px}}
@@ -119,7 +122,7 @@
     ]
   }
   </script>
-<link rel="stylesheet" href="/assets/chat.css" media="print" id="chat-css-async">
+<link rel="stylesheet" href="/assets/chat.css?v=1" media="print" id="chat-css-async">
 <script>(function(){var l=document.getElementById("chat-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 </head>
 <body>
@@ -130,7 +133,7 @@
 <div class="announcement-bar" role="region" aria-label="What we're buying now">
 <span class="announcement-bar__label">What We're Buying Now</span>
 <span class="announcement-bar__sep" aria-hidden="true">·</span>
-<span class="announcement-bar__rotator" aria-live="polite">
+<span class="announcement-bar__rotator">
 <span class="announcement-bar__item is-active">Actively seeking $1M&ndash;$10M acquisitions</span>
 <span class="announcement-bar__item">Shallow-bay industrial / flex</span>
 <span class="announcement-bar__item">Mid-Atlantic and Midwest</span>
@@ -238,7 +241,11 @@
       <div class="as-listings" id="listingsPanel">
         <article class="as-card" data-id="1">
           <div class="as-card__img">
-            <img src="/images/10-zettler-2012-2026-exterior-.jpg" alt="2012-2026 Zettler Rd property photo" loading="lazy" decoding="async">
+            <picture>
+              <source type="image/avif" srcset="/images/10-zettler-2012-2026-exterior-.avif">
+              <source type="image/webp" srcset="/images/10-zettler-2012-2026-exterior-.webp">
+              <img src="/images/10-zettler-2012-2026-exterior-.jpg" alt="2012-2026 Zettler Rd property photo" width="400" height="250" loading="lazy" decoding="async">
+            </picture>
             <span class="as-card__badge as-card__badge--available">1 Space</span>
           </div>
           <div class="as-card__body">
@@ -269,7 +276,11 @@
         </article>
         <article class="as-card" data-id="2">
           <div class="as-card__img">
-            <img src="/images/17-warehouse-columbus-external.jpg" alt="384-398 Morrison Rd property photo" loading="lazy" decoding="async">
+            <picture>
+              <source type="image/avif" srcset="/images/17-warehouse-columbus-external.avif">
+              <source type="image/webp" srcset="/images/17-warehouse-columbus-external.webp">
+              <img src="/images/17-warehouse-columbus-external.jpg" alt="384-398 Morrison Rd property photo" width="400" height="250" loading="lazy" decoding="async">
+            </picture>
             <span class="as-card__badge as-card__badge--available">1 Space</span>
           </div>
           <div class="as-card__body">
@@ -300,7 +311,11 @@
         </article>
         <article class="as-card" data-id="3">
           <div class="as-card__img">
-            <img src="/images/07-2000_2002-front.jpg" alt="2000-2002 Zettler Rd property photo" loading="lazy" decoding="async">
+            <picture>
+              <source type="image/avif" srcset="/images/07-2000_2002-front.avif">
+              <source type="image/webp" srcset="/images/07-2000_2002-front.webp">
+              <img src="/images/07-2000_2002-front.jpg" alt="2000-2002 Zettler Rd property photo" width="400" height="250" loading="lazy" decoding="async">
+            </picture>
             <span class="as-card__badge as-card__badge--available">2 Spaces</span>
           </div>
           <div class="as-card__body">
@@ -344,7 +359,11 @@
         </article>
         <article class="as-card" data-id="4">
           <div class="as-card__img">
-            <img src="/images/06-exterior-beauty.jpg" alt="Northwood Business Center property photo" loading="lazy" decoding="async">
+            <picture>
+              <source type="image/avif" srcset="/images/06-exterior-beauty.avif">
+              <source type="image/webp" srcset="/images/06-exterior-beauty.webp">
+              <img src="/images/06-exterior-beauty.jpg" alt="Northwood Business Center property photo" width="400" height="250" loading="lazy" decoding="async">
+            </picture>
             <span class="as-card__badge as-card__badge--available">1 Space</span>
           </div>
           <div class="as-card__body">
@@ -376,7 +395,11 @@
         </article>
         <article class="as-card" data-id="5">
           <div class="as-card__img">
-            <img src="/images/01-2800-2826-banwick-exterior.jpg" alt="2800-2826 Banwick Rd property photo" loading="lazy" decoding="async">
+            <picture>
+              <source type="image/avif" srcset="/images/01-2800-2826-banwick-exterior.avif">
+              <source type="image/webp" srcset="/images/01-2800-2826-banwick-exterior.webp">
+              <img src="/images/01-2800-2826-banwick-exterior.jpg" alt="2800-2826 Banwick Rd property photo" width="400" height="250" loading="lazy" decoding="async">
+            </picture>
             <span class="as-card__badge as-card__badge--available">1 Space</span>
           </div>
           <div class="as-card__body">
@@ -407,7 +430,11 @@
         </article>
         <article class="as-card" data-id="6">
           <div class="as-card__img">
-            <img src="/images/05-exterior-front.jpg" alt="9620 E State Route 350 property photo" loading="lazy" decoding="async">
+            <picture>
+              <source type="image/avif" srcset="/images/05-exterior-front.avif">
+              <source type="image/webp" srcset="/images/05-exterior-front.webp">
+              <img src="/images/05-exterior-front.jpg" alt="9620 E State Route 350 property photo" width="400" height="250" loading="lazy" decoding="async">
+            </picture>
             <span class="as-card__badge as-card__badge--available">2 Spaces</span>
           </div>
           <div class="as-card__body">
@@ -566,6 +593,6 @@
   else{setTimeout(loadAnalytics,3000)}
 })();
 </script>
-<script defer src="/assets/chat.js"></script>
+<script defer src="/assets/chat.js?v=1"></script>
 </body>
 </html>

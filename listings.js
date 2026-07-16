@@ -77,9 +77,26 @@
   var viewMode = 'cards';
   var expandedIds = {};
   var map, markers = [];
+  var detailLastFocused = null;   // element focused before the detail overlay opened
+  var detailKeydownTrap = null;   // Tab focus-trap handler while overlay is open
 
   // ── DOM refs ─────────────────────────────────────────────────────────────────
   function el(id) { return document.getElementById(id); }
+
+  // ── Focusable-element collector (for modal focus trapping) ────────────────────
+  function focusableWithin(container) {
+    var nodes = container.querySelectorAll('a[href], button, textarea, input, select, [tabindex]');
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (n.disabled) continue;
+      if (n.getAttribute('tabindex') === '-1') continue;
+      if (n.getAttribute('aria-hidden') === 'true') continue;
+      if (n.offsetWidth === 0 && n.offsetHeight === 0 && n.getClientRects().length === 0) continue;
+      out.push(n);
+    }
+    return out;
+  }
 
   // ── Format helpers ───────────────────────────────────────────────────────────
   function fmtSF(n) {
@@ -411,18 +428,47 @@
       'style="display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border:1.5px solid var(--as-navy);color:var(--as-navy);font-family:var(--as-font-body);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;border-radius:4px">301.512.6125</a>' +
       '</div>';
 
+    // Only capture the trigger element the first time the overlay opens
+    // (guards against a re-entrant open, e.g. hashchange while already open).
+    if (!overlay.classList.contains('open')) detailLastFocused = document.activeElement;
     overlay.style.display = '';
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     var closeBtn = el('detailClose');
     if (closeBtn) closeBtn.focus();
+
+    // Trap Tab / Shift+Tab within the overlay while it is open.
+    if (detailKeydownTrap) document.removeEventListener('keydown', detailKeydownTrap);
+    detailKeydownTrap = function (e) {
+      if (e.key !== 'Tab') return;
+      var list = focusableWithin(overlay);
+      if (!list.length) return;
+      var first = list[0];
+      var last = list[list.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first || !overlay.contains(document.activeElement)) {
+          e.preventDefault(); last.focus();
+        }
+      } else {
+        if (document.activeElement === last || !overlay.contains(document.activeElement)) {
+          e.preventDefault(); first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', detailKeydownTrap);
   }
 
   function closeDetail() {
     var overlay = el('detailOverlay');
     if (overlay) { overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true'); overlay.style.display = 'none'; }
     document.body.style.overflow = '';
+    if (detailKeydownTrap) { document.removeEventListener('keydown', detailKeydownTrap); detailKeydownTrap = null; }
+    // Return focus to whatever triggered the overlay (card, table row, map pin).
+    if (detailLastFocused && typeof detailLastFocused.focus === 'function') {
+      try { detailLastFocused.focus(); } catch (e) {}
+    }
+    detailLastFocused = null;
   }
 
   // ── View toggle ───────────────────────────────────────────────────────────────

@@ -331,6 +331,21 @@
   var lastFocusedBeforeOpen = null;
   var keydownHandler = null;
 
+  // Collect the currently-focusable elements inside a container (for focus trapping).
+  function focusableWithin(container) {
+    var nodes = container.querySelectorAll('a[href], button, textarea, input, select, [tabindex]');
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (n.disabled) continue;
+      if (n.getAttribute('tabindex') === '-1') continue;
+      if (n.getAttribute('aria-hidden') === 'true') continue;
+      if (n.offsetWidth === 0 && n.offsetHeight === 0 && n.getClientRects().length === 0) continue;
+      out.push(n);
+    }
+    return out;
+  }
+
   function open() {
     if (panel.dataset.open === 'true') return;
     lastFocusedBeforeOpen = document.activeElement;
@@ -385,7 +400,22 @@
     clearBtn = document.getElementById('ora-chat-clear');
 
     keydownHandler = function (e) {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key !== 'Tab') return;
+      // Trap Tab / Shift+Tab within the open panel.
+      var list = focusableWithin(panel);
+      if (!list.length) return;
+      var first = list[0];
+      var last = list[list.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first || !panel.contains(document.activeElement)) {
+          e.preventDefault(); last.focus();
+        }
+      } else {
+        if (document.activeElement === last || !panel.contains(document.activeElement)) {
+          e.preventDefault(); first.focus();
+        }
+      }
     };
 
     trigger.addEventListener('click', open);

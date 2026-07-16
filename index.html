@@ -39,7 +39,8 @@
 <link rel="preload" as="font" href="/fonts/eb-garamond-latin.woff2" type="font/woff2" crossorigin>
 <link rel="preload" as="font" href="/fonts/eb-garamond-italic-latin.woff2" type="font/woff2" crossorigin>
 <link rel="preload" as="font" href="/fonts/ibm-plex-mono-latin.woff2" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=15">
+<link rel="preload" as="style" href="/styles.css?v=15" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="/styles.css?v=15"></noscript>
 
 <!-- JSON-LD -->
 <script type="application/ld+json">
@@ -485,8 +486,8 @@ h3{font-size:22px;margin-bottom:8px}
 <!-- Sepich Portfolio -->
 <div class="featured-card">
 <picture>
-<source srcset="/images/01-2800-2826-banwick-exterior.avif" type="image/avif">
-<source srcset="/images/01-2800-2826-banwick-exterior.webp" type="image/webp">
+<source srcset="/images/01-2800-2826-banwick-exterior-480w.avif 480w, /images/01-2800-2826-banwick-exterior.avif 800w" sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 600px" type="image/avif">
+<source srcset="/images/01-2800-2826-banwick-exterior-480w.webp 480w, /images/01-2800-2826-banwick-exterior.webp 800w" sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 600px" type="image/webp">
 <img src="/images/01-2800-2826-banwick-exterior.jpg" alt="Sepich Portfolio industrial buildings at 2800-2826 Banwick Road, Columbus, Ohio" width="800" height="450" loading="lazy" decoding="async" class="featured-card__media">
 </picture>
 <div class="featured-card__body">

@@ -540,6 +540,30 @@ h3{font-size:22px;margin-bottom:8px}
 
 <script defer src="/script.js?v=11"></script>
 <script defer src="/application-script.js?v=11"></script>
+<!-- Analytics (deferred to reduce main-thread blocking) -->
+<script>
+(function(){
+  function loadAnalytics(){
+    // GA4
+    var g=document.createElement('script');g.async=true;
+    g.src='https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX';
+    document.head.appendChild(g);
+    window.dataLayer=window.dataLayer||[];
+    function gtag(){dataLayer.push(arguments)}
+    gtag('js',new Date());gtag('config','G-XXXXXXXXXX');
+    window.gtag=gtag;
+    // LinkedIn
+    window._linkedin_partner_id='XXXXXXX';
+    window._linkedin_data_partner_ids=window._linkedin_data_partner_ids||[];
+    window._linkedin_data_partner_ids.push(window._linkedin_partner_id);
+    var li=document.createElement('script');li.async=true;
+    li.src='https://snap.licdn.com/li.lss/insight.min.js';
+    document.head.appendChild(li);
+  }
+  if('requestIdleCallback' in window){requestIdleCallback(loadAnalytics)}
+  else{setTimeout(loadAnalytics,3000)}
+})();
+</script>
 <script defer src="/assets/chat.js?v=1"></script>
 </body>
 </html>

@@ -272,7 +272,9 @@
     var panel = el('listingsPanel');
     if (!panel) return;
     if (filtered.length === 0) {
-      panel.innerHTML = '<div class="as-no-results"><p>No listings match your filters. <button onclick="resetFilters()" style="background:none;border:none;color:var(--as-gold);cursor:pointer;font-size:inherit;font-family:inherit;text-decoration:underline">Clear all</button></p></div>';
+      panel.innerHTML = '<div class="as-no-results"><p>No listings match your filters. <button class="as-no-results__reset" style="background:none;border:none;color:var(--as-gold);cursor:pointer;font-size:inherit;font-family:inherit;text-decoration:underline">Clear all</button></p></div>';
+      var resetBtn = panel.querySelector('.as-no-results__reset');
+      if (resetBtn) resetBtn.addEventListener('click', resetFilters);
       return;
     }
     if (viewMode === 'table') {
@@ -335,12 +337,18 @@
         var m = L.marker([p.lat, p.lng], { icon: goldIcon, title: p.name, riseOnHover: true })
           .bindPopup('<strong style="font-family:DM Sans,sans-serif;color:#1B2A4A">' + p.name + '</strong><br>' +
             '<span style="font-family:DM Sans,sans-serif;font-size:12px;color:#596B7D">' + p.city + ', ' + p.state + ' &bull; ' + unitText + '</span><br>' +
-            '<button onclick="window._oraOpenDetail(' + p.id + ')" style="margin-top:6px;font-family:DM Sans,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;border:1px solid #1B2A4A;background:none;padding:4px 12px;cursor:pointer;color:#1B2A4A">Details</button>')
+            '<button class="as-map-popup__details" data-id="' + p.id + '" style="margin-top:6px;font-family:DM Sans,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;border:1px solid #1B2A4A;background:none;padding:4px 12px;cursor:pointer;color:#1B2A4A">Details</button>')
           .addTo(map);
         markers.push({ id: p.id, marker: m });
       });
       var bounds = L.latLngBounds(LISTINGS.map(function (p) { return [p.lat, p.lng]; }));
       map.fitBounds(bounds.pad(0.15));
+      // Popup content is rendered by Leaflet on open, so bind via delegation
+      // on the map container rather than per-popup inline handlers.
+      el('map').addEventListener('click', function (e) {
+        var btn = e.target.closest('.as-map-popup__details');
+        if (btn) openDetail(parseInt(btn.dataset.id, 10));
+      });
     } catch (e) { /* non-fatal */ }
   }
 

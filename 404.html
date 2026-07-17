@@ -43,7 +43,18 @@
   .site-nav__links a:hover{color:var(--gold);text-decoration:none}
   .site-nav__cta{color:var(--navy);background:var(--gold);border-radius:var(--radius-btn);margin-left:8px}
   .site-nav__cta:hover{color:var(--navy);background:var(--gold-light)}
-  @media(max-width:960px){.site-nav__links{display:none}}
+  /* Under 960px the 9-item nav becomes a horizontally-scrollable strip inside
+     the fixed 72px header (logo stays pinned left) -- no JS toggle, no height
+     change. The links <ul> is a flex child, so it needs min-width:0 to shrink
+     below its content and let overflow-x create an internal scroll region;
+     the logo gets flex-shrink:0 so it can't be squeezed out. */
+  @media(max-width:960px){
+    .site-nav__logo{flex-shrink:0}
+    .site-nav__links{display:flex;min-width:0;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;padding-right:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
+    .site-nav__links::-webkit-scrollbar{display:none}
+    .site-nav__links li{flex-shrink:0}
+    .site-nav__links a{white-space:nowrap}
+  }
 
   .error-hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:120px 24px 64px;background:var(--parchment)}
   .error-hero__inner{max-width:560px;width:100%}

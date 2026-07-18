@@ -123,7 +123,12 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
       // Best-effort only — don't let a failure here escape either.
       console.error('broker-score-background: failed to write unavailable result after unexpected_error', writeErr);
     }
-    await logFailure(forwardToNetlifyFormImpl, fetchImpl, { submissionId, errorCode: 'unexpected_error', detail: String(err) });
+    try {
+      await logFailure(forwardToNetlifyFormImpl, fetchImpl, { submissionId, errorCode: 'unexpected_error', detail: String(err) });
+    } catch (logErr) {
+      // Best-effort only — don't let a failure here escape either.
+      console.error('broker-score-background: failed to log failure after unexpected_error', logErr);
+    }
     return { ok: false, reason: 'unexpected_error' };
   }
 }

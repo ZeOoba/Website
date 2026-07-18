@@ -114,3 +114,23 @@ test('runScoring still reports success if the follow-up email fails (scoring alr
   assert.equal(writes[0].result.status, 'ready');
   assert.equal(failures[0].fields['error-code'], 'followup_email_failed');
 });
+
+test('runScoring never throws when scoreDealImpl throws AND the outer catch\'s logFailure call also throws', async () => {
+  const writes = [];
+  const deps = makeDeps({
+    // Reach the outer catch via a synchronous throw from scoreDealImpl...
+    scoreDealImpl: () => { throw new Error('malformed extraction'); },
+    writeScoreResultImpl: async (id, result) => writes.push({ id, result }),
+    // ...then make the outer catch's own logFailure -> forwardToNetlifyFormImpl
+    // call throw too (e.g. the real network-backed dependency fails). Before
+    // the fix, this second throw had nothing left to catch it and escaped
+    // runScoring uncaught.
+    forwardToNetlifyFormImpl: async () => { throw new Error('netlify forms down'); },
+  });
+  const result = await runScoring({ submissionId: 'sub-7', itemPath: 'Broker Submissions/x/om.pdf', fields: {} }, deps);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'unexpected_error');
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].result.status, 'unavailable');
+  assert.equal(writes[0].result.reason, 'unexpected_error');
+});

@@ -18,8 +18,13 @@ async function extractForScoring(buffer, ext) {
   }
 
   if (ext === 'xlsx' || ext === 'xls') {
-    // XLSX files are ZIP archives and must start with the ZIP signature (PK)
-    if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+    // XLSX files are ZIP archives (PK signature: 0x50 0x4b)
+    // XLS files are OLE2 Compound File Binary (CFB signature: 0xD0 0xCF 0x11 0xE0 0xA1 0xB1 0x1A 0xE1)
+    const hasZipSignature = buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b;
+    const hasOle2Signature = buffer.length >= 8 &&
+      buffer[0] === 0xd0 && buffer[1] === 0xcf && buffer[2] === 0x11 && buffer[3] === 0xe0 &&
+      buffer[4] === 0xa1 && buffer[5] === 0xb1 && buffer[6] === 0x1a && buffer[7] === 0xe1;
+    if (!hasZipSignature && !hasOle2Signature) {
       return { ok: false, reason: 'unparseable_file' };
     }
     let workbook;

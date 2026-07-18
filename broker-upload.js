@@ -17,6 +17,7 @@
         name: fields.name, company: fields.company, email: fields.email, phone: fields.phone,
         market: fields.market, message: fields.message, website: fields.website,
         fileName: file.name, fileSize: file.size, contentType: file.type,
+        recaptchaToken: fields.recaptchaToken,
       }),
     });
     var json = await res.json();
@@ -63,6 +64,7 @@
       market: formEl.querySelector('[name="market"]').value,
       message: formEl.querySelector('[name="message"]').value,
       website: formEl.querySelector('[name="website"]').value,
+      recaptchaToken: (window.grecaptcha && window.grecaptcha.getResponse) ? window.grecaptcha.getResponse() : '',
     };
     var fileInput = formEl.querySelector('input[type="file"]');
     var file = fileInput && fileInput.files && fileInput.files[0];
@@ -73,5 +75,23 @@
     return finalize(session.intakeToken, fields);
   }
 
-  window.ORA_BROKER_UPLOAD = { submit: submit };
+  async function pollForScore(submissionId, onReady, onUnavailable) {
+    var MAX_WAIT_MS = 2 * 60 * 1000;
+    var POLL_INTERVAL_MS = 3000;
+    var start = Date.now();
+    function poll() {
+      if (Date.now() - start > MAX_WAIT_MS) { onUnavailable(); return; }
+      fetch('/api/broker-score-status?submissionId=' + encodeURIComponent(submissionId))
+        .then(function (res) { return res.json(); })
+        .then(function (json) {
+          if (json.status === 'ready') { onReady(json); }
+          else if (json.status === 'unavailable') { onUnavailable(); }
+          else { setTimeout(poll, POLL_INTERVAL_MS); }
+        })
+        .catch(function () { setTimeout(poll, POLL_INTERVAL_MS); });
+    }
+    poll();
+  }
+
+  window.ORA_BROKER_UPLOAD = { submit: submit, pollForScore: pollForScore };
 })();

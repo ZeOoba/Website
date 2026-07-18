@@ -118,3 +118,80 @@ test('scoreBasis is excluded when asking price, size, or matched market is missi
   assert.equal(scoreBasis(2_000_000, null, 1990, 'Columbus', rctBenchmark).excluded, true);
   assert.equal(scoreBasis(2_000_000, 40_000, 1990, null, rctBenchmark).excluded, true);
 });
+
+const { scoreComplexity, scoreDeal } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+
+test('scoreComplexity gives full credit for 2+ value-add signals', () => {
+  const r = scoreComplexity(['vacancy', 'deferred_maintenance']);
+  assert.equal(r.earned, 15);
+});
+
+test('scoreComplexity gives half credit for exactly one signal', () => {
+  assert.equal(scoreComplexity(['vacancy']).earned, 8);
+});
+
+test('scoreComplexity gives zero for a fully stabilized, turnkey asset', () => {
+  assert.equal(scoreComplexity(['none_stabilized']).earned, 0);
+});
+
+test('scoreComplexity is excluded when no signals were extracted at all', () => {
+  assert.equal(scoreComplexity([]).excluded, true);
+  assert.equal(scoreComplexity(null).excluded, true);
+});
+
+test('scoreDeal: a clean in-box Columbus deal scores high with both gates PASS', () => {
+  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const extracted = {
+    askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'industrial', buildingGrade: 'B',
+    clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
+    valueAddSignals: ['vacancy', 'deferred_maintenance'], notes: null,
+  };
+  const result = scoreDeal(extracted, rctBenchmark);
+  assert.equal(result.gates.propertyType, 'PASS');
+  assert.equal(result.gates.market, 'PASS');
+  assert.equal(result.gateFailed, false);
+  assert.ok(result.finalScore >= 90, `expected a high score, got ${result.finalScore}`);
+  assert.equal(result.categories.length, 5);
+});
+
+test('scoreDeal: a multifamily deal in a target city still gets capped at <=30 by the property-type gate', () => {
+  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const extracted = {
+    askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'multifamily', buildingGrade: 'B',
+    clearHeightFt: null, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
+    valueAddSignals: ['vacancy', 'deferred_maintenance'], notes: null,
+  };
+  const result = scoreDeal(extracted, rctBenchmark);
+  assert.equal(result.gates.propertyType, 'FAIL');
+  assert.equal(result.gateFailed, true);
+  assert.ok(result.finalScore <= 30, `expected a capped score, got ${result.finalScore}`);
+});
+
+test('scoreDeal: a Class A industrial building passes the property-type gate normally (grade does not gate)', () => {
+  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const extracted = {
+    askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'industrial', buildingGrade: 'A',
+    clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 2010,
+    valueAddSignals: ['none_stabilized'], notes: null,
+  };
+  const result = scoreDeal(extracted, rctBenchmark);
+  assert.equal(result.gates.propertyType, 'PASS');
+  assert.equal(result.gateFailed, false);
+});
+
+test('scoreDeal: a rent-roll-only submission with no price/type/location re-normalizes around what IS known', () => {
+  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const extracted = {
+    askingPrice: null, buildingSizeSF: 30_000, assetClass: null, buildingGrade: null,
+    clearHeightFt: 20, city: null, state: null, matchedRctMarket: null, yearBuilt: null,
+    valueAddSignals: [], notes: 'Rent roll only, no asking price stated.',
+  };
+  const result = scoreDeal(extracted, rctBenchmark);
+  assert.equal(result.gates.propertyType, 'NOT_VERIFIED');
+  assert.equal(result.gates.market, 'NOT_VERIFIED');
+  assert.equal(result.gateFailed, false); // NOT_VERIFIED never caps the score
+  const buildingSizeCat = result.categories.find((c) => c.key === 'buildingSize');
+  assert.equal(buildingSizeCat.excluded, false);
+  const dealSizeCat = result.categories.find((c) => c.key === 'dealSize');
+  assert.equal(dealSizeCat.excluded, true);
+});

@@ -84,4 +84,49 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
   return { possible, earned: Math.round(t * possible), note: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF clears the RCT v03 floor but not comfortably.` };
 }
 
-module.exports = { vintageFloorPct, evaluatePropertyTypeGate, evaluateMarketGate, scoreDealSize, scoreBuildingSize, scoreClearHeight, scoreBasis };
+function scoreComplexity(valueAddSignals) {
+  const possible = 15;
+  if (!valueAddSignals || valueAddSignals.length === 0) {
+    return { possible, excluded: true, note: 'Value-add signals not stated in OM — excluded from scoring.' };
+  }
+  const realSignals = valueAddSignals.filter((s) => s !== 'none_stabilized');
+  if (realSignals.length >= 2) return { possible, earned: possible, note: `Value-add signals present: ${realSignals.join(', ')}.` };
+  if (realSignals.length === 1) return { possible, earned: Math.round(possible * 0.5), note: `One value-add signal present: ${realSignals[0]}.` };
+  return { possible, earned: 0, note: 'Fully stabilized, turnkey asset — limited value-add angle for ORA\'s underwriting edge.' };
+}
+
+function scoreDeal(extracted, rctBenchmark) {
+  const propertyTypeGate = evaluatePropertyTypeGate(extracted.assetClass);
+  const marketGate = evaluateMarketGate(extracted.matchedRctMarket, extracted.city, extracted.state);
+  const gateFailed = propertyTypeGate === 'FAIL' || marketGate === 'FAIL';
+
+  const rawCategories = [
+    { key: 'dealSize', label: 'Deal Size', ...scoreDealSize(extracted.askingPrice) },
+    { key: 'basis', label: 'Acquisition Basis vs. Replacement Cost', ...scoreBasis(extracted.askingPrice, extracted.buildingSizeSF, extracted.yearBuilt, extracted.matchedRctMarket, rctBenchmark) },
+    { key: 'buildingSize', label: 'Building Size', ...scoreBuildingSize(extracted.buildingSizeSF) },
+    { key: 'clearHeight', label: 'Clear Height', ...scoreClearHeight(extracted.clearHeightFt) },
+    { key: 'complexity', label: 'Complexity / Value-Add Fit', ...scoreComplexity(extracted.valueAddSignals) },
+  ];
+
+  const included = rawCategories.filter((c) => !c.excluded);
+  const includedPossible = included.reduce((s, c) => s + c.possible, 0);
+  const rawSum = included.reduce((s, c) => s + c.earned, 0);
+  const rawWeightedScore = includedPossible > 0 ? Math.round((rawSum / includedPossible) * 100) : 0;
+  const finalScore = gateFailed ? Math.min(rawWeightedScore, 30) : rawWeightedScore;
+
+  return {
+    finalScore,
+    gates: { propertyType: propertyTypeGate, market: marketGate },
+    gateFailed,
+    categories: rawCategories.map((c) => ({
+      key: c.key, label: c.label, possible: c.possible, excluded: !!c.excluded,
+      earned: c.excluded ? null : c.earned, note: c.note,
+    })),
+  };
+}
+
+module.exports = {
+  vintageFloorPct, evaluatePropertyTypeGate, evaluateMarketGate,
+  scoreDealSize, scoreBuildingSize, scoreClearHeight, scoreBasis, scoreComplexity,
+  scoreDeal,
+};

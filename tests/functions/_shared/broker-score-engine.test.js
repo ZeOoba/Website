@@ -29,3 +29,34 @@ test('rct-benchmark.json has the four ratified RCT v03 LOW $/SF figures', () => 
   assert.equal(rctBenchmark.marketToRctLowPerSF['Kansas City'], 227.90);
   assert.equal(rctBenchmark.marketToRctLowPerSF['Indianapolis'], 253.83);
 });
+
+const { evaluatePropertyTypeGate, evaluateMarketGate } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+
+test('evaluatePropertyTypeGate PASSes for every in-box asset class', () => {
+  for (const ac of ['industrial', 'flex', 'shallow_bay', 'ios']) {
+    assert.equal(evaluatePropertyTypeGate(ac), 'PASS');
+  }
+});
+
+test('evaluatePropertyTypeGate FAILs for a fundamentally different asset class', () => {
+  for (const ac of ['multifamily', 'retail', 'office', 'hospitality', 'land', 'other']) {
+    assert.equal(evaluatePropertyTypeGate(ac), 'FAIL');
+  }
+});
+
+test('evaluatePropertyTypeGate is NOT_VERIFIED when asset class is not stated', () => {
+  assert.equal(evaluatePropertyTypeGate(null), 'NOT_VERIFIED');
+  assert.equal(evaluatePropertyTypeGate(undefined), 'NOT_VERIFIED');
+});
+
+test('evaluateMarketGate PASSes when the LLM matched one of the four RCT markets', () => {
+  assert.equal(evaluateMarketGate('Columbus', 'Columbus', 'OH'), 'PASS');
+});
+
+test('evaluateMarketGate FAILs when a location was extracted but matches no target market', () => {
+  assert.equal(evaluateMarketGate(null, 'Phoenix', 'AZ'), 'FAIL');
+});
+
+test('evaluateMarketGate is NOT_VERIFIED when no location was extracted at all', () => {
+  assert.equal(evaluateMarketGate(null, null, null), 'NOT_VERIFIED');
+});

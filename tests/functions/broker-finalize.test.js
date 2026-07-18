@@ -64,3 +64,39 @@ test('rejects when the stored item size does not match the token-bound size', ()
   const res = await handler(event, { fetchImpl });
   assert.equal(res.statusCode, 409);
 }));
+
+test('finalize triggers background scoring and returns a submissionId', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_ab12/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com', phone: '555-1234', market: 'Columbus', message: 'See attached' }) };
+  const calls = [];
+  const fetchImpl = async (url, opts = {}) => {
+    calls.push(url);
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://contoso.sharepoint.com/x/om.pdf' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url.includes('/.netlify/functions/broker-score-background')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await handler(event, { fetchImpl });
+  const body = JSON.parse(res.body);
+  assert.equal(res.statusCode, 200);
+  assert.equal(typeof body.submissionId, 'string');
+  assert.ok(body.submissionId.length > 0);
+  assert.ok(calls.some((u) => u.includes('/.netlify/functions/broker-score-background')));
+}));
+
+test('finalize still succeeds even if triggering the background scorer fails outright', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_cd34/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const fetchImpl = async (url) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url.includes('/.netlify/functions/broker-score-background')) throw new Error('network down');
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await handler(event, { fetchImpl });
+  assert.equal(res.statusCode, 200); // core submission still succeeds
+}));

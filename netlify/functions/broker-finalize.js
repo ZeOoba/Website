@@ -1,4 +1,5 @@
 'use strict';
+const crypto = require('node:crypto');
 const { verifyIntakeToken, sanitizeField } = require('./_shared/validate.js');
 const { getItemByPath } = require('./_shared/graph-files.js');
 const { sendMail } = require('./_shared/graph-mail.js');
@@ -60,5 +61,19 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     return fail(502, 'email_failed');
   }
 
-  return ok({ ok: true });
+  const submissionId = crypto.randomBytes(12).toString('hex');
+  try {
+    await fetchImpl(`${siteUrl}/.netlify/functions/broker-score-background`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ submissionId, itemPath: claims.path, fields }),
+    });
+  } catch (err) {
+    // Best-effort: the core submission (ledger + email) above already
+    // succeeded — a broker who never gets a score still reaches Gabriel/Eric
+    // normally. Log and continue; do not fail the response over this.
+    console.error('[broker-finalize] failed to trigger broker-score-background', String(err));
+  }
+
+  return ok({ ok: true, submissionId });
 };

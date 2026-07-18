@@ -3,6 +3,7 @@ const crypto = require('node:crypto');
 const { checkHoneypot, sanitizeField, signIntakeToken } = require('./_shared/validate.js');
 const { createUploadSession } = require('./_shared/graph-files.js');
 const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
+const { verifyRecaptcha } = require('./_shared/recaptcha.js');
 
 const ALLOWED_EXTS = ['pdf', 'xlsx', 'xls', 'doc', 'docx'];
 const MAX_BYTES = 60 * 1024 * 1024;
@@ -37,6 +38,9 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   try { body = JSON.parse(event.body || '{}'); } catch { return fail(400, 'invalid_json'); }
 
   if (checkHoneypot(body)) return ok({ ok: true }); // silent success, per chat-lead.js convention
+
+  const recaptchaOk = await verifyRecaptcha(body.recaptchaToken, { fetchImpl });
+  if (!recaptchaOk) return fail(403, 'recaptcha_failed');
 
   const fileName = sanitizeField(body.fileName, 200);
   const fileSize = Number(body.fileSize);

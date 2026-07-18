@@ -9,4 +9,20 @@ function vintageFloorPct(yearBuilt, cfg) {
   return cfg.earlyPct - t * (cfg.earlyPct - cfg.latePct);
 }
 
-module.exports = { vintageFloorPct };
+const INDUSTRIAL_ASSET_CLASSES = new Set(['industrial', 'flex', 'shallow_bay', 'ios']);
+const NON_INDUSTRIAL_ASSET_CLASSES = new Set(['multifamily', 'retail', 'office', 'hospitality', 'land', 'other']);
+
+function evaluatePropertyTypeGate(assetClass) {
+  if (assetClass == null) return 'NOT_VERIFIED';
+  if (INDUSTRIAL_ASSET_CLASSES.has(assetClass)) return 'PASS';
+  if (NON_INDUSTRIAL_ASSET_CLASSES.has(assetClass)) return 'FAIL';
+  return 'NOT_VERIFIED';
+}
+
+function evaluateMarketGate(matchedRctMarket, city, state) {
+  if (matchedRctMarket) return 'PASS';
+  if (city || state) return 'FAIL';
+  return 'NOT_VERIFIED';
+}
+
+module.exports = { vintageFloorPct, evaluatePropertyTypeGate, evaluateMarketGate };

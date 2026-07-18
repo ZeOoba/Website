@@ -31,6 +31,18 @@ test('extractForScoring converts an XLSX workbook to CSV-per-sheet text', async 
   assert.match(result.text, /Acme Co/);
 });
 
+test('extractForScoring converts an XLS (BIFF8/OLE2) workbook to CSV-per-sheet text', async () => {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([['Property', 'Rent'], ['Main St', 10000]]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Leases');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'biff8' });
+  const result = await extractForScoring(buf, 'xls');
+  assert.equal(result.ok, true);
+  assert.equal(result.kind, 'text');
+  assert.match(result.text, /Leases/);
+  assert.match(result.text, /Main St/);
+});
+
 test('extractForScoring returns unparseable_file for garbage bytes claiming to be xlsx', async () => {
   const buf = Buffer.from('this is not a real spreadsheet');
   const result = await extractForScoring(buf, 'xlsx');

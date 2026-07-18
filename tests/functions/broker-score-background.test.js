@@ -79,6 +79,28 @@ test('runScoring writes an unavailable result when the LLM call throws, and logs
   assert.equal(writes[0].result.status, 'unavailable');
 });
 
+test('runScoring writes an unavailable result and never throws when scoreDealImpl throws after extraction succeeds', async () => {
+  const writes = [];
+  const failures = [];
+  const deps = makeDeps({
+    // scoreDealImpl is called synchronously (not awaited) in runScoring, so
+    // the test double must throw synchronously to simulate a malformed-shape
+    // TypeError from the real (sync) scoreDeal implementation.
+    scoreDealImpl: () => { throw new Error('malformed extraction'); },
+    writeScoreResultImpl: async (id, result) => writes.push({ id, result }),
+    forwardToNetlifyFormImpl: async (siteUrl, formName, fields) => failures.push({ formName, fields }),
+  });
+  const result = await runScoring({ submissionId: 'sub-6', itemPath: 'Broker Submissions/x/om.pdf', fields: {} }, deps);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'unexpected_error');
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].result.status, 'unavailable');
+  assert.equal(writes[0].result.reason, 'unexpected_error');
+  assert.equal(failures.length, 1);
+  assert.equal(failures[0].formName, 'pipeline-failures');
+  assert.equal(failures[0].fields['error-code'], 'unexpected_error');
+});
+
 test('runScoring still reports success if the follow-up email fails (scoring already succeeded)', async () => {
   const writes = [];
   const failures = [];

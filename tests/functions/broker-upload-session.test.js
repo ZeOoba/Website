@@ -57,6 +57,24 @@ test('rejects with recaptcha_failed when the token does not verify', () => withE
   assert.equal(res.statusCode, 403);
 }));
 
+test('fails closed with recaptcha_failed (not a 500) when verifyRecaptcha throws — e.g. a network-level failure calling siteverify', () => withEnv(ENV, async () => {
+  const event = { httpMethod: 'POST', body: JSON.stringify({ fileName: 'om.pdf', fileSize: 1000, company: 'Acme', recaptchaToken: 'good-token' }) };
+  const fetchImpl = async (url) => {
+    if (url.includes('recaptcha/api/siteverify')) throw new Error('ECONNRESET');
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await handler(event, { fetchImpl });
+  assert.equal(res.statusCode, 403);
+  assert.equal(JSON.parse(res.body).error, 'recaptcha_failed');
+}));
+
+test('fails closed with recaptcha_failed when verifyRecaptcha throws due to missing RECAPTCHA_SECRET_KEY', () => withEnv({ ...ENV, RECAPTCHA_SECRET_KEY: '' }, async () => {
+  const event = { httpMethod: 'POST', body: JSON.stringify({ fileName: 'om.pdf', fileSize: 1000, company: 'Acme', recaptchaToken: 'good-token' }) };
+  const res = await handler(event, { fetchImpl: async (url) => { throw new Error(`must not call network: ${url}`); } });
+  assert.equal(res.statusCode, 403);
+  assert.equal(JSON.parse(res.body).error, 'recaptcha_failed');
+}));
+
 test('mints a session and a verifiable intake token for a valid request, logging intake first', () => withEnv(ENV, async () => {
   const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.9' }, body: JSON.stringify({ name: 'Bob', company: 'Acme', email: 'b@acme.com', market: 'Columbus', message: 'hi', fileName: 'om.pdf', fileSize: 30_000_000, contentType: 'application/pdf', recaptchaToken: 'good-token' }) };
   let loggedIntake = null;

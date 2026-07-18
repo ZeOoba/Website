@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { renderTenantEmail, renderBrokerEmail } = require('../../../netlify/functions/_shared/email-template.js');
+const { renderTenantEmail, renderBrokerEmail, renderScoreFollowupEmail } = require('../../../netlify/functions/_shared/email-template.js');
 
 test('renderTenantEmail produces a distinct subject and includes key fields + document links', () => {
   const { subject, html } = renderTenantEmail({
@@ -30,4 +30,28 @@ test('email templates HTML-escape field values to prevent markup injection', () 
   const { html } = renderTenantEmail({ fields: { 'full-legal-name': '<img src=x onerror=alert(1)>' }, links: {} });
   assert.doesNotMatch(html, /<img/);
   assert.match(html, /&lt;img/);
+});
+
+test('renderScoreFollowupEmail includes the company, total score, and every category note', () => {
+  const score = {
+    finalScore: 82,
+    gates: { propertyType: 'PASS', market: 'PASS' },
+    gateFailed: false,
+    categories: [
+      { key: 'dealSize', label: 'Deal Size', earned: 25, possible: 25, excluded: false, note: 'Within target.' },
+      { key: 'basis', label: 'Acquisition Basis vs. Replacement Cost', earned: null, possible: 25, excluded: true, note: 'Not stated in OM.' },
+    ],
+  };
+  const { subject, html } = renderScoreFollowupEmail({ fields: { company: 'Acme Co' }, score });
+  assert.match(subject, /Acme Co/);
+  assert.match(subject, /82\/100/);
+  assert.match(html, /Deal Size/);
+  assert.match(html, /25\/25/);
+  assert.match(html, /Not stated in OM/);
+});
+
+test('renderScoreFollowupEmail notes when a gate failure capped the score', () => {
+  const score = { finalScore: 30, gates: { propertyType: 'FAIL', market: 'PASS' }, gateFailed: true, categories: [] };
+  const { subject } = renderScoreFollowupEmail({ fields: { company: 'Off-Box LLC' }, score });
+  assert.match(subject, /30\/100/);
 });

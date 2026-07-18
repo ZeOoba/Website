@@ -462,6 +462,7 @@ h3{font-size:22px;margin-bottom:8px}
     }).catch(function(err){
       errorBox.textContent = 'Something went wrong submitting your deal. Please email info@oxfordra.net directly, or try again. (' + (err && err.message ? err.message : 'unknown error') + ')';
       errorBox.style.display = '';
+      if (window.grecaptcha && window.grecaptcha.reset) { window.grecaptcha.reset(); }
       btn.disabled = false;
       btn.textContent = 'Submit Deal';
     });

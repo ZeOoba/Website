@@ -39,8 +39,7 @@
 <link rel="preload" as="font" href="/fonts/eb-garamond-latin.woff2" type="font/woff2" crossorigin>
 <link rel="preload" as="font" href="/fonts/eb-garamond-italic-latin.woff2" type="font/woff2" crossorigin>
 <link rel="preload" as="font" href="/fonts/ibm-plex-mono-latin.woff2" type="font/woff2" crossorigin>
-<link rel="preload" as="style" href="/styles.css?v=15" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="/styles.css?v=15"></noscript>
+<link rel="stylesheet" href="/styles.css?v=15">
 
 <!-- JSON-LD -->
 <script type="application/ld+json">
@@ -776,13 +775,6 @@ h3{font-size:22px;margin-bottom:8px}
     function gtag(){dataLayer.push(arguments)}
     gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
     window.gtag=gtag;
-    // LinkedIn
-    window._linkedin_partner_id='XXXXXXX';
-    window._linkedin_data_partner_ids=window._linkedin_data_partner_ids||[];
-    window._linkedin_data_partner_ids.push(window._linkedin_partner_id);
-    var li=document.createElement('script');li.async=true;
-    li.src='https://snap.licdn.com/li.lss/insight.min.js';
-    document.head.appendChild(li);
   }
   if('requestIdleCallback' in window){requestIdleCallback(loadAnalytics)}
   else{setTimeout(loadAnalytics,3000)}

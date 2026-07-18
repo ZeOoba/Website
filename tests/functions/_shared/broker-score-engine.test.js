@@ -60,3 +60,61 @@ test('evaluateMarketGate FAILs when a location was extracted but matches no targ
 test('evaluateMarketGate is NOT_VERIFIED when no location was extracted at all', () => {
   assert.equal(evaluateMarketGate(null, null, null), 'NOT_VERIFIED');
 });
+
+const { scoreDealSize, scoreBuildingSize, scoreClearHeight, scoreBasis } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+
+test('scoreDealSize gives full credit inside $1M-$10M', () => {
+  const r = scoreDealSize(5_000_000);
+  assert.equal(r.possible, 25);
+  assert.equal(r.earned, 25);
+});
+
+test('scoreDealSize tapers to zero at $500K and below', () => {
+  assert.equal(scoreDealSize(500_000).earned, 0);
+  assert.equal(scoreDealSize(750_000).earned, 13); // roughly half credit at the midpoint
+});
+
+test('scoreDealSize tapers to zero at $15M and above', () => {
+  assert.equal(scoreDealSize(15_000_000).earned, 0);
+  assert.equal(scoreDealSize(20_000_000).earned, 0);
+});
+
+test('scoreDealSize is excluded when asking price is not stated', () => {
+  const r = scoreDealSize(null);
+  assert.equal(r.excluded, true);
+  assert.equal(r.earned, undefined);
+});
+
+test('scoreBuildingSize gives full credit under 50,000 SF and tapers to zero by 100,000 SF', () => {
+  assert.equal(scoreBuildingSize(30_000).earned, 20);
+  assert.equal(scoreBuildingSize(75_000).earned, 10);
+  assert.equal(scoreBuildingSize(100_000).earned, 0);
+  assert.equal(scoreBuildingSize(150_000).earned, 0);
+});
+
+test('scoreClearHeight gives full credit at 18ft+, tapers 14-18, zero below 14', () => {
+  assert.equal(scoreClearHeight(20).earned, 15);
+  assert.equal(scoreClearHeight(16).earned, 8); // midpoint of the 14-18 taper
+  assert.equal(scoreClearHeight(10).earned, 0);
+});
+
+test('scoreBasis gives full credit when priced comfortably below the RCT v03 floor', () => {
+  const rctBenchmark = { marketToRctLowPerSF: { 'Columbus': 229.65 }, vintageFloor: { earlyYear: 1995, earlyPct: 0.65, lateYear: 2005, latePct: 0.60 } };
+  // floor = 229.65 * (1 - 0.65) = 80.3775; comfortable = floor * 0.85 = 68.32
+  const r = scoreBasis(2_000_000, 40_000, 1990, 'Columbus', rctBenchmark);
+  assert.equal(r.possible, 25);
+  assert.equal(r.earned, 25); // implied $/SF = 2,040,000/40,000 = $51 — well under $68.32
+});
+
+test('scoreBasis gives zero when priced above the RCT v03 floor', () => {
+  const rctBenchmark = { marketToRctLowPerSF: { 'Columbus': 229.65 }, vintageFloor: { earlyYear: 1995, earlyPct: 0.65, lateYear: 2005, latePct: 0.60 } };
+  const r = scoreBasis(4_000_000, 40_000, 1990, 'Columbus', rctBenchmark);
+  assert.equal(r.earned, 0); // implied $/SF = 4,080,000/40,000 = $102 — over $80.38 floor
+});
+
+test('scoreBasis is excluded when asking price, size, or matched market is missing', () => {
+  const rctBenchmark = { marketToRctLowPerSF: { 'Columbus': 229.65 }, vintageFloor: { earlyYear: 1995, earlyPct: 0.65, lateYear: 2005, latePct: 0.60 } };
+  assert.equal(scoreBasis(null, 40_000, 1990, 'Columbus', rctBenchmark).excluded, true);
+  assert.equal(scoreBasis(2_000_000, null, 1990, 'Columbus', rctBenchmark).excluded, true);
+  assert.equal(scoreBasis(2_000_000, 40_000, 1990, null, rctBenchmark).excluded, true);
+});

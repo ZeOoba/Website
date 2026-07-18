@@ -158,3 +158,30 @@ test('skips triggering background scoring when the per-IP rate limit is reached,
   assert.equal(seenIp, '1.2.3.4', 'IP must be extracted from x-forwarded-for and passed to the rate limiter');
   assert.ok(!calls.some((u) => u.includes('/.netlify/functions/broker-score-background')), 'trigger must not fire once the rate limit is reached');
 }));
+
+// Griefing-quota regression: a single IP that has already exhausted its own
+// per-IP rate limit must NOT be able to keep spending slots of the shared
+// global daily cap by repeatedly POSTing. checkAndRecordDailyCapImpl must
+// never even be invoked once the rate limit has already disallowed the
+// request — that's the fix (sequential + gated, not Promise.all).
+test('never calls checkAndRecordDailyCapImpl when the per-IP rate limit already disallows (griefing-quota regression)', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_ij90/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.9' }, body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const fetchImpl = async (url) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  let dailyCapCallCount = 0;
+  const res = await handler(event, {
+    fetchImpl,
+    checkAndRecordRateLimitImpl: async () => ({ allowed: false }),
+    checkAndRecordDailyCapImpl: async () => { dailyCapCallCount += 1; return { allowed: true }; },
+  });
+  const body = JSON.parse(res.body);
+  assert.equal(res.statusCode, 200);
+  assert.equal(body.ok, true);
+  assert.equal(dailyCapCallCount, 0, 'a rate-limited IP must never consume a slot of the shared daily cap');
+}));

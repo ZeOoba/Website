@@ -83,18 +83,24 @@ exports.handler = async (event, {
     // Scoring stays best-effort either way: a rate/cap-limited submission
     // still completes normally for the broker (ledger + email already sent
     // above), it just silently doesn't get scored.
-    const [rateLimit, dailyCap] = await Promise.all([
-      checkAndRecordRateLimitImpl(ip, {}),
-      checkAndRecordDailyCapImpl({}),
-    ]);
-    if (rateLimit.allowed && dailyCap.allowed) {
+    // Sequential and gated, not Promise.all: the daily cap is a SHARED
+    // global counter, so it must only be spent once we know this request
+    // would otherwise be eligible to fire the trigger. If the per-IP rate
+    // limit already disallows, skip the daily-cap check entirely — a
+    // rate-limited IP must not be able to burn through the shared cap
+    // (fresh requests count toward it even though the trigger never fires
+    // for them) and silently starve every OTHER broker's scoring for the
+    // rest of the UTC day.
+    const rateLimit = await checkAndRecordRateLimitImpl(ip, {});
+    const dailyCap = rateLimit.allowed ? await checkAndRecordDailyCapImpl({}) : null;
+    if (rateLimit.allowed && dailyCap && dailyCap.allowed) {
       await fetchImpl(`${siteUrl}/.netlify/functions/broker-score-background`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ submissionId, itemPath: claims.path, fields }),
       });
     } else {
-      console.error('[broker-finalize] scoring skipped: rate/cap limit reached', { ip, rateLimitAllowed: rateLimit.allowed, dailyCapAllowed: dailyCap.allowed });
+      console.error('[broker-finalize] scoring skipped: rate/cap limit reached', { ip, rateLimitAllowed: rateLimit.allowed, dailyCapAllowed: dailyCap ? dailyCap.allowed : null });
     }
   } catch (err) {
     // Best-effort: the core submission (ledger + email) above already

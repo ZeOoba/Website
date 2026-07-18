@@ -65,6 +65,14 @@ test('rejects when the stored item size does not match the token-bound size', ()
   assert.equal(res.statusCode, 409);
 }));
 
+// Fake overrides for the rate-limit/daily-cap backstop (broker-score-store.js)
+// so tests don't hit real Netlify Blobs (unavailable outside the Netlify
+// runtime — would throw MissingBlobsEnvironmentError).
+const allowAll = {
+  checkAndRecordRateLimitImpl: async () => ({ allowed: true }),
+  checkAndRecordDailyCapImpl: async () => ({ allowed: true }),
+};
+
 test('finalize triggers background scoring and returns a submissionId', () => withEnv(ENV, async () => {
   const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_ab12/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
   const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com', phone: '555-1234', market: 'Columbus', message: 'See attached' }) };
@@ -78,7 +86,7 @@ test('finalize triggers background scoring and returns a submissionId', () => wi
     if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
     throw new Error(`unexpected fetch: ${url}`);
   };
-  const res = await handler(event, { fetchImpl });
+  const res = await handler(event, { fetchImpl, ...allowAll });
   const body = JSON.parse(res.body);
   assert.equal(res.statusCode, 200);
   assert.equal(typeof body.submissionId, 'string');
@@ -97,6 +105,56 @@ test('finalize still succeeds even if triggering the background scorer fails out
     if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
     throw new Error(`unexpected fetch: ${url}`);
   };
-  const res = await handler(event, { fetchImpl });
+  const res = await handler(event, { fetchImpl, ...allowAll });
   assert.equal(res.statusCode, 200); // core submission still succeeds
+}));
+
+test('skips triggering background scoring when the daily cap is reached, but still returns ok+submissionId', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_ef56/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await handler(event, {
+    fetchImpl,
+    checkAndRecordRateLimitImpl: async () => ({ allowed: true }),
+    checkAndRecordDailyCapImpl: async () => ({ allowed: false }),
+  });
+  const body = JSON.parse(res.body);
+  assert.equal(res.statusCode, 200);
+  assert.equal(body.ok, true);
+  assert.equal(typeof body.submissionId, 'string');
+  assert.ok(body.submissionId.length > 0);
+  assert.ok(!calls.some((u) => u.includes('/.netlify/functions/broker-score-background')), 'trigger must not fire once the daily cap is reached');
+}));
+
+test('skips triggering background scoring when the per-IP rate limit is reached, but still returns ok+submissionId', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_gh78/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '1.2.3.4' }, body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const calls = [];
+  let seenIp = null;
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await handler(event, {
+    fetchImpl,
+    checkAndRecordRateLimitImpl: async (ip) => { seenIp = ip; return { allowed: false }; },
+    checkAndRecordDailyCapImpl: async () => ({ allowed: true }),
+  });
+  const body = JSON.parse(res.body);
+  assert.equal(res.statusCode, 200);
+  assert.equal(body.ok, true);
+  assert.equal(seenIp, '1.2.3.4', 'IP must be extracted from x-forwarded-for and passed to the rate limiter');
+  assert.ok(!calls.some((u) => u.includes('/.netlify/functions/broker-score-background')), 'trigger must not fire once the rate limit is reached');
 }));

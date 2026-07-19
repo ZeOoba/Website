@@ -64,7 +64,7 @@
       market: formEl.querySelector('[name="market"]').value,
       message: formEl.querySelector('[name="message"]').value,
       website: formEl.querySelector('[name="website"]').value,
-      recaptchaToken: (window.grecaptcha && window.grecaptcha.enterprise && window.grecaptcha.enterprise.getResponse) ? window.grecaptcha.enterprise.getResponse() : '',
+      recaptchaToken: (window.grecaptcha && window.grecaptcha.enterprise && window.grecaptcha.enterprise.getResponse && window.ORA_RECAPTCHA_WIDGET_ID !== null) ? window.grecaptcha.enterprise.getResponse(window.ORA_RECAPTCHA_WIDGET_ID) : '',
     };
     var fileInput = formEl.querySelector('input[type="file"]');
     var file = fileInput && fileInput.files && fileInput.files[0];

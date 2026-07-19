@@ -389,7 +389,7 @@ h3{font-size:22px;margin-bottom:8px}
 <div class="file-upload__preview" id="filePreview" style="display:none;"></div>
 </div>
 </div>
-<div id="recaptchaContainer" class="g-recaptcha" data-sitekey="6LfxrIotAAAAAFL5oHPOqXC-aRgtGUWAZuDFfGmh"></div>
+<div id="recaptchaContainer" data-sitekey="6LfxrIotAAAAAFL5oHPOqXC-aRgtGUWAZuDFfGmh"></div>
 <button type="submit" class="btn btn--gold btn--full" id="brokerSubmitBtn">Submit Deal</button>
 <div class="form-success" id="brokerSuccess" role="alert" style="display:none;">
   <p id="brokerPendingMessage" class="score-card__pending">We received your file — analyzing against our buy box…</p>
@@ -462,7 +462,7 @@ h3{font-size:22px;margin-bottom:8px}
     }).catch(function(err){
       errorBox.textContent = 'Something went wrong submitting your deal. Please email info@oxfordra.net directly, or try again. (' + (err && err.message ? err.message : 'unknown error') + ')';
       errorBox.style.display = '';
-      if (window.grecaptcha && window.grecaptcha.enterprise && window.grecaptcha.enterprise.reset) { window.grecaptcha.enterprise.reset(); }
+      if (window.grecaptcha && window.grecaptcha.enterprise && window.grecaptcha.enterprise.reset && window.ORA_RECAPTCHA_WIDGET_ID !== null) { window.grecaptcha.enterprise.reset(window.ORA_RECAPTCHA_WIDGET_ID); }
       btn.disabled = false;
       btn.textContent = 'Submit Deal';
     });
@@ -700,11 +700,30 @@ info@oxfordra.net
 <script>
 (function(){
   var loaded = false;
+  window.ORA_RECAPTCHA_WIDGET_ID = null;
+  // Named global callback, referenced via the script URL's onload= param
+  // below — NOT the same as the <script> tag's native onload event. The
+  // native event only means the FILE finished downloading; Google's library
+  // can still be mid-initialization at that point, and calling render() then
+  // fails unpredictably. The onload=URL-param callback is Google's own
+  // documented hook, fired only once the library is genuinely ready —
+  // verified live that this is what actually renders reliably.
+  window.__oraRenderRecaptcha = function(){
+    var container = document.getElementById('recaptchaContainer');
+    if(!container) return;
+    window.ORA_RECAPTCHA_WIDGET_ID = window.grecaptcha.enterprise.render(container, {
+      sitekey: container.getAttribute('data-sitekey')
+    });
+  };
   function loadRecaptcha(){
     if(loaded) return;
     loaded = true;
     var s = document.createElement('script');
-    s.src = 'https://www.google.com/recaptcha/enterprise.js';
+    // This key is a reCAPTCHA Enterprise key (Google no longer issues
+    // classic keys), whose enterprise.js does not reliably auto-render off
+    // class="g-recaptcha" the way classic api.js does — render explicitly
+    // via the onload=/render=explicit URL params instead.
+    s.src = 'https://www.google.com/recaptcha/enterprise.js?onload=__oraRenderRecaptcha&render=explicit';
     s.async = true;
     s.defer = true;
     document.head.appendChild(s);

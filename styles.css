@@ -39,3 +39,26 @@ body{padding-top:36px}
    non-navy .section blocks (default/white and .section--parchment) to the
    accessible token, and excludes .btn so button color rules are unaffected. */
 .section:not(.section--navy) a:not(.btn){color:var(--gold-accessible)}
+.score-card{background:var(--white);border-radius:var(--radius-card);box-shadow:var(--shadow-card);
+  padding:40px 32px;text-align:center;transition:box-shadow var(--transition)}
+.score-card:hover{box-shadow:var(--shadow-hover)}
+.score-card__value{font-family:var(--font-display);font-size:72px;line-height:1;color:var(--slate)}
+.score-card--strong  .score-card__value{color:var(--gold)}
+.score-card--partial .score-card__value{color:var(--gold-accessible)}
+.score-card--outside .score-card__value{color:var(--slate)}
+.score-card__value small{font-size:28px;color:var(--slate);font-family:var(--font-display)}
+.score-card__status{font-family:var(--font-body);font-size:12px;font-weight:500;text-transform:uppercase;
+  letter-spacing:.2em;color:var(--gold-accessible);margin-top:12px}
+.score-card--outside .score-card__status{color:var(--slate)}
+.score-card__gate{font-family:var(--font-display);font-style:italic;font-size:16px;color:var(--charcoal);
+  max-width:520px;margin:16px auto 0;padding-left:16px;border-left:2px solid var(--slate);text-align:left}
+.score-card__grid{margin-top:32px;text-align:left}
+.score-row{display:flex;gap:24px;align-items:baseline;padding:16px 0;border-bottom:1px solid var(--light-gray)}
+.score-row:last-child{border-bottom:none}
+.score-row__cat{flex:0 0 180px;font-family:var(--font-body);text-transform:uppercase;letter-spacing:.1em;
+  font-size:12px;font-weight:500;color:var(--gold-accessible)}
+.score-row__pts{font-family:var(--font-mono);font-size:13px;color:var(--navy);flex:0 0 64px}
+.score-row__note{font-size:14px;color:var(--slate)}
+.score-row--excluded .score-row__pts,.score-row--excluded .score-row__note{color:var(--slate);font-style:italic}
+.score-card__disclaimer{font-size:12px;color:var(--slate);margin-top:24px}
+.score-card__pending{font-family:var(--font-body);font-size:14px;color:var(--slate);text-align:center;padding:24px 0}

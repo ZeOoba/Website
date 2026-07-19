@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath } = require('../../../netlify/functions/_shared/graph-files.js');
+const { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath, getFileContent } = require('../../../netlify/functions/_shared/graph-files.js');
 
 function withDriveId(fn) {
   const prev = process.env.GRAPH_DRIVE_ID;
@@ -69,4 +69,23 @@ test('getItemByPath returns null on 404 and the item on 200', () => withDriveId(
   assert.equal(notFound, null);
   const found = await getItemByPath('yes', { fetchImpl: async () => ({ status: 200, ok: true, json: async () => ({ id: 'i' }) }), token: 'tok' });
   assert.deepEqual(found, { id: 'i' });
+}));
+
+test('getFileContent returns the file bytes as a Buffer', () => withDriveId(async () => {
+  const fetchImpl = async (url) => {
+    if (url.includes(':/content')) return { ok: true, status: 200, arrayBuffer: async () => new TextEncoder().encode('hello world').buffer };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const buf = await getFileContent('Broker Submissions/x/om.pdf', { fetchImpl, token: 'tok' });
+  assert.ok(Buffer.isBuffer(buf));
+  assert.equal(buf.toString('utf8'), 'hello world');
+}));
+
+test('getFileContent returns null for a 404', () => withDriveId(async () => {
+  const fetchImpl = async (url) => {
+    if (url.includes(':/content')) return { ok: false, status: 404 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const buf = await getFileContent('Broker Submissions/x/missing.pdf', { fetchImpl, token: 'tok' });
+  assert.equal(buf, null);
 }));

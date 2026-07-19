@@ -1,9 +1,11 @@
 'use strict';
+const crypto = require('node:crypto');
 const { verifyIntakeToken, sanitizeField } = require('./_shared/validate.js');
 const { getItemByPath } = require('./_shared/graph-files.js');
 const { sendMail } = require('./_shared/graph-mail.js');
 const { renderBrokerEmail } = require('./_shared/email-template.js');
 const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
+const { checkAndRecordRateLimit, checkAndRecordDailyCap } = require('./_shared/broker-score-store.js');
 
 function ok(body) { return { statusCode: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }; }
 function fail(statusCode, error) { return { statusCode, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ok: false, error }) }; }
@@ -13,7 +15,18 @@ function logFailure(fetchImpl, { errorCode, detail }) {
   return forwardToNetlifyForm(siteUrl, 'pipeline-failures', { 'source-function': 'broker-finalize', 'error-code': errorCode, 'submission-id': '', detail: detail || '', 'occurred-at': new Date().toISOString() }, { fetchImpl });
 }
 
-exports.handler = async (event, { fetchImpl = fetch } = {}) => {
+function getClientIp(headers) {
+  const h = headers || {};
+  if (h['x-nf-client-connection-ip']) return h['x-nf-client-connection-ip'];
+  if (h['x-forwarded-for']) return h['x-forwarded-for'].split(',')[0].trim();
+  return 'unknown';
+}
+
+exports.handler = async (event, {
+  fetchImpl = fetch,
+  checkAndRecordRateLimitImpl = checkAndRecordRateLimit,
+  checkAndRecordDailyCapImpl = checkAndRecordDailyCap,
+} = {}) => {
   if (event.httpMethod !== 'POST') return fail(405, 'method_not_allowed');
 
   let body;
@@ -60,5 +73,41 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     return fail(502, 'email_failed');
   }
 
-  return ok({ ok: true });
+  const submissionId = crypto.randomBytes(12).toString('hex');
+  try {
+    const ip = getClientIp(event.headers);
+    // Cost/abuse backstop: reCAPTCHA (Task 13) is the only live gate ahead of
+    // this point. These checks are the hard ceiling behind it — a per-IP
+    // sliding window and a global UTC-day cap on paid Claude extraction
+    // calls — meant to matter precisely when reCAPTCHA itself is defeated.
+    // Scoring stays best-effort either way: a rate/cap-limited submission
+    // still completes normally for the broker (ledger + email already sent
+    // above), it just silently doesn't get scored.
+    // Sequential and gated, not Promise.all: the daily cap is a SHARED
+    // global counter, so it must only be spent once we know this request
+    // would otherwise be eligible to fire the trigger. If the per-IP rate
+    // limit already disallows, skip the daily-cap check entirely — a
+    // rate-limited IP must not be able to burn through the shared cap
+    // (fresh requests count toward it even though the trigger never fires
+    // for them) and silently starve every OTHER broker's scoring for the
+    // rest of the UTC day.
+    const rateLimit = await checkAndRecordRateLimitImpl(ip, {});
+    const dailyCap = rateLimit.allowed ? await checkAndRecordDailyCapImpl({}) : null;
+    if (rateLimit.allowed && dailyCap && dailyCap.allowed) {
+      await fetchImpl(`${siteUrl}/.netlify/functions/broker-score-background`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ submissionId, itemPath: claims.path, fields }),
+      });
+    } else {
+      console.error('[broker-finalize] scoring skipped: rate/cap limit reached', { ip, rateLimitAllowed: rateLimit.allowed, dailyCapAllowed: dailyCap ? dailyCap.allowed : null });
+    }
+  } catch (err) {
+    // Best-effort: the core submission (ledger + email) above already
+    // succeeded — a broker who never gets a score still reaches Gabriel/Eric
+    // normally. Log and continue; do not fail the response over this.
+    console.error('[broker-finalize] failed to trigger broker-score-background', String(err));
+  }
+
+  return ok({ ok: true, submissionId });
 };

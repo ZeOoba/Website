@@ -1,0 +1,18 @@
+{
+  "_meta": {
+    "source": "RCT v03, ratified 2026-07-14 (Gabriel, governor-level). Authoritative source is the 'Replacement Cost Table (RCT v03)' in the acquisition-underwriting skill's UNDERWRITING CONVENTIONS section. THIS FILE IS A COPY, duplicated here only because the public website cannot reach that skill at request time. If RCT is ever re-ratified to a new version, this file MUST be updated to match by hand — an out-of-sync copy here is a second, conflicting denominator, which ORA doctrine explicitly flags as a bug.",
+    "lastSyncedFromSkill": "2026-07-18"
+  },
+  "marketToRctLowPerSF": {
+    "Maryland": 232.97,
+    "Columbus": 229.65,
+    "Kansas City": 227.90,
+    "Indianapolis": 253.83
+  },
+  "vintageFloor": {
+    "earlyYear": 1995,
+    "earlyPct": 0.65,
+    "lateYear": 2005,
+    "latePct": 0.60
+  }
+}

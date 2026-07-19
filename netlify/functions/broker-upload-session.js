@@ -3,6 +3,7 @@ const crypto = require('node:crypto');
 const { checkHoneypot, sanitizeField, signIntakeToken } = require('./_shared/validate.js');
 const { createUploadSession } = require('./_shared/graph-files.js');
 const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
+const { verifyRecaptcha } = require('./_shared/recaptcha.js');
 
 const ALLOWED_EXTS = ['pdf', 'xlsx', 'xls', 'doc', 'docx'];
 const MAX_BYTES = 60 * 1024 * 1024;
@@ -37,6 +38,19 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   try { body = JSON.parse(event.body || '{}'); } catch { return fail(400, 'invalid_json'); }
 
   if (checkHoneypot(body)) return ok({ ok: true }); // silent success, per chat-lead.js convention
+
+  let recaptchaOk;
+  try {
+    recaptchaOk = await verifyRecaptcha(body.recaptchaToken, { fetchImpl });
+  } catch (err) {
+    // Fail closed: a thrown error (missing RECAPTCHA_SECRET_KEY, or a
+    // network-level failure calling Google's siteverify endpoint) is
+    // ambiguous, not a confirmed pass — treat it the same as an explicit
+    // verification failure rather than 500ing this public entry point.
+    console.error('[broker-upload-session] verifyRecaptcha threw', String(err));
+    recaptchaOk = false;
+  }
+  if (!recaptchaOk) return fail(403, 'recaptcha_failed');
 
   const fileName = sanitizeField(body.fileName, 200);
   const fileSize = Number(body.fileSize);

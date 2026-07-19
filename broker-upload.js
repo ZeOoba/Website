@@ -64,7 +64,7 @@
       market: formEl.querySelector('[name="market"]').value,
       message: formEl.querySelector('[name="message"]').value,
       website: formEl.querySelector('[name="website"]').value,
-      recaptchaToken: (window.grecaptcha && window.grecaptcha.getResponse) ? window.grecaptcha.getResponse() : '',
+      recaptchaToken: (window.grecaptcha && window.grecaptcha.enterprise && window.grecaptcha.enterprise.getResponse) ? window.grecaptcha.enterprise.getResponse() : '',
     };
     var fileInput = formEl.querySelector('input[type="file"]');
     var file = fileInput && fileInput.files && fileInput.files[0];

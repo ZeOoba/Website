@@ -47,32 +47,49 @@ test('rejects a file over the 60 MB ceiling', () => withEnv(ENV, async () => {
   assert.equal(res.statusCode, 413);
 }));
 
-test('rejects with recaptcha_failed when the token does not verify', () => withEnv(ENV, async () => {
+// reCAPTCHA enforcement is TEMPORARILY DISABLED (2026-07-19, Gabriel-approved
+// — see the comment in broker-upload-session.js). These three tests now
+// assert the opposite of their pre-hotfix behavior: a failed/thrown/missing
+// recaptcha check must NOT block the request. Each fully mocks the downstream
+// Graph success path so a 200 with uploadUrl unambiguously proves the request
+// proceeded past the recaptcha step rather than merely failing differently.
+function withGraphSuccess(fetchImpl) {
+  return async (url, opts = {}) => {
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes(':/createUploadSession')) return { ok: true, status: 200, json: async () => ({ uploadUrl: 'https://contoso.sharepoint.com/upload/s1', expirationDateTime: '2026-07-11T00:00:00Z' }) };
+    return fetchImpl(url, opts);
+  };
+}
+
+test('does not block the request when the recaptcha token does not verify (enforcement temporarily disabled)', () => withEnv(ENV, async () => {
   const event = { httpMethod: 'POST', body: JSON.stringify({ fileName: 'om.pdf', fileSize: 1000, company: 'Acme', recaptchaToken: 'bad-token' }) };
-  const fetchImpl = async (url) => {
+  const fetchImpl = withGraphSuccess(async (url) => {
     if (url.includes('recaptcha/api/siteverify')) return { ok: true, json: async () => ({ success: false }) };
     throw new Error(`unexpected fetch: ${url}`);
-  };
+  });
   const res = await handler(event, { fetchImpl });
-  assert.equal(res.statusCode, 403);
+  assert.equal(res.statusCode, 200);
+  assert.equal(JSON.parse(res.body).uploadUrl, 'https://contoso.sharepoint.com/upload/s1');
 }));
 
-test('fails closed with recaptcha_failed (not a 500) when verifyRecaptcha throws — e.g. a network-level failure calling siteverify', () => withEnv(ENV, async () => {
+test('does not block the request when verifyRecaptcha throws — e.g. a network-level failure calling siteverify (enforcement temporarily disabled)', () => withEnv(ENV, async () => {
   const event = { httpMethod: 'POST', body: JSON.stringify({ fileName: 'om.pdf', fileSize: 1000, company: 'Acme', recaptchaToken: 'good-token' }) };
-  const fetchImpl = async (url) => {
+  const fetchImpl = withGraphSuccess(async (url) => {
     if (url.includes('recaptcha/api/siteverify')) throw new Error('ECONNRESET');
     throw new Error(`unexpected fetch: ${url}`);
-  };
+  });
   const res = await handler(event, { fetchImpl });
-  assert.equal(res.statusCode, 403);
-  assert.equal(JSON.parse(res.body).error, 'recaptcha_failed');
+  assert.equal(res.statusCode, 200);
+  assert.equal(JSON.parse(res.body).uploadUrl, 'https://contoso.sharepoint.com/upload/s1');
 }));
 
-test('fails closed with recaptcha_failed when verifyRecaptcha throws due to missing RECAPTCHA_SECRET_KEY', () => withEnv({ ...ENV, RECAPTCHA_SECRET_KEY: '' }, async () => {
+test('does not block the request when verifyRecaptcha throws due to missing RECAPTCHA_SECRET_KEY (enforcement temporarily disabled)', () => withEnv({ ...ENV, RECAPTCHA_SECRET_KEY: '' }, async () => {
   const event = { httpMethod: 'POST', body: JSON.stringify({ fileName: 'om.pdf', fileSize: 1000, company: 'Acme', recaptchaToken: 'good-token' }) };
-  const res = await handler(event, { fetchImpl: async (url) => { throw new Error(`must not call network: ${url}`); } });
-  assert.equal(res.statusCode, 403);
-  assert.equal(JSON.parse(res.body).error, 'recaptcha_failed');
+  const fetchImpl = withGraphSuccess(async (url) => { throw new Error(`must not call network: ${url}`); });
+  const res = await handler(event, { fetchImpl });
+  assert.equal(res.statusCode, 200);
+  assert.equal(JSON.parse(res.body).uploadUrl, 'https://contoso.sharepoint.com/upload/s1');
 }));
 
 test('mints a session and a verifiable intake token for a valid request, logging intake first', () => withEnv(ENV, async () => {

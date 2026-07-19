@@ -3,6 +3,7 @@ const crypto = require('node:crypto');
 const { checkHoneypot, sanitizeField, signIntakeToken } = require('./_shared/validate.js');
 const { createUploadSession } = require('./_shared/graph-files.js');
 const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
+const { verifyRecaptcha } = require('./_shared/recaptcha.js');
 
 const ALLOWED_EXTS = ['pdf', 'xlsx', 'xls', 'doc', 'docx'];
 const MAX_BYTES = 60 * 1024 * 1024;
@@ -37,6 +38,29 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   try { body = JSON.parse(event.body || '{}'); } catch { return fail(400, 'invalid_json'); }
 
   if (checkHoneypot(body)) return ok({ ok: true }); // silent success, per chat-lead.js convention
+
+  // TEMPORARILY NOT ENFORCED (2026-07-19, Gabriel-approved): the reCAPTCHA
+  // Enterprise widget on for-brokers.html is rejecting real users with
+  // "Invalid site key" for a reason not yet root-caused — every registration
+  // detail (site key, domain, API enablement) checks out, but the client
+  // widget still fails, which would make recaptchaToken empty for every
+  // real submission and 403 the entire broker form. Still CALLING
+  // verifyRecaptcha (and logging the result) so the integration stays
+  // exercised and easy to re-enable — just not blocking on it yet.
+  // TODO: restore `if (!recaptchaOk) return fail(403, 'recaptcha_failed');`
+  // once the widget itself is confirmed working (via an actual screenshot,
+  // not just DOM/JS state — see the false positives that shipped earlier
+  // today from checking iframe presence instead of visible content).
+  let recaptchaOk;
+  try {
+    recaptchaOk = await verifyRecaptcha(body.recaptchaToken, { fetchImpl });
+  } catch (err) {
+    console.error('[broker-upload-session] verifyRecaptcha threw', String(err));
+    recaptchaOk = false;
+  }
+  if (!recaptchaOk) {
+    console.error('[broker-upload-session] recaptcha check failed but is not enforced right now', { recaptchaOk });
+  }
 
   const fileName = sanitizeField(body.fileName, 200);
   const fileSize = Number(body.fileSize);

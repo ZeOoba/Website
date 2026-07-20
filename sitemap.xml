@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://oxfordra.net/</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://oxfordra.net/about</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://oxfordra.net/portfolio</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://oxfordra.net/markets</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
-  <url><loc>https://oxfordra.net/markets/columbus-oh</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://oxfordra.net/markets/maryland</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://oxfordra.net/track-record</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://oxfordra.net/for-brokers</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://oxfordra.net/available-space</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://oxfordra.net/tenant-resources</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://oxfordra.net/contact</loc><changefreq>yearly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://oxfordra.net/tenant-application</loc><changefreq>yearly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://oxfordra.net/privacy</loc><changefreq>yearly</changefreq><priority>0.2</priority></url>
-  <url><loc>https://oxfordra.net/terms</loc><changefreq>yearly</changefreq><priority>0.2</priority></url>
+  <url><loc>https://oxfordra.net/</loc><lastmod>2026-07-20</lastmod><changefreq>monthly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://oxfordra.net/about</loc><lastmod>2026-07-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oxfordra.net/portfolio</loc><lastmod>2026-07-20</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oxfordra.net/markets/</loc><lastmod>2026-07-20</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://oxfordra.net/markets/columbus-oh</loc><lastmod>2026-07-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oxfordra.net/markets/maryland</loc><lastmod>2026-07-18</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oxfordra.net/track-record</loc><lastmod>2026-07-18</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oxfordra.net/for-brokers</loc><lastmod>2026-07-19</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://oxfordra.net/available-space</loc><lastmod>2026-07-18</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oxfordra.net/tenant-resources</loc><lastmod>2026-07-18</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oxfordra.net/contact</loc><lastmod>2026-07-18</lastmod><changefreq>yearly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://oxfordra.net/tenant-application</loc><lastmod>2026-07-18</lastmod><changefreq>yearly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://oxfordra.net/privacy</loc><lastmod>2026-07-20</lastmod><changefreq>yearly</changefreq><priority>0.2</priority></url>
+  <url><loc>https://oxfordra.net/terms</loc><lastmod>2026-07-20</lastmod><changefreq>yearly</changefreq><priority>0.2</priority></url>
 </urlset>

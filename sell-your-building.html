@@ -915,7 +915,7 @@ info@oxfordra.net
   });
 })();
 </script>
-<!-- Analytics (deferred to reduce main-thread blocking) -->
+<!-- Analytics (deferred to first interaction, page-hide, or 3s fallback to reduce main-thread blocking) -->
 <script>
 (function(){
   function loadAnalytics(){
@@ -935,8 +935,21 @@ info@oxfordra.net
     li.src='https://snap.licdn.com/li.lss/insight.min.js';
     document.head.appendChild(li);
   }
-  if('requestIdleCallback' in window){requestIdleCallback(loadAnalytics)}
-  else{setTimeout(loadAnalytics,3000)}
+  var started=false,timer;
+  var EV=['pointerdown','keydown','touchstart','scroll'],OPT={passive:true};
+  function start(){
+    if(started)return;started=true;
+    for(var i=0;i<EV.length;i++){window.removeEventListener(EV[i],start,OPT)}
+    document.removeEventListener('visibilitychange',onHidden);
+    window.removeEventListener('pagehide',start);
+    clearTimeout(timer);
+    loadAnalytics();
+  }
+  function onHidden(){if(document.visibilityState==='hidden'){start()}}
+  for(var i=0;i<EV.length;i++){window.addEventListener(EV[i],start,OPT)}
+  document.addEventListener('visibilitychange',onHidden);
+  window.addEventListener('pagehide',start);
+  timer=setTimeout(start,3000);
 })();
 </script>
 <script defer src="/assets/chat.js?v=1"></script>

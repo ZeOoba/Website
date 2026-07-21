@@ -88,4 +88,13 @@ async function getItemByPath(itemPath, opts = {}) {
   return res.json();
 }
 
-module.exports = { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath };
+async function getFileContent(itemPath, opts = {}) {
+  const driveId = requireEnv('GRAPH_DRIVE_ID');
+  const res = await graphFetch(`/drives/${driveId}/root:/${encodeGraphPath(itemPath)}:/content`, opts);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`graph-files: getFileContent failed for "${itemPath}" (${res.status})`);
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+module.exports = { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath, getFileContent };

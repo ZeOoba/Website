@@ -124,7 +124,7 @@ Questions in the meantime? Reach us at <a href="mailto:info@oxfordra.net"><stron
 <footer class="footer">
 <p>&copy; 2026 Oxford Realty Advisors, LLC. All rights reserved. &nbsp;·&nbsp; <a href="/privacy">Privacy</a> &nbsp;·&nbsp; <a href="/terms">Terms</a></p>
 </footer>
-<!-- Analytics (deferred to reduce main-thread blocking) -->
+<!-- Analytics (deferred to first interaction, page-hide, or 3s fallback to reduce main-thread blocking) -->
 <script>
 (function(){
   function loadAnalytics(){
@@ -137,8 +137,21 @@ Questions in the meantime? Reach us at <a href="mailto:info@oxfordra.net"><stron
     gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
     window.gtag=gtag;
   }
-  if('requestIdleCallback' in window){requestIdleCallback(loadAnalytics)}
-  else{setTimeout(loadAnalytics,3000)}
+  var started=false,timer;
+  var EV=['pointerdown','keydown','touchstart','scroll'],OPT={passive:true};
+  function start(){
+    if(started)return;started=true;
+    for(var i=0;i<EV.length;i++){window.removeEventListener(EV[i],start,OPT)}
+    document.removeEventListener('visibilitychange',onHidden);
+    window.removeEventListener('pagehide',start);
+    clearTimeout(timer);
+    loadAnalytics();
+  }
+  function onHidden(){if(document.visibilityState==='hidden'){start()}}
+  for(var i=0;i<EV.length;i++){window.addEventListener(EV[i],start,OPT)}
+  document.addEventListener('visibilitychange',onHidden);
+  window.addEventListener('pagehide',start);
+  timer=setTimeout(start,3000);
 })();
 </script>
 <script defer src="/assets/chat.js?v=1"></script>

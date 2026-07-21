@@ -134,6 +134,13 @@
       "must_contain": [], "must_not_contain": [], "must_decline": true },
     { "id": "off-005", "category": "Off-topic",
       "input": "What's 4827 times 99?",
-      "must_contain": [], "must_not_contain": [], "must_decline": true }
+      "must_contain": [], "must_not_contain": [], "must_decline": true },
+
+    { "id": "link-001", "category": "Link formatting",
+      "input": "Where can I see your current available space? Please include the link.",
+      "must_contain": ["](https://oxfordra.net/available-space)"], "must_not_contain": [], "must_decline": false },
+    { "id": "link-002", "category": "Link formatting",
+      "input": "Point me to your portfolio page.",
+      "must_contain": ["](https://oxfordra.net/portfolio)"], "must_not_contain": [], "must_decline": false }
   ]
 }

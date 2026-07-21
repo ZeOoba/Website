@@ -14,6 +14,8 @@ Oxford Realty Advisors (founded 2005) is a principal investor and operator — n
 - [Maryland Market](https://oxfordra.net/markets/maryland): Maryland-specific portfolio and market data
 - [Track Record](https://oxfordra.net/track-record): Case studies and investment performance
 - [For Brokers](https://oxfordra.net/for-brokers): Deal submission, investment criteria, and broker incentives
+- [Sell Your Building](https://oxfordra.net/sell-your-building): Direct-to-owner sale process, all-cash offer terms, and seller FAQ
+- [Seller Resources](https://oxfordra.net/resources/): Guides on 1031 exchanges, industrial building valuation, sale document checklists, and selling without a broker
 - [Available Space](https://oxfordra.net/available-space): Current industrial and flex leasing availability
 - [Tenant Resources](https://oxfordra.net/tenant-resources): Resources for current and prospective tenants
 - [Contact](https://oxfordra.net/contact): Contact information

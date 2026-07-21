@@ -58,6 +58,7 @@ const SITE_FILES = [
   'favicon.png',
   'apple-touch-icon.png',
   'manifest.json',
+  'llms.txt',
   'robots.txt',
   'sitemap.xml',
   'Oxford-Realty-Advisors-Overview.pdf',

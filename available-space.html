@@ -38,7 +38,10 @@
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
 <!-- Stylesheets -->
-  <link rel="stylesheet" href="/styles.css?v=16">
+  <link rel="preload" as="style" href="/styles.css?v=16">
+  <link rel="stylesheet" href="/styles.css?v=16" media="print" id="styles-css-async">
+  <noscript><link rel="stylesheet" href="/styles.css?v=16"></noscript>
+  <script>(function(){var l=document.getElementById("styles-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
   <link rel="stylesheet" href="/available-space.css?v=5">
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
   <!-- Inline @font-face declarations -->
@@ -122,6 +125,21 @@
     ]
   }
   </script>
+
+  <!-- Structured Data: FAQPage -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {"@type": "Question", "name": "What lease structures does Oxford offer?", "acceptedAnswer": {"@type": "Answer", "text": "Lease terms vary by property — modified gross, triple net (NNN), and plus-utilities structures are all in use across our current availabilities, as noted on each listing."}},
+      {"@type": "Question", "name": "How do I inquire about an available space?", "acceptedAnswer": {"@type": "Answer", "text": "Click Inquire on any listing to email us directly, or call 301.512.6125. We respond directly — no leasing broker intermediary required."}},
+      {"@type": "Question", "name": "What size spaces are typically available?", "acceptedAnswer": {"@type": "Answer", "text": "Current availabilities range from roughly 1,200 SF suites up to 6,200+ SF units, spanning industrial, flex, and retail use types across our Mid-Atlantic and Midwest markets."}},
+      {"@type": "Question", "name": "Which markets have available space right now?", "acceptedAnswer": {"@type": "Answer", "text": "Availability is concentrated in Columbus OH, Raytown MO (Kansas City), and Maryland — check the listings above for current inventory, which changes as space leases up."}},
+      {"@type": "Question", "name": "Does Oxford require a broker to lease space?", "acceptedAnswer": {"@type": "Answer", "text": "No. Prospective tenants can inquire and lease directly with Oxford — no broker is required, though we work with tenant-rep brokers when one is involved."}}
+    ]
+  }
+  </script>
 <link rel="stylesheet" href="/assets/chat.css?v=1" media="print" id="chat-css-async">
 <script>(function(){var l=document.getElementById("chat-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 </head>
@@ -180,6 +198,7 @@
       <div class="as-hero__inner">
         <h1>Available Space</h1>
         <p>Browse our current availabilities across the Mid-Atlantic and Midwest. Industrial, flex, and warehouse space for lease.</p>
+        <p>Every listing below is space Oxford owns and operates directly &mdash; no third-party landlord, no leasing broker required. Suites range from small flex units to multi-thousand-square-foot warehouse bays, with modified gross, triple net, and plus-utilities lease structures depending on the property.</p>
       </div>
     </section>
 
@@ -524,6 +543,79 @@
 
     <!-- Share Toast -->
     <div class="as-toast" id="shareToast" role="alert" style="display:none;">Link copied to clipboard</div>
+
+    <!-- ═══ FAQ ═══ -->
+    <section class="section section--parchment" aria-label="Frequently asked questions">
+    <div class="container">
+    <div class="section__header animate-on-scroll">
+    <span class="section__label">FAQ</span>
+    <h2>Common Questions</h2>
+    </div>
+    <div class="faq-list animate-on-scroll">
+
+    <div class="faq-item">
+    <button class="faq-item__trigger" id="faq-1-trigger" aria-expanded="false" aria-controls="faq-1">
+    <span>What lease structures does Oxford offer?</span>
+    <svg class="faq-item__icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="faq-item__body" id="faq-1" role="region" aria-labelledby="faq-1-trigger">
+    <div class="faq-item__answer">
+    <p>Lease terms vary by property &mdash; modified gross, triple net (NNN), and plus-utilities structures are all in use across our current availabilities, as noted on each listing.</p>
+    </div>
+    </div>
+    </div>
+
+    <div class="faq-item">
+    <button class="faq-item__trigger" id="faq-2-trigger" aria-expanded="false" aria-controls="faq-2">
+    <span>How do I inquire about an available space?</span>
+    <svg class="faq-item__icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="faq-item__body" id="faq-2" role="region" aria-labelledby="faq-2-trigger">
+    <div class="faq-item__answer">
+    <p>Click Inquire on any listing to email us directly, or call 301.512.6125. We respond directly &mdash; no leasing broker intermediary required.</p>
+    </div>
+    </div>
+    </div>
+
+    <div class="faq-item">
+    <button class="faq-item__trigger" id="faq-3-trigger" aria-expanded="false" aria-controls="faq-3">
+    <span>What size spaces are typically available?</span>
+    <svg class="faq-item__icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="faq-item__body" id="faq-3" role="region" aria-labelledby="faq-3-trigger">
+    <div class="faq-item__answer">
+    <p>Current availabilities range from roughly 1,200 SF suites up to 6,200+ SF units, spanning industrial, flex, and retail use types across our Mid-Atlantic and Midwest markets.</p>
+    </div>
+    </div>
+    </div>
+
+    <div class="faq-item">
+    <button class="faq-item__trigger" id="faq-4-trigger" aria-expanded="false" aria-controls="faq-4">
+    <span>Which markets have available space right now?</span>
+    <svg class="faq-item__icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="faq-item__body" id="faq-4" role="region" aria-labelledby="faq-4-trigger">
+    <div class="faq-item__answer">
+    <p>Availability is concentrated in Columbus OH, Raytown MO (Kansas City), and Maryland &mdash; check the listings above for current inventory, which changes as space leases up.</p>
+    </div>
+    </div>
+    </div>
+
+    <div class="faq-item">
+    <button class="faq-item__trigger" id="faq-5-trigger" aria-expanded="false" aria-controls="faq-5">
+    <span>Does Oxford require a broker to lease space?</span>
+    <svg class="faq-item__icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="faq-item__body" id="faq-5" role="region" aria-labelledby="faq-5-trigger">
+    <div class="faq-item__answer">
+    <p>No. Prospective tenants can inquire and lease directly with Oxford &mdash; no broker is required, though we work with tenant-rep brokers when one is involved.</p>
+    </div>
+    </div>
+    </div>
+
+    </div>
+    </div>
+    </section>
   </main>
 
   <!-- Footer -->
@@ -569,6 +661,29 @@
   <!-- Listings JS -->
   <script defer src="/listings.js?v=4"></script>
   <script defer src="/script.js?v=11"></script>
+<!-- FAQ Accordion -->
+<script>
+(function(){
+  var triggers = document.querySelectorAll('.faq-item__trigger');
+  triggers.forEach(function(trigger){
+    trigger.addEventListener('click', function(){
+      var item = this.closest('.faq-item');
+      var body = item.querySelector('.faq-item__body');
+      var isOpen = item.classList.contains('faq-item--open');
+      document.querySelectorAll('.faq-item--open').forEach(function(openItem){
+        openItem.classList.remove('faq-item--open');
+        openItem.querySelector('.faq-item__trigger').setAttribute('aria-expanded','false');
+        openItem.querySelector('.faq-item__body').style.maxHeight = null;
+      });
+      if(!isOpen){
+        item.classList.add('faq-item--open');
+        this.setAttribute('aria-expanded','true');
+        body.style.maxHeight = body.scrollHeight + 'px';
+      }
+    });
+  });
+})();
+</script>
 <!-- Analytics (deferred to reduce main-thread blocking) -->
 <script>
 (function(){

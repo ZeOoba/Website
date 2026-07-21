@@ -38,6 +38,7 @@ const SITE_FILES = [
   'pipeline-failures-form.html',
   'portfolio.html',
   'privacy.html',
+  'sell-your-building.html',
   'tenant-application.html',
   'tenant-resources.html',
   'terms.html',

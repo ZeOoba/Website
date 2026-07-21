@@ -414,8 +414,18 @@
     inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
   }
 
-  function init() {
-    trigger = document.getElementById('ora-chat-trigger') || createTrigger();
+  // Build the panel DOM, wire its internal listeners, and restore any prior
+  // conversation. Deferred until the user first opens the widget and memoized
+  // via panelReady, so a second open reuses the existing panel instead of
+  // rebuilding it. Keeping this off every page load's critical path (only the
+  // cheap trigger button is built eagerly in init) removes chat.js's main-
+  // thread long task on load. Behavior is unchanged — this only moves *when*
+  // the panel is constructed from DOMContentLoaded to the first trigger click.
+  var panelReady = false;
+  function ensurePanel() {
+    if (panelReady) return;
+    panelReady = true;
+
     panel = createPanel();
     messagesEl = document.getElementById('ora-chat-messages');
     inputEl = document.getElementById('ora-chat-input');
@@ -442,7 +452,6 @@
       }
     };
 
-    trigger.addEventListener('click', open);
     closeBtn.addEventListener('click', close);
     clearBtn.addEventListener('click', clearConversation);
     sendBtn.addEventListener('click', send);
@@ -454,7 +463,7 @@
       }
     });
 
-    // Restore prior history on open if present
+    // Restore prior history now that the panel exists.
     if (history.length) {
       history.forEach(function (m) {
         if (m.role === 'user') appendUserMessage(m.content);
@@ -466,6 +475,16 @@
         }
       });
     }
+  }
+
+  function init() {
+    // Eager, cheap: only the visible trigger button and its click handler.
+    // Everything expensive is deferred to ensurePanel() on first open.
+    trigger = document.getElementById('ora-chat-trigger') || createTrigger();
+    trigger.addEventListener('click', function () {
+      ensurePanel();
+      open();
+    });
   }
 
   if (document.readyState === 'loading') {

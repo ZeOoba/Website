@@ -37,13 +37,19 @@
 
   <!-- Leaflet CSS -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
+  <link rel="preload" as="style" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print" id="leaflet-css-async" crossorigin>
+  <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin></noscript>
+  <script>(function(){var l=document.getElementById("leaflet-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 <!-- Stylesheets -->
   <link rel="preload" as="style" href="/styles.css?v=16">
   <link rel="stylesheet" href="/styles.css?v=16" media="print" id="styles-css-async">
   <noscript><link rel="stylesheet" href="/styles.css?v=16"></noscript>
   <script>(function(){var l=document.getElementById("styles-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
-  <link rel="stylesheet" href="/available-space.css?v=5">
+  <link rel="preload" as="style" href="/available-space.css?v=5">
+  <link rel="stylesheet" href="/available-space.css?v=5" media="print" id="available-space-css-async">
+  <noscript><link rel="stylesheet" href="/available-space.css?v=5"></noscript>
+  <script>(function(){var l=document.getElementById("available-space-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
   <!-- Inline @font-face declarations -->
   <style>

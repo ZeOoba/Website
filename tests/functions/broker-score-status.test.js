@@ -32,3 +32,12 @@ test('returns ready with the score payload when the result is complete', async (
   assert.equal(body.score, 82);
   assert.equal(body.categories.length, 1);
 });
+
+test('returns unavailable (not a 502) when the store throws, e.g. MissingBlobsEnvironmentError', async () => {
+  const res = await handler(
+    { httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1' } },
+    { readScoreResultImpl: async () => { throw new Error('MissingBlobsEnvironmentError'); } },
+  );
+  assert.equal(res.statusCode, 200);
+  assert.equal(JSON.parse(res.body).status, 'unavailable');
+});

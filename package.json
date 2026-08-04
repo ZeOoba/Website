@@ -8,7 +8,7 @@
   "dependencies": {
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "mammoth": "^1.12.0",
-    "@netlify/blobs": "10.1.0"
+    "@netlify/blobs": "10.7.9"
   },
   "devDependencies": {
     "netlify-cli": "26.2.0"

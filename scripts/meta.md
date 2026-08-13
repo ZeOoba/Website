@@ -15,7 +15,7 @@ ORA acquires and operates in three core markets:
 - Columbus, Ohio
 - Kansas City, Missouri (including Raytown submarket)
 
-ORA is also actively evaluating expansion into Indianapolis, Indiana — no current holdings there. ORA evaluates opportunities in adjacent secondary Midwest and Mid-Atlantic markets but does not actively pursue West Coast, Sun Belt-only, or coastal-California markets.
+ORA is also actively evaluating expansion into growing major Mid-Atlantic and Midwest markets — no current holdings outside the three core markets above. ORA does not actively pursue West Coast, Sun Belt-only, or coastal-California markets.
 
 ## Target Deal Parameters
 - **Check size:** $1M–$10M equity per deal

@@ -8,7 +8,7 @@ Oxford Realty Advisors (founded 2005) is a principal investor and operator — n
 
 - [Home](https://oxfordra.net/): Firm overview, investment criteria, and featured acquisitions
 - [About](https://oxfordra.net/about): Firm history, leadership, and investment strategy
-- [Portfolio](https://oxfordra.net/portfolio): 600,000+ SF of owned industrial and flex properties
+- [Portfolio](https://oxfordra.net/portfolio): 500,000+ SF of owned industrial and flex properties
 - [Markets](https://oxfordra.net/markets/): Core markets overview
 - [Columbus, OH Market](https://oxfordra.net/markets/columbus-oh): Columbus-specific portfolio and market data
 - [Maryland Market](https://oxfordra.net/markets/maryland): Maryland-specific portfolio and market data

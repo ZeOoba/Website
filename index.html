@@ -703,7 +703,7 @@ h3{font-size:22px;margin-bottom:8px}
 <a href="tel:+13015126125" class="mobile-cta-bar__btn mobile-cta-bar__btn--secondary">Call</a>
 </div>
 
-<script defer src="/script.js?v=11"></script>
+<script defer src="/script.js?v=12"></script>
 <!-- FAQ Accordion -->
 <script>
 (function(){
@@ -855,15 +855,19 @@ h3{font-size:22px;margin-bottom:8px}
     var h=document.documentElement;
     docHeight=h.scrollHeight-h.clientHeight;
   }
-  /* Defer first measure to idle/next frame so it doesn't reflow during initial parse */
-  if('requestIdleCallback' in window){requestIdleCallback(measure,{timeout:1000})}
-  else{requestAnimationFrame(measure)}
+  /* Never measure before the LCP paint: scrollHeight/clientHeight force a full-document
+     layout, and an idle callback can fire inside the pre-paint window. First measure is
+     whichever comes first: the load event (idle) or the user's first scroll. */
   window.addEventListener('resize',measure,{passive:true});
-  window.addEventListener('load',measure);
+  window.addEventListener('load',function(){
+    if('requestIdleCallback' in window){requestIdleCallback(measure,{timeout:2000})}
+    else{setTimeout(measure,200)}
+  });
   window.addEventListener('scroll',function(){
     if(ticking)return;
     ticking=true;
     requestAnimationFrame(function(){
+      if(docHeight<=0){measure()}
       var pct=docHeight>0?(window.pageYOffset/docHeight)*100:0;
       bar.style.width=pct+'%';
       ticking=false;

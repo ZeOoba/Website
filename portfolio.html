@@ -132,6 +132,7 @@ h3{font-size:22px;margin-bottom:8px}
 .btn--gold:hover{background:#b8963e;border-color:#b8963e}
 .btn--outline{background:transparent;color:var(--gold);border-color:var(--gold)}
 .btn--outline:hover{background:var(--gold);color:var(--navy)}
+.market-card__unit{font-family:var(--font-body);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--slate);display:block;margin-top:-4px;margin-bottom:8px}
 </style>
 <link rel="stylesheet" href="/assets/chat.css?v=2" media="print" id="chat-css-async">
 <script>(function(){var l=document.getElementById("chat-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
@@ -551,23 +552,27 @@ h3{font-size:22px;margin-bottom:8px}
 <div class="markets-grid">
 <div class="market-card animate-on-scroll">
 <span class="market-card__count">12</span>
+<span class="market-card__unit">Buildings</span>
 <h3>Maryland</h3>
 <p>Columbia · Owings Mills · Eastern Shore · Baltimore City</p>
 <a href="/markets/maryland" style="display:inline-block;margin-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:500">Maryland Overview &rarr;</a>
 </div>
 <div class="market-card animate-on-scroll">
 <span class="market-card__count">13</span>
+<span class="market-card__unit">Buildings</span>
 <h3>Columbus, OH</h3>
 <p>Zettler · Banwick · Morrison · Rarig · E Fifth · Westerville · Livingston · Dublin</p>
 <a href="/markets/columbus-oh" style="display:inline-block;margin-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:500">Columbus Overview &rarr;</a>
 </div>
 <div class="market-card animate-on-scroll">
 <span class="market-card__count">1</span>
+<span class="market-card__unit">Building</span>
 <h3>Kansas City</h3>
 <p>Raytown · State Route 350</p>
 </div>
 <div class="market-card market-card--expanding animate-on-scroll">
 <span class="market-card__badge">Expanding</span>
+<span class="market-card__unit" style="visibility:hidden" aria-hidden="true">Buildings</span>
 <h3>Indianapolis</h3>
 <p>Actively evaluating opportunities in Midwest secondary markets</p>
 </div>

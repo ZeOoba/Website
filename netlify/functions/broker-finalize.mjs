@@ -1,20 +1,18 @@
 // Netlify V2 function. Must NOT export `handler` -- that marks a function as
 // legacy V1, and Blobs auto-provisioning does not cover V1, which is what took
-// broker scoring down on 2026-08-04. The _shared modules stay CommonJS and
-// untouched; only this request/response adapter is ESM.
+// broker scoring down on 2026-08-04.
 //
-// Static `import` (not createRequire) is deliberate: Netlify's function bundler
-// traces imports statically, and a createRequire call is not reliably
-// traceable — it would bundle this function without its dependencies and fail
-// in production only, which is the same local-tests-pass/prod-broken shape as
-// the outage this migration fixes.
+// The Blobs-touching chain (broker-score-store.mjs) is ESM so esbuild bundles
+// @netlify/blobs into the function. As CommonJS reached from an ESM entry it
+// left an unresolvable runtime require -- verified broken on deploy-preview-72.
+// Every other _shared module stays CommonJS and untouched.
 import crypto from 'node:crypto';
 import { verifyIntakeToken, sanitizeField } from './_shared/validate.js';
 import { getItemByPath } from './_shared/graph-files.js';
 import { sendMail } from './_shared/graph-mail.js';
 import { renderBrokerEmail } from './_shared/email-template.js';
 import { forwardToNetlifyForm } from './_shared/netlify-forms.js';
-import { checkAndRecordRateLimit, checkAndRecordDailyCap } from './_shared/broker-score-store.js';
+import { checkAndRecordRateLimit, checkAndRecordDailyCap } from './_shared/broker-score-store.mjs';
 
 function json(status, body) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });

@@ -1,20 +1,18 @@
-'use strict';
 // Scoring orchestration, moved verbatim out of netlify/functions/broker-score-background.js
 // when that function migrated to the Netlify V2 signature (2026-08-16).
 //
-// It lives here, in CommonJS, for two reasons: the V2 function file must be ESM
-// (a `handler` export marks a function as legacy V1, which breaks Blobs
-// auto-provisioning), and every existing unit test requires this logic directly.
-// Keeping it CJS means the migration changed the transport layer only.
-const { getItemByPath, getFileContent } = require('./graph-files.js');
-const { extractForScoring } = require('./broker-extraction.js');
-const { extractDealTerms } = require('./broker-llm-extract.js');
-const { scoreDeal } = require('./broker-score-engine.js');
-const { writeScoreResult, hasBeenScored, markScored } = require('./broker-score-store.js');
-const { forwardToNetlifyForm } = require('./netlify-forms.js');
-const { sendMail } = require('./graph-mail.js');
-const { renderScoreFollowupEmail } = require('./email-template.js');
-const rctBenchmark = require('./rct-benchmark.json');
+// ESM because it imports broker-score-store.mjs, which must be ESM so esbuild
+// bundles @netlify/blobs into the function rather than leaving an unresolvable
+// runtime require. The logic below is unchanged from the V1 original.
+import { getItemByPath, getFileContent } from './graph-files.js';
+import { extractForScoring } from './broker-extraction.js';
+import { extractDealTerms } from './broker-llm-extract.js';
+import { scoreDeal } from './broker-score-engine.js';
+import { writeScoreResult, hasBeenScored, markScored } from './broker-score-store.mjs';
+import { forwardToNetlifyForm } from './netlify-forms.js';
+import { sendMail } from './graph-mail.js';
+import { renderScoreFollowupEmail } from './email-template.js';
+import rctBenchmark from './rct-benchmark-data.js';
 
 function extFromPath(p) {
   const m = /\.([a-z0-9]+)$/i.exec(p || '');
@@ -140,4 +138,4 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
   }
 }
 
-module.exports = { runScoring };
+export { runScoring };

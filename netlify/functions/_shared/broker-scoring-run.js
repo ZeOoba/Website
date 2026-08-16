@@ -1,13 +1,20 @@
 'use strict';
-const { getItemByPath, getFileContent } = require('./_shared/graph-files.js');
-const { extractForScoring } = require('./_shared/broker-extraction.js');
-const { extractDealTerms } = require('./_shared/broker-llm-extract.js');
-const { scoreDeal } = require('./_shared/broker-score-engine.js');
-const { writeScoreResult, hasBeenScored, markScored } = require('./_shared/broker-score-store.js');
-const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
-const { sendMail } = require('./_shared/graph-mail.js');
-const { renderScoreFollowupEmail } = require('./_shared/email-template.js');
-const rctBenchmark = require('./_shared/rct-benchmark.json');
+// Scoring orchestration, moved verbatim out of netlify/functions/broker-score-background.js
+// when that function migrated to the Netlify V2 signature (2026-08-16).
+//
+// It lives here, in CommonJS, for two reasons: the V2 function file must be ESM
+// (a `handler` export marks a function as legacy V1, which breaks Blobs
+// auto-provisioning), and every existing unit test requires this logic directly.
+// Keeping it CJS means the migration changed the transport layer only.
+const { getItemByPath, getFileContent } = require('./graph-files.js');
+const { extractForScoring } = require('./broker-extraction.js');
+const { extractDealTerms } = require('./broker-llm-extract.js');
+const { scoreDeal } = require('./broker-score-engine.js');
+const { writeScoreResult, hasBeenScored, markScored } = require('./broker-score-store.js');
+const { forwardToNetlifyForm } = require('./netlify-forms.js');
+const { sendMail } = require('./graph-mail.js');
+const { renderScoreFollowupEmail } = require('./email-template.js');
+const rctBenchmark = require('./rct-benchmark.json');
 
 function extFromPath(p) {
   const m = /\.([a-z0-9]+)$/i.exec(p || '');
@@ -116,7 +123,7 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
     // writeScoreResultImpl, or a malformed-shape throw from scoreDealImpl)
     // must never propagate out of runScoring. Per the plan's Global
     // Constraints, a scoring failure of any kind must never block the
-    // existing ledger-log + Gabriel/Eric email in broker-finalize.js.
+    // existing ledger-log + Gabriel/Eric email in broker-finalize.
     try {
       await writeScoreResultImpl(submissionId, { status: 'unavailable', reason: 'unexpected_error' });
     } catch (writeErr) {
@@ -133,13 +140,4 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
   }
 }
 
-exports.handler = async (event) => {
-  let body;
-  try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, body: 'invalid_json' }; }
-  const { submissionId, itemPath, fields } = body;
-  if (!submissionId || !itemPath) return { statusCode: 400, body: 'missing_fields' };
-  await runScoring({ submissionId, itemPath, fields: fields || {} });
-  return { statusCode: 202, body: '' };
-};
-
-exports.runScoring = runScoring;
+module.exports = { runScoring };

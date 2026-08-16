@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { runScoring } = require('../../netlify/functions/broker-score-background.js');
+const { runScoring } = require('../../netlify/functions/_shared/broker-scoring-run.js');
 
 const READY_EXTRACTION = {
   askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'industrial', buildingGrade: 'B',

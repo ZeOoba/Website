@@ -5,7 +5,7 @@
 // bundles @netlify/blobs into the function rather than leaving an unresolvable
 // runtime require. The logic below is unchanged from the V1 original.
 import { getItemByPath, getFileContent } from './graph-files.js';
-import { extractForScoring } from './broker-extraction.js';
+import { extractForScoring } from './broker-extraction.mjs';
 import { extractDealTerms } from './broker-llm-extract.js';
 import { scoreDeal } from './broker-score-engine.js';
 import { writeScoreResult, hasBeenScored, markScored } from './broker-score-store.mjs';

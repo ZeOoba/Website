@@ -1,8 +1,24 @@
 'use strict';
 const test = require('node:test');
+const { before } = require('node:test');
 const assert = require('node:assert/strict');
 const XLSX = require('xlsx');
-const { extractForScoring, MAX_SCORING_BYTES } = require('../../../netlify/functions/_shared/broker-extraction.js');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+
+// broker-extraction is ESM so esbuild bundles xlsx/mammoth into the function
+// (as CJS from an ESM entry they were left as unresolvable runtime requires --
+// confirmed in production). Load lazily and delegate; assertions unchanged.
+let extractionModulePromise;
+function loadExtraction() {
+  extractionModulePromise ||= import(
+    pathToFileURL(path.join(__dirname, '..', '..', '..', 'netlify', 'functions', '_shared', 'broker-extraction.mjs')).href
+  );
+  return extractionModulePromise;
+}
+const extractForScoring = (...a) => loadExtraction().then((m) => m.extractForScoring(...a));
+let MAX_SCORING_BYTES;
+before(async () => { MAX_SCORING_BYTES = (await loadExtraction()).MAX_SCORING_BYTES; });
 
 test('extractForScoring passes a PDF through as base64, untouched', async () => {
   const buf = Buffer.from('%PDF-1.4 fake pdf content');

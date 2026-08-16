@@ -1,10 +1,27 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {
-  writeScoreResult, readScoreResult, hasBeenScored, markScored,
-  checkAndRecordRateLimit, checkAndRecordDailyCap,
-} = require('../../../netlify/functions/_shared/broker-score-store.js');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+
+// broker-score-store is ESM so Netlify's esbuild bundles @netlify/blobs into the
+// function; as CommonJS reached from an ESM entry it left an unresolvable
+// runtime require (verified broken on deploy-preview-72). Load it lazily and
+// delegate, so every assertion below stays unchanged.
+let storeModulePromise;
+function loadStore() {
+  storeModulePromise ||= import(
+    pathToFileURL(path.join(__dirname, '..', '..', '..', 'netlify', 'functions', '_shared', 'broker-score-store.mjs')).href
+  );
+  return storeModulePromise;
+}
+const bind = (name) => (...args) => loadStore().then((m) => m[name](...args));
+const writeScoreResult = bind('writeScoreResult');
+const readScoreResult = bind('readScoreResult');
+const hasBeenScored = bind('hasBeenScored');
+const markScored = bind('markScored');
+const checkAndRecordRateLimit = bind('checkAndRecordRateLimit');
+const checkAndRecordDailyCap = bind('checkAndRecordDailyCap');
 
 // A tiny in-memory fake matching @netlify/blobs's getStore(name) -> {setJSON,get,delete} shape.
 function fakeStoreFactory() {

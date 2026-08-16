@@ -1,13 +1,18 @@
-'use strict';
-const { getItemByPath, getFileContent } = require('./_shared/graph-files.js');
-const { extractForScoring } = require('./_shared/broker-extraction.js');
-const { extractDealTerms } = require('./_shared/broker-llm-extract.js');
-const { scoreDeal } = require('./_shared/broker-score-engine.js');
-const { writeScoreResult, hasBeenScored, markScored } = require('./_shared/broker-score-store.js');
-const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
-const { sendMail } = require('./_shared/graph-mail.js');
-const { renderScoreFollowupEmail } = require('./_shared/email-template.js');
-const rctBenchmark = require('./_shared/rct-benchmark.json');
+// Scoring orchestration, moved verbatim out of netlify/functions/broker-score-background.js
+// when that function migrated to the Netlify V2 signature (2026-08-16).
+//
+// ESM because it imports broker-score-store.mjs, which must be ESM so esbuild
+// bundles @netlify/blobs into the function rather than leaving an unresolvable
+// runtime require. The logic below is unchanged from the V1 original.
+import { getItemByPath, getFileContent } from './graph-files.js';
+import { extractForScoring } from './broker-extraction.js';
+import { extractDealTerms } from './broker-llm-extract.js';
+import { scoreDeal } from './broker-score-engine.js';
+import { writeScoreResult, hasBeenScored, markScored } from './broker-score-store.mjs';
+import { forwardToNetlifyForm } from './netlify-forms.js';
+import { sendMail } from './graph-mail.js';
+import { renderScoreFollowupEmail } from './email-template.js';
+import rctBenchmark from './rct-benchmark-data.js';
 
 function extFromPath(p) {
   const m = /\.([a-z0-9]+)$/i.exec(p || '');
@@ -116,7 +121,7 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
     // writeScoreResultImpl, or a malformed-shape throw from scoreDealImpl)
     // must never propagate out of runScoring. Per the plan's Global
     // Constraints, a scoring failure of any kind must never block the
-    // existing ledger-log + Gabriel/Eric email in broker-finalize.js.
+    // existing ledger-log + Gabriel/Eric email in broker-finalize.
     try {
       await writeScoreResultImpl(submissionId, { status: 'unavailable', reason: 'unexpected_error' });
     } catch (writeErr) {
@@ -133,13 +138,4 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
   }
 }
 
-exports.handler = async (event) => {
-  let body;
-  try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, body: 'invalid_json' }; }
-  const { submissionId, itemPath, fields } = body;
-  if (!submissionId || !itemPath) return { statusCode: 400, body: 'missing_fields' };
-  await runScoring({ submissionId, itemPath, fields: fields || {} });
-  return { statusCode: 202, body: '' };
-};
-
-exports.runScoring = runScoring;
+export { runScoring };

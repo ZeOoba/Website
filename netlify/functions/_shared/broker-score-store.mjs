@@ -1,5 +1,7 @@
-'use strict';
-const { getStore } = require('@netlify/blobs');
+// ESM so Netlify's esbuild bundles @netlify/blobs directly into the function.
+// As CommonJS reached from an ESM entry, esbuild left require('@netlify/blobs')
+// as an unresolvable runtime call -- verified broken on deploy-preview-72.
+import { getStore } from '@netlify/blobs';
 
 const RESULT_TTL_MS = 24 * 60 * 60 * 1000; // 24h — comfortably longer than any broker's poll window
 const DEDUPE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -64,7 +66,7 @@ async function checkAndRecordDailyCap({ storeFactory = getStore } = {}) {
   return { allowed: true };
 }
 
-module.exports = {
+export {
   writeScoreResult, readScoreResult, hasBeenScored, markScored,
   checkAndRecordRateLimit, checkAndRecordDailyCap,
 };

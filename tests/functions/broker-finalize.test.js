@@ -1,8 +1,36 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { handler } = require('../../netlify/functions/broker-finalize.js');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 const { signIntakeToken } = require('../../netlify/functions/_shared/validate.js');
+
+// broker-finalize migrated to the Netlify V2 signature (ESM, Request in /
+// Response out) on 2026-08-16, because a `handler` export marks a function as
+// legacy V1 and Blobs auto-provisioning does not cover V1.
+//
+// This adapter deliberately keeps the V1-shaped `event` literals and the
+// {statusCode, body} assertions below byte-identical: the transport changed,
+// the behavioural contract these tests pin did not, and rewriting both at once
+// would have destroyed the evidence that nothing else moved.
+let finalizeModulePromise;
+function loadFinalize() {
+  finalizeModulePromise ||= import(
+    pathToFileURL(path.join(__dirname, '..', '..', 'netlify', 'functions', 'broker-finalize.mjs')).href
+  );
+  return finalizeModulePromise;
+}
+
+async function callFinalize(event, deps) {
+  const { handleBrokerFinalize } = await loadFinalize();
+  const req = new Request('https://oxfordra.net/api/broker-finalize', {
+    method: event.httpMethod || 'GET',
+    headers: event.headers || {},
+    ...(event.body === undefined ? {} : { body: event.body }),
+  });
+  const res = await handleBrokerFinalize(req, deps);
+  return { statusCode: res.status, body: await res.text() };
+}
 
 // graph-auth.js (Task 2, committed) throws unless GRAPH_TENANT_ID/CLIENT_ID/
 // CLIENT_SECRET are present — it checks them BEFORE the login fetch the stubs
@@ -19,7 +47,7 @@ function withEnv(vars, fn) {
 
 test('rejects a forged intake token', () => withEnv(ENV, async () => {
   const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: 'forged.forged', name: 'Bob', company: 'Acme', email: 'b@acme.com' }) };
-  const res = await handler(event, { fetchImpl: async () => { throw new Error('must not call network'); } });
+  const res = await callFinalize(event, { fetchImpl: async () => { throw new Error('must not call network'); } });
   assert.equal(res.statusCode, 401);
 }));
 
@@ -31,7 +59,7 @@ test('rejects when the uploaded item is missing from the expected folder', () =>
     if (url.includes('/root:/')) return { ok: false, status: 404 };
     throw new Error(`unexpected fetch: ${url}`);
   };
-  const res = await handler(event, { fetchImpl });
+  const res = await callFinalize(event, { fetchImpl });
   assert.equal(res.statusCode, 409);
 }));
 
@@ -47,7 +75,7 @@ test('finalizes a valid upload: forwards the ledger and sends both emails', () =
     if (url === 'https://oxfordra.net/') return { ok: true, status: 200 }; // ledger forward
     throw new Error(`unexpected fetch: ${url}`);
   };
-  const res = await handler(event, { fetchImpl });
+  const res = await callFinalize(event, { fetchImpl });
   assert.equal(res.statusCode, 200);
   assert.ok(calls.some((u) => u.includes('sendMail')));
   assert.ok(calls.some((u) => u === 'https://oxfordra.net/'));
@@ -61,7 +89,7 @@ test('rejects when the stored item size does not match the token-bound size', ()
     if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 999, webUrl: 'https://x' }) }; // mismatched size
     throw new Error(`unexpected fetch: ${url}`);
   };
-  const res = await handler(event, { fetchImpl });
+  const res = await callFinalize(event, { fetchImpl });
   assert.equal(res.statusCode, 409);
 }));
 
@@ -86,7 +114,7 @@ test('finalize triggers background scoring and returns a submissionId', () => wi
     if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
     throw new Error(`unexpected fetch: ${url}`);
   };
-  const res = await handler(event, { fetchImpl, ...allowAll });
+  const res = await callFinalize(event, { fetchImpl, ...allowAll });
   const body = JSON.parse(res.body);
   assert.equal(res.statusCode, 200);
   assert.equal(typeof body.submissionId, 'string');
@@ -105,7 +133,7 @@ test('finalize still succeeds even if triggering the background scorer fails out
     if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
     throw new Error(`unexpected fetch: ${url}`);
   };
-  const res = await handler(event, { fetchImpl, ...allowAll });
+  const res = await callFinalize(event, { fetchImpl, ...allowAll });
   assert.equal(res.statusCode, 200); // core submission still succeeds
 }));
 
@@ -121,7 +149,7 @@ test('skips triggering background scoring when the daily cap is reached, but sti
     if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
     throw new Error(`unexpected fetch: ${url}`);
   };
-  const res = await handler(event, {
+  const res = await callFinalize(event, {
     fetchImpl,
     checkAndRecordRateLimitImpl: async () => ({ allowed: true }),
     checkAndRecordDailyCapImpl: async () => ({ allowed: false }),
@@ -147,7 +175,7 @@ test('skips triggering background scoring when the per-IP rate limit is reached,
     if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
     throw new Error(`unexpected fetch: ${url}`);
   };
-  const res = await handler(event, {
+  const res = await callFinalize(event, {
     fetchImpl,
     checkAndRecordRateLimitImpl: async (ip) => { seenIp = ip; return { allowed: false }; },
     checkAndRecordDailyCapImpl: async () => ({ allowed: true }),
@@ -175,7 +203,7 @@ test('never calls checkAndRecordDailyCapImpl when the per-IP rate limit already 
     throw new Error(`unexpected fetch: ${url}`);
   };
   let dailyCapCallCount = 0;
-  const res = await handler(event, {
+  const res = await callFinalize(event, {
     fetchImpl,
     checkAndRecordRateLimitImpl: async () => ({ allowed: false }),
     checkAndRecordDailyCapImpl: async () => { dailyCapCallCount += 1; return { allowed: true }; },

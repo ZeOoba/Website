@@ -1,7 +1,19 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { runScoring } = require('../../netlify/functions/broker-score-background.js');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+
+// broker-scoring-run is ESM (it imports broker-score-store.mjs, which must be
+// ESM so esbuild bundles @netlify/blobs). Load it lazily and delegate, so the
+// assertions below stay unchanged.
+let runModulePromise;
+function runScoring(...args) {
+  runModulePromise ||= import(
+    pathToFileURL(path.join(__dirname, '..', '..', 'netlify', 'functions', '_shared', 'broker-scoring-run.mjs')).href
+  );
+  return runModulePromise.then((m) => m.runScoring(...args));
+}
 
 const READY_EXTRACTION = {
   askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'industrial', buildingGrade: 'B',

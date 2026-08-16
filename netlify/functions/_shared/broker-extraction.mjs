@@ -1,6 +1,12 @@
-'use strict';
-const XLSX = require('xlsx');
-const mammoth = require('mammoth');
+// ESM so Netlify's esbuild bundles xlsx and mammoth INTO the function.
+// As CommonJS reached from an ESM (V2) entry, esbuild inlined this module but
+// left its require('xlsx') as a runtime __require call with the package absent
+// from the bundle -- confirmed in production:
+//   "Cannot find module 'xlsx'" at broker-score-background.mjs:184
+// Under the old V1 bundler node_modules shipped alongside the function, so the
+// require resolved; V2 bundles instead, and these two fell through.
+import XLSX from 'xlsx';
+import mammoth from 'mammoth';
 
 // Anthropic caps a document-block request at 32MB/100 pages and base64 inflates
 // a raw file ~33% — 20MB raw stays safely under that after encoding, per the
@@ -62,4 +68,4 @@ async function extractForScoring(buffer, ext) {
   return { ok: false, reason: 'unsupported_file_type' };
 }
 
-module.exports = { extractForScoring, MAX_SCORING_BYTES };
+export { extractForScoring, MAX_SCORING_BYTES };

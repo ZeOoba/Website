@@ -15,6 +15,13 @@
 
 [functions]
   directory = "netlify/functions"
+  # @netlify/blobs is required from CommonJS inside _shared/broker-score-store.js.
+  # When that module is reached from an ESM (V2) function entry, esbuild inlines
+  # the module but leaves its require() as a runtime call, and the package is not
+  # in the bundle -- "Cannot find module '@netlify/blobs'", caught by an
+  # outside-in probe against deploy-preview-72, never by a local test.
+  # Marking it external ships it in the function's node_modules instead.
+  external_node_modules = ["@netlify/blobs"]
 
 [functions."chat-lead"]
   included_files = []

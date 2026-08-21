@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { signIntakeToken } = require('../../netlify/functions/_shared/validate.js');
 
 // broker-score-status migrated to the Netlify V2 signature (ESM, Request in /
 // Response out) on 2026-08-16, because a `handler` export marks a function as
@@ -29,6 +30,21 @@ async function handler(event, deps) {
   return { statusCode: res.status, body: await res.text() };
 }
 
+// statusToken auth (2026-08-21 fix): this endpoint used to accept any caller-supplied
+// submissionId unauthenticated -- the read-side half of the SharePoint oracle
+// broker-score-background.mjs's authToken only closed the write side of. statusToken is minted
+// by broker-finalize.mjs and cryptographically binds a submissionId to the browser that just
+// submitted it.
+const SECRET = 'status-test-secret';
+function withEnv(vars, fn) {
+  const prev = {};
+  for (const k of Object.keys(vars)) { prev[k] = process.env[k]; process.env[k] = vars[k]; }
+  return Promise.resolve(fn()).finally(() => { for (const k of Object.keys(vars)) process.env[k] = prev[k]; });
+}
+function validStatusToken(submissionId) {
+  return signIntakeToken({ type: 'status', submissionId, exp: Date.now() + 60_000 }, SECRET);
+}
+
 test('returns 405 for a non-GET request', async () => {
   const res = await handler({ httpMethod: 'POST' }, {});
   assert.equal(res.statusCode, 405);
@@ -39,31 +55,52 @@ test('returns 400 when submissionId is missing', async () => {
   assert.equal(res.statusCode, 400);
 });
 
-test('returns pending when no result exists yet', async () => {
-  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1' } }, { readScoreResultImpl: async () => null });
+test('returns 401 when statusToken is missing', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1' } }, {});
+  assert.equal(res.statusCode, 401);
+}));
+
+test('returns 401 when statusToken is bound to a DIFFERENT submissionId', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const statusToken = validStatusToken('sub-1');
+  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-2', statusToken } }, {});
+  assert.equal(res.statusCode, 401);
+}));
+
+test('returns 401 when statusToken is signed with the wrong secret', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const statusToken = signIntakeToken({ type: 'status', submissionId: 'sub-1', exp: Date.now() + 60_000 }, 'wrong-secret');
+  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1', statusToken } }, {});
+  assert.equal(res.statusCode, 401);
+}));
+
+test('returns pending when no result exists yet', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const statusToken = validStatusToken('sub-1');
+  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1', statusToken } }, { readScoreResultImpl: async () => null });
   assert.equal(res.statusCode, 200);
   assert.equal(JSON.parse(res.body).status, 'pending');
-});
+}));
 
-test('returns unavailable when the stored result says scoring failed', async () => {
-  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1' } }, { readScoreResultImpl: async () => ({ status: 'unavailable', reason: 'unparseable_file' }) });
+test('returns unavailable when the stored result says scoring failed', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const statusToken = validStatusToken('sub-1');
+  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1', statusToken } }, { readScoreResultImpl: async () => ({ status: 'unavailable', reason: 'unparseable_file' }) });
   assert.equal(JSON.parse(res.body).status, 'unavailable');
-});
+}));
 
-test('returns ready with the score payload when the result is complete', async () => {
+test('returns ready with the score payload when the result is complete', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const statusToken = validStatusToken('sub-1');
   const stored = { status: 'ready', finalScore: 82, gates: { propertyType: 'PASS', market: 'PASS' }, gateFailed: false, categories: [{ key: 'dealSize', label: 'Deal Size', earned: 25, possible: 25, excluded: false, note: 'x' }] };
-  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1' } }, { readScoreResultImpl: async () => stored });
+  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1', statusToken } }, { readScoreResultImpl: async () => stored });
   const body = JSON.parse(res.body);
   assert.equal(body.status, 'ready');
   assert.equal(body.score, 82);
   assert.equal(body.categories.length, 1);
-});
+}));
 
-test('returns unavailable (not a 502) when the store throws, e.g. MissingBlobsEnvironmentError', async () => {
+test('returns unavailable (not a 502) when the store throws, e.g. MissingBlobsEnvironmentError', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const statusToken = validStatusToken('sub-1');
   const res = await handler(
-    { httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1' } },
+    { httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1', statusToken } },
     { readScoreResultImpl: async () => { throw new Error('MissingBlobsEnvironmentError'); } },
   );
   assert.equal(res.statusCode, 200);
   assert.equal(JSON.parse(res.body).status, 'unavailable');
-});
+}));

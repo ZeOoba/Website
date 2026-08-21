@@ -75,13 +75,13 @@
     return finalize(session.intakeToken, fields);
   }
 
-  async function pollForScore(submissionId, onReady, onUnavailable) {
+  async function pollForScore(submissionId, statusToken, onReady, onUnavailable) {
     var MAX_WAIT_MS = 2 * 60 * 1000;
     var POLL_INTERVAL_MS = 3000;
     var start = Date.now();
     function poll() {
       if (Date.now() - start > MAX_WAIT_MS) { onUnavailable(); return; }
-      fetch('/api/broker-score-status?submissionId=' + encodeURIComponent(submissionId))
+      fetch('/api/broker-score-status?submissionId=' + encodeURIComponent(submissionId) + '&statusToken=' + encodeURIComponent(statusToken))
         .then(function (res) { return res.json(); })
         .then(function (json) {
           if (json.status === 'ready') { onReady(json); }

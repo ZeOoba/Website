@@ -472,7 +472,7 @@ h3{font-size:22px;margin-bottom:8px}
       form.style.display = 'none';
       success.style.display = '';
       if(result && result.submissionId){
-        window.ORA_BROKER_UPLOAD.pollForScore(result.submissionId, renderScoreCard, showUnavailable);
+        window.ORA_BROKER_UPLOAD.pollForScore(result.submissionId, result.statusToken, renderScoreCard, showUnavailable);
       } else {
         showUnavailable();
       }

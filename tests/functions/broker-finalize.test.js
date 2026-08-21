@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const { signIntakeToken } = require('../../netlify/functions/_shared/validate.js');
+const { signIntakeToken, verifyIntakeToken } = require('../../netlify/functions/_shared/validate.js');
 
 // broker-finalize migrated to the Netlify V2 signature (ESM, Request in /
 // Response out) on 2026-08-16, because a `handler` export marks a function as
@@ -52,7 +52,7 @@ test('rejects a forged intake token', () => withEnv(ENV, async () => {
 }));
 
 test('rejects when the uploaded item is missing from the expected folder', () => withEnv(ENV, async () => {
-  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-10_Acme_ab12/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-07-10_Acme_ab12/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
   const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob', company: 'Acme', email: 'b@acme.com' }) };
   const fetchImpl = async (url) => {
     if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
@@ -64,7 +64,7 @@ test('rejects when the uploaded item is missing from the expected folder', () =>
 }));
 
 test('finalizes a valid upload: forwards the ledger and sends both emails', () => withEnv(ENV, async () => {
-  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-10_Acme_ab12/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-07-10_Acme_ab12/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
   const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com', phone: '555-1234', market: 'Columbus', message: 'See attached' }) };
   const calls = [];
   const fetchImpl = async (url, opts = {}) => {
@@ -82,7 +82,7 @@ test('finalizes a valid upload: forwards the ledger and sends both emails', () =
 }));
 
 test('rejects when the stored item size does not match the token-bound size', () => withEnv(ENV, async () => {
-  const token = signIntakeToken({ path: 'Broker Submissions/x/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/x/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
   const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob', company: 'Acme', email: 'b@acme.com' }) };
   const fetchImpl = async (url) => {
     if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
@@ -102,15 +102,16 @@ const allowAll = {
 };
 
 test('finalize triggers background scoring and returns a submissionId', () => withEnv(ENV, async () => {
-  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_ab12/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-07-18_Acme_ab12/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
   const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com', phone: '555-1234', market: 'Columbus', message: 'See attached' }) };
   const calls = [];
+  let bgRequestBody = null;
   const fetchImpl = async (url, opts = {}) => {
     calls.push(url);
     if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
     if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://contoso.sharepoint.com/x/om.pdf' }) };
     if (url.includes('sendMail')) return { ok: true, status: 202 };
-    if (url.includes('/.netlify/functions/broker-score-background')) return { ok: true, status: 202 };
+    if (url.includes('/.netlify/functions/broker-score-background')) { bgRequestBody = JSON.parse(opts.body); return { ok: true, status: 202 }; }
     if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
     throw new Error(`unexpected fetch: ${url}`);
   };
@@ -120,10 +121,28 @@ test('finalize triggers background scoring and returns a submissionId', () => wi
   assert.equal(typeof body.submissionId, 'string');
   assert.ok(body.submissionId.length > 0);
   assert.ok(calls.some((u) => u.includes('/.netlify/functions/broker-score-background')));
+  // authToken must be present and must cryptographically bind THIS
+  // submissionId/itemPath pair — the fix for the unauthenticated
+  // SharePoint-read exposure (cc-audit-army finding
+  // unauth-sharepoint-read-oracle-via-background-fn) lives entirely in this
+  // handoff, so a regression here would silently reopen it.
+  assert.ok(bgRequestBody, 'broker-score-background must have been called');
+  assert.equal(typeof bgRequestBody.authToken, 'string');
+  const claims = verifyIntakeToken(bgRequestBody.authToken, 'intake-secret', 'bg-auth');
+  assert.ok(claims, 'authToken must verify against INTAKE_TOKEN_SECRET and carry type "bg-auth"');
+  assert.equal(claims.submissionId, body.submissionId);
+  assert.equal(claims.itemPath, 'Broker Submissions/2026-07-18_Acme_ab12/om.pdf');
+
+  // statusToken must be present and bound to this submissionId — the fix for the read-side half
+  // of the unauthenticated oracle (broker-score-status.mjs used to accept any submissionId).
+  assert.equal(typeof body.statusToken, 'string');
+  const statusClaims = verifyIntakeToken(body.statusToken, 'intake-secret', 'status');
+  assert.ok(statusClaims, 'statusToken must verify against INTAKE_TOKEN_SECRET and carry type "status"');
+  assert.equal(statusClaims.submissionId, body.submissionId);
 }));
 
 test('finalize still succeeds even if triggering the background scorer fails outright', () => withEnv(ENV, async () => {
-  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_cd34/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-07-18_Acme_cd34/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
   const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
   const fetchImpl = async (url) => {
     if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
@@ -138,7 +157,7 @@ test('finalize still succeeds even if triggering the background scorer fails out
 }));
 
 test('skips triggering background scoring when the daily cap is reached, but still returns ok+submissionId', () => withEnv(ENV, async () => {
-  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_ef56/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-07-18_Acme_ef56/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
   const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
   const calls = [];
   const fetchImpl = async (url) => {
@@ -163,7 +182,7 @@ test('skips triggering background scoring when the daily cap is reached, but sti
 }));
 
 test('skips triggering background scoring when the per-IP rate limit is reached, but still returns ok+submissionId', () => withEnv(ENV, async () => {
-  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_gh78/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-07-18_Acme_gh78/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
   const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '1.2.3.4' }, body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
   const calls = [];
   let seenIp = null;
@@ -193,7 +212,7 @@ test('skips triggering background scoring when the per-IP rate limit is reached,
 // never even be invoked once the rate limit has already disallowed the
 // request — that's the fix (sequential + gated, not Promise.all).
 test('never calls checkAndRecordDailyCapImpl when the per-IP rate limit already disallows (griefing-quota regression)', () => withEnv(ENV, async () => {
-  const token = signIntakeToken({ path: 'Broker Submissions/2026-07-18_Acme_ij90/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-07-18_Acme_ij90/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
   const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.9' }, body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
   const fetchImpl = async (url) => {
     if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };

@@ -94,15 +94,52 @@ function signIntakeToken(payload, secret) {
   return `${encoded}.${sig}`;
 }
 
-function verifyIntakeToken(token, secret) {
+// expectedType (optional, added 2026-08-21): signIntakeToken/verifyIntakeToken are shared across
+// multiple trust boundaries that use the SAME INTAKE_TOKEN_SECRET -- the client-facing upload
+// token handed to untrusted browsers ({path,size,exp}, type 'upload'), the internal
+// broker-finalize->broker-score-background handoff token ({submissionId,itemPath,exp}, type
+// 'bg-auth'), and the status-poll token ({submissionId,exp}, type 'status'). Without a type
+// claim, cross-boundary replay was blocked only by claim field names happening to differ -- an
+// incidental protection a future refactor could silently remove. When expectedType is passed,
+// a token whose payload.type doesn't match is rejected even if the signature verifies.
+function verifyIntakeToken(token, secret, expectedType) {
   if (typeof token !== 'string' || !token.includes('.')) return null;
   const [encoded, sig] = token.split('.');
-  const expectedSig = crypto.createHmac('sha256', secret).update(encoded).digest('hex');
+  let expectedSig;
+  try {
+    expectedSig = crypto.createHmac('sha256', secret).update(encoded).digest('hex');
+  } catch {
+    // secret missing/invalid (e.g. an unset env var) -- fail closed, never throw uncaught.
+    return null;
+  }
   if (sig.length !== expectedSig.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) return null;
   let payload;
   try { payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); } catch { return null; }
   if (typeof payload.exp !== 'number' || payload.exp < Date.now()) return null;
+  if (expectedType !== undefined && payload.type !== expectedType) return null;
   return payload;
 }
 
-module.exports = { checkHoneypot, sniffFileType, isAllowedUpload, sanitizeField, verifyNetlifyWebhookSignature, signIntakeToken, verifyIntakeToken };
+// Single source of truth for the submissionId shape (finding: broker-score-background.mjs used
+// to hand-write a regex re-deriving this format with no link back to the generator -- a future
+// change to the byte length here would silently drift from that copy and fail every legitimate
+// submission closed). Generator and validator now come from the same constant.
+const SUBMISSION_ID_BYTES = 12;
+function generateSubmissionId() {
+  return crypto.randomBytes(SUBMISSION_ID_BYTES).toString('hex');
+}
+const SUBMISSION_ID_RE = new RegExp(`^[0-9a-f]{${SUBMISSION_ID_BYTES * 2}}$`);
+
+// Single source of truth for the "Broker Submissions/<date>_<slug>_<hex>/<file>" item-path shape
+// broker-upload-session.js's folderPath construction + createUploadSession's appended filename
+// produce (finding: broker-score-background.mjs used to hand-write a second copy of this regex
+// with no link back to the generator -- a future change to the hex byte length, slug max-length,
+// or date format would silently drift from that copy and fail every legitimate submission
+// closed). The trailing filename segment stays intentionally permissive ([^/]+) -- it isn't
+// validated against sanitizeSegment's exact charset, only confined to a single path segment.
+const UPLOAD_PATH_RE = /^Broker Submissions\/\d{4}-\d{2}-\d{2}_[A-Za-z0-9-]{1,60}_[0-9a-f]{8}\/[^/]+$/;
+
+module.exports = {
+  checkHoneypot, sniffFileType, isAllowedUpload, sanitizeField, verifyNetlifyWebhookSignature,
+  signIntakeToken, verifyIntakeToken, generateSubmissionId, SUBMISSION_ID_RE, UPLOAD_PATH_RE,
+};

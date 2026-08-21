@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { signIntakeToken } = require('../../netlify/functions/_shared/validate.js');
 
 // broker-scoring-run is ESM (it imports broker-score-store.mjs, which must be
 // ESM so esbuild bundles @netlify/blobs). Load it lazily and delegate, so the
@@ -146,3 +147,96 @@ test('runScoring never throws when scoreDealImpl throws AND the outer catch\'s l
   assert.equal(writes[0].result.status, 'unavailable');
   assert.equal(writes[0].result.reason, 'unexpected_error');
 });
+
+// --- default handler (the public entry point) --------------------------
+// The tests above exercise runScoring's internals directly. These cover the
+// handler's own boundary: broker-score-background is a PUBLIC Netlify
+// Function URL with no caller identity of its own, so it must reject a
+// caller-supplied itemPath/submissionId that doesn't carry a valid
+// authToken minted by broker-finalize.mjs (fix for the unauthenticated
+// SharePoint-read-and-persist exposure — cc-audit-army finding
+// unauth-sharepoint-read-oracle-via-background-fn).
+let handlerModulePromise;
+function loadHandler() {
+  handlerModulePromise ||= import(
+    pathToFileURL(path.join(__dirname, '..', '..', 'netlify', 'functions', 'broker-score-background.mjs')).href
+  );
+  return handlerModulePromise;
+}
+
+const SECRET = 'bg-test-secret';
+function withEnv(vars, fn) {
+  const prev = {};
+  for (const k of Object.keys(vars)) { prev[k] = process.env[k]; process.env[k] = vars[k]; }
+  return Promise.resolve(fn()).finally(() => { for (const k of Object.keys(vars)) process.env[k] = prev[k]; });
+}
+
+async function callHandler(body, deps) {
+  const { handleScoreBackground } = await loadHandler();
+  const req = new Request('https://oxfordra.net/.netlify/functions/broker-score-background', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return handleScoreBackground(req, deps);
+}
+
+const VALID_PATH = 'Broker Submissions/2026-08-18_Acme-Co_ab12cd34/om.pdf';
+const VALID_SUB = 'a'.repeat(24);
+
+test('handler rejects a caller-supplied itemPath/submissionId with no authToken (the unauth exposure)', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const res = await callHandler({ submissionId: VALID_SUB, itemPath: VALID_PATH });
+  assert.equal(res.status, 401);
+}));
+
+test('handler rejects an authToken signed with the wrong secret (forged token)', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const authToken = signIntakeToken({ type: 'bg-auth', submissionId: VALID_SUB, itemPath: VALID_PATH, exp: Date.now() + 60_000 }, 'wrong-secret');
+  const res = await callHandler({ submissionId: VALID_SUB, itemPath: VALID_PATH, authToken });
+  assert.equal(res.status, 401);
+}));
+
+test('handler rejects a valid authToken bound to a DIFFERENT itemPath (cannot redirect a legit token at another file)', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const authToken = signIntakeToken({ type: 'bg-auth', submissionId: VALID_SUB, itemPath: 'Broker Submissions/2026-08-18_Acme-Co_ab12cd34/other.pdf', exp: Date.now() + 60_000 }, SECRET);
+  const res = await callHandler({ submissionId: VALID_SUB, itemPath: VALID_PATH, authToken });
+  assert.equal(res.status, 401);
+}));
+
+test('handler rejects an itemPath outside the Broker Submissions/<date>_<slug>_<hex>/ shape even with a token for it', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const evilPath = '../../secrets/confidential-terms.json';
+  const authToken = signIntakeToken({ type: 'bg-auth', submissionId: VALID_SUB, itemPath: evilPath, exp: Date.now() + 60_000 }, SECRET);
+  const res = await callHandler({ submissionId: VALID_SUB, itemPath: evilPath, authToken });
+  assert.equal(res.status, 400);
+}));
+
+test('handler rejects a submissionId that is not the expected 24-hex-char shape', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const badSub = 'not-a-valid-submission-id';
+  const authToken = signIntakeToken({ type: 'bg-auth', submissionId: badSub, itemPath: VALID_PATH, exp: Date.now() + 60_000 }, SECRET);
+  const res = await callHandler({ submissionId: badSub, itemPath: VALID_PATH, authToken });
+  assert.equal(res.status, 400);
+}));
+
+test('handler accepts a correctly-bound authToken, calls runScoring, and returns 202', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const authToken = signIntakeToken({ type: 'bg-auth', submissionId: VALID_SUB, itemPath: VALID_PATH, exp: Date.now() + 60_000 }, SECRET);
+  const calls = [];
+  const res = await callHandler(
+    { submissionId: VALID_SUB, itemPath: VALID_PATH, fields: { company: 'Acme' }, authToken },
+    { runScoringImpl: async (args) => { calls.push(args); return { ok: true }; } }
+  );
+  assert.equal(res.status, 202);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].submissionId, VALID_SUB);
+  assert.equal(calls[0].itemPath, VALID_PATH);
+  assert.equal(calls[0].fields.company, 'Acme');
+}));
+
+// Cross-boundary-type + auth-order regression pins (2026-08-21 adversarial-review fixes).
+test('handler rejects a correctly-signed token of the WRONG type (e.g. an "upload" token replayed here)', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const wrongTypeToken = signIntakeToken({ type: 'upload', submissionId: VALID_SUB, itemPath: VALID_PATH, exp: Date.now() + 60_000 }, SECRET);
+  const res = await callHandler({ submissionId: VALID_SUB, itemPath: VALID_PATH, authToken: wrongTypeToken });
+  assert.equal(res.status, 401);
+}));
+
+test('handler returns 401, not 400, for an invalid-shape submissionId with no authToken (auth is checked before shape, so an unauthenticated caller gets no shape-match signal)', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const res = await callHandler({ submissionId: 'not-a-valid-submission-id', itemPath: VALID_PATH });
+  assert.equal(res.status, 401);
+}));

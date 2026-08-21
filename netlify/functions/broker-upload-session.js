@@ -93,6 +93,6 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     return fail(502, 'session_failed');
   }
 
-  const intakeToken = signIntakeToken({ path: session.path, size: fileSize, exp: Date.now() + TOKEN_TTL_MS }, process.env.INTAKE_TOKEN_SECRET);
+  const intakeToken = signIntakeToken({ type: 'upload', path: session.path, size: fileSize, exp: Date.now() + TOKEN_TTL_MS }, process.env.INTAKE_TOKEN_SECRET);
   return ok({ ok: true, uploadUrl: session.uploadUrl, intakeToken });
 };

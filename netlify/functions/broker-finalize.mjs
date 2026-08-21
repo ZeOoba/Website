@@ -6,13 +6,26 @@
 // @netlify/blobs into the function. As CommonJS reached from an ESM entry it
 // left an unresolvable runtime require -- verified broken on deploy-preview-72.
 // Every other _shared module stays CommonJS and untouched.
-import crypto from 'node:crypto';
-import { verifyIntakeToken, sanitizeField } from './_shared/validate.js';
+import { verifyIntakeToken, signIntakeToken, sanitizeField, generateSubmissionId } from './_shared/validate.js';
 import { getItemByPath } from './_shared/graph-files.js';
 import { sendMail } from './_shared/graph-mail.js';
 import { renderBrokerEmail } from './_shared/email-template.js';
 import { forwardToNetlifyForm } from './_shared/netlify-forms.js';
 import { checkAndRecordRateLimit, checkAndRecordDailyCap } from './_shared/broker-score-store.mjs';
+
+// Short-lived HMAC binding {submissionId, itemPath} for the internal
+// broker-finalize -> broker-score-background handoff. The background
+// function is a public URL with no other caller identity, so without this
+// it would trust an attacker-supplied itemPath/submissionId outright (an
+// unauthenticated SharePoint read-and-persist oracle). TTL only needs to
+// cover the fetch below, not the scoring run itself.
+const BG_TOKEN_TTL_MS = 5 * 60 * 1000;
+
+// Bound to the broker-upload.js poll window (MAX_WAIT_MS = 2 min) with headroom. Authorizes the
+// broker's own browser to poll broker-score-status.mjs for THIS submissionId -- without it, that
+// endpoint would accept any caller-supplied submissionId unauthenticated (the read-side half of
+// the SharePoint oracle broker-score-background.mjs's authToken only closes the write side of).
+const STATUS_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 function json(status, body) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -49,7 +62,7 @@ export async function handleBrokerFinalize(req, {
     body = raw ? JSON.parse(raw) : {};
   } catch { return fail(400, 'invalid_json'); }
 
-  const claims = verifyIntakeToken(body.intakeToken, process.env.INTAKE_TOKEN_SECRET);
+  const claims = verifyIntakeToken(body.intakeToken, process.env.INTAKE_TOKEN_SECRET, 'upload');
   if (!claims) return fail(401, 'invalid_intake_token');
 
   let item;
@@ -90,7 +103,11 @@ export async function handleBrokerFinalize(req, {
     return fail(502, 'email_failed');
   }
 
-  const submissionId = crypto.randomBytes(12).toString('hex');
+  const submissionId = generateSubmissionId();
+  const statusToken = signIntakeToken(
+    { type: 'status', submissionId, exp: Date.now() + STATUS_TOKEN_TTL_MS },
+    process.env.INTAKE_TOKEN_SECRET
+  );
   try {
     const ip = getClientIp(req.headers);
     // Cost/abuse backstop: reCAPTCHA (Task 13) is the only live gate ahead of
@@ -111,10 +128,14 @@ export async function handleBrokerFinalize(req, {
     const rateLimit = await checkAndRecordRateLimitImpl(ip, {});
     const dailyCap = rateLimit.allowed ? await checkAndRecordDailyCapImpl({}) : null;
     if (rateLimit.allowed && dailyCap && dailyCap.allowed) {
+      const authToken = signIntakeToken(
+        { type: 'bg-auth', submissionId, itemPath: claims.path, exp: Date.now() + BG_TOKEN_TTL_MS },
+        process.env.INTAKE_TOKEN_SECRET
+      );
       await fetchImpl(`${siteUrl}/.netlify/functions/broker-score-background`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ submissionId, itemPath: claims.path, fields }),
+        body: JSON.stringify({ submissionId, itemPath: claims.path, fields, authToken }),
       });
     } else {
       console.error('[broker-finalize] scoring skipped: rate/cap limit reached', { ip, rateLimitAllowed: rateLimit.allowed, dailyCapAllowed: dailyCap ? dailyCap.allowed : null });
@@ -126,7 +147,7 @@ export async function handleBrokerFinalize(req, {
     console.error('[broker-finalize] failed to trigger broker-score-background', String(err));
   }
 
-  return ok({ ok: true, submissionId });
+  return ok({ ok: true, submissionId, statusToken });
 }
 
 export default (req) => handleBrokerFinalize(req);

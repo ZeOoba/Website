@@ -1,7 +1,12 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { handler } = require('../../netlify/functions/broker-upload-session.js');
+const { handler, __resetRateLimit, RATE_DEFAULT } = require('../../netlify/functions/broker-upload-session.js');
+
+// The per-IP rate-limit buckets are module-level state shared by every test in
+// this file. Without this, tests would silently consume one another's budget
+// and the failure would present as an unrelated 429 in whichever test ran last.
+test.beforeEach(() => { __resetRateLimit(); });
 
 // graph-auth.js (Task 2, committed) throws unless GRAPH_TENANT_ID/CLIENT_ID/
 // CLIENT_SECRET are present — it checks them BEFORE the login fetch the stubs
@@ -126,4 +131,76 @@ test('logs the submission intake even when minting the Graph upload session fail
   assert.equal(JSON.parse(res.body).error, 'session_failed');
   assert.ok(loggedIntake, 'contact/deal context must be preserved even when Graph itself fails — this is the exact gap being closed');
   assert.ok(loggedFailure, 'the failure itself must still be logged to pipeline-failures too');
+}));
+
+// ---------- Interim per-IP rate limit ----------
+// Added because reCAPTCHA is logged-but-not-enforced here (2026-07-19 hotfix),
+// leaving this Graph-upload-session mint with no abuse ceiling at all.
+
+function validBody(n) {
+  return JSON.stringify({ name: 'Bob', company: `Acme ${n}`, email: 'b@acme.com', fileName: 'om.pdf', fileSize: 1000, contentType: 'application/pdf', recaptchaToken: 'good-token' });
+}
+function eventFrom(ip, n) {
+  return { httpMethod: 'POST', headers: { 'x-nf-client-connection-ip': ip }, body: validBody(n) };
+}
+function graphOk() {
+  return withRecaptchaPass(async (url, opts = {}) => {
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200, _body: String(opts.body || '') };
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes(':/createUploadSession')) return { ok: true, status: 200, json: async () => ({ uploadUrl: 'https://contoso.sharepoint.com/upload/s1', expirationDateTime: '2026-07-11T00:00:00Z' }) };
+    throw new Error(`unexpected fetch: ${url}`);
+  });
+}
+
+test(`allows requests up to the ${RATE_DEFAULT}-per-IP window limit`, () => withEnv(ENV, async () => {
+  for (let i = 0; i < RATE_DEFAULT; i += 1) {
+    const res = await handler(eventFrom('203.0.113.10', i), { fetchImpl: graphOk() });
+    assert.equal(res.statusCode, 200, `request ${i + 1} of ${RATE_DEFAULT} must be under the limit`);
+    assert.equal(JSON.parse(res.body).uploadUrl, 'https://contoso.sharepoint.com/upload/s1');
+  }
+}));
+
+test('returns 429 with retry-after once the per-IP limit is exceeded, and mints no session', () => withEnv(ENV, async () => {
+  for (let i = 0; i < RATE_DEFAULT; i += 1) {
+    await handler(eventFrom('203.0.113.11', i), { fetchImpl: graphOk() });
+  }
+  // The over-limit call must be rejected BEFORE any Graph work — the only
+  // network call it may make is the pipeline-failures log write.
+  let loggedFailure = null;
+  const res = await handler(eventFrom('203.0.113.11', 99), {
+    fetchImpl: async (url, opts = {}) => {
+      if (url === 'https://oxfordra.net/') { loggedFailure = String(opts.body || ''); return { ok: true, status: 200 }; }
+      throw new Error(`must not call anything else once rate limited: ${url}`);
+    },
+  });
+  assert.equal(res.statusCode, 429);
+  assert.equal(JSON.parse(res.body).error, 'rate_limited');
+  assert.equal(JSON.parse(res.body).ok, false);
+  assert.ok(Number(res.headers['retry-after']) > 0, 'a 429 must tell the caller when to retry');
+  assert.ok(loggedFailure, 'the rate-limit rejection must be logged, per this function\'s fail-loudly convention');
+  assert.ok(loggedFailure.includes('pipeline-failures'), 'it must go to the pipeline-failures form');
+  assert.ok(loggedFailure.includes('rate_limited'), 'the logged row must carry the rate_limited error code');
+}));
+
+test('rate-limit buckets are per IP — one exhausted IP does not block another', () => withEnv(ENV, async () => {
+  for (let i = 0; i < RATE_DEFAULT; i += 1) {
+    await handler(eventFrom('203.0.113.12', i), { fetchImpl: graphOk() });
+  }
+  const blocked = await handler(eventFrom('203.0.113.12', 99), { fetchImpl: graphOk() });
+  assert.equal(blocked.statusCode, 429);
+
+  const other = await handler(eventFrom('198.51.100.7', 0), { fetchImpl: graphOk() });
+  assert.equal(other.statusCode, 200, 'a different IP must still be served');
+}));
+
+test('the limit is overridable via BROKER_UPLOAD_RATE_LIMIT_PER_10MIN', () => withEnv({ ...ENV, BROKER_UPLOAD_RATE_LIMIT_PER_10MIN: '2' }, async () => {
+  assert.equal((await handler(eventFrom('203.0.113.13', 0), { fetchImpl: graphOk() })).statusCode, 200);
+  assert.equal((await handler(eventFrom('203.0.113.13', 1), { fetchImpl: graphOk() })).statusCode, 200);
+  assert.equal((await handler(eventFrom('203.0.113.13', 2), { fetchImpl: graphOk() })).statusCode, 429);
+}));
+
+test('falls back to x-forwarded-for when the Netlify client-IP header is absent', () => withEnv({ ...ENV, BROKER_UPLOAD_RATE_LIMIT_PER_10MIN: '1' }, async () => {
+  const ev = () => ({ httpMethod: 'POST', headers: { 'x-forwarded-for': '203.0.113.14, 10.0.0.1' }, body: validBody(0) });
+  assert.equal((await handler(ev(), { fetchImpl: graphOk() })).statusCode, 200);
+  assert.equal((await handler(ev(), { fetchImpl: graphOk() })).statusCode, 429);
 }));

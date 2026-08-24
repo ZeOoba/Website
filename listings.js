@@ -16,7 +16,7 @@
     {
       id: 1, name: '2012-2026 Zettler Rd', city: 'Columbus', state: 'OH', market: 'Columbus',
       category: 'Flex', lat: 39.957, lng: -82.960,
-      img: '/images/10-zettler-2012-2026-exterior-.jpg', slug: '2012-2026-zettler-rd',
+      img: '/images/10-zettler-2012-2026-exterior-.jpg', imgW: 800, slug: '2012-2026-zettler-rd',
       desc: 'Adjacent small-bay flex industrial on Zettler Rd, Columbus.',
       units: [
         { suite: '2016', sf: 1800, sfLabel: '1,800 SF', rate: '$11.67', rateType: 'MG', use: 'Flex' }
@@ -25,7 +25,7 @@
     {
       id: 2, name: '384-398 Morrison Rd', city: 'Columbus', state: 'OH', market: 'Columbus',
       category: 'Flex', lat: 39.938, lng: -82.974,
-      img: '/images/17-warehouse-columbus-external.jpg', slug: '384-398-morrison-rd',
+      img: '/images/17-warehouse-columbus-external.jpg', imgW: 700, slug: '384-398-morrison-rd',
       desc: 'Flex/warehouse complex on Morrison Rd, Columbus, OH.',
       units: [
         { suite: '390', sf: 1800, sfLabel: '1,800 SF', rate: '$13.33', rateType: 'MG', use: 'Flex' }
@@ -34,7 +34,7 @@
     {
       id: 3, name: '2000-2002 Zettler Rd', city: 'Columbus', state: 'OH', market: 'Columbus',
       category: 'Industrial', lat: 39.958, lng: -82.961,
-      img: '/images/07-2000_2002-front.jpg', slug: '2000-2002-zettler-rd',
+      img: '/images/07-2000_2002-front.jpg', imgW: 700, slug: '2000-2002-zettler-rd',
       desc: 'Small-bay industrial in Columbus near the I-70/I-270 interchange.',
       units: [
         { suite: '2000', sf: 4960, sfLabel: '4,960 SF', rate: '$8.00', rateType: 'NNN', use: 'Industrial' },
@@ -45,7 +45,7 @@
       id: 4, name: 'Northwood Business Center', subtitle: '2203 Northwood Dr',
       city: 'Easton', state: 'MD', market: 'Maryland',
       category: 'Flex', lat: 38.780, lng: -76.080,
-      img: '/images/06-exterior-beauty.jpg', slug: '2203-northwood-dr',
+      img: '/images/06-exterior-beauty.jpg', imgW: 700, slug: '2203-northwood-dr',
       desc: 'Multi-tenant industrial flex park in Easton, MD.',
       units: [
         { suite: 'A1-2', sf: 1200, sfMax: 2400, sfLabel: '1,200\u20132,400 SF', rate: '$10.99', rateType: '+UTIL', use: 'Flex' }
@@ -54,7 +54,7 @@
     {
       id: 5, name: '2800-2826 Banwick Rd', city: 'Columbus', state: 'OH', market: 'Columbus',
       category: 'Flex', lat: 39.939, lng: -82.953,
-      img: '/images/01-2800-2826-banwick-exterior.jpg', slug: '2800-2826-banwick-rd',
+      img: '/images/01-2800-2826-banwick-exterior.jpg', imgW: 800, slug: '2800-2826-banwick-rd',
       desc: 'Shallow-bay flex industrial in Columbus, OH near I-270.',
       units: [
         { suite: '2814', sf: 1500, sfLabel: '1,500 SF', rate: '$13.60', rateType: 'MG', use: 'Flex' }
@@ -63,7 +63,7 @@
     {
       id: 6, name: '9620 E State Route 350', city: 'Raytown', state: 'MO', market: 'Kansas City',
       category: 'Retail', lat: 38.946, lng: -94.462,
-      img: '/images/05-exterior-front.jpg', slug: '9620-state-route-350',
+      img: '/images/05-exterior-front.jpg', imgW: 485, slug: '9620-state-route-350',
       desc: 'Flex industrial in the Raytown submarket of Kansas City, MO.',
       units: [
         { suite: '107-108', sf: 5745, sfLabel: '5,745 SF', rate: '$10.00', rateType: '+UTIL', use: 'Retail' },
@@ -201,6 +201,41 @@
       '</div>';
   }
 
+  // ── Card image HTML ──────────────────────────────────────────────────────────
+  // Mirrors the <picture> markup of the static fallback cards in available-space.html
+  // (AVIF -> WebP -> JPEG). Derived paths must stay in step with the on-disk variants:
+  // <base>.avif/.webp at the listing's full width (imgW) and <base>-480w.avif/.webp.
+  // `sizes` is the card grid's, NOT 100vw — a card is ~30vw at desktop, and claiming
+  // 100vw would pull the full-width source on every viewport.
+  var CARD_IMG_SIZES = '(max-width: 767px) 100vw, (max-width: 1023px) 32vw, 30vw';
+
+  // Descriptive alt: "<name> — <SF> SF <category> available in <city>, <state>".
+  // The SF is the listing's own AVAILABLE (vacant-suite) total, never a building-wide
+  // figure. Falls back to the plain photo string if any component is missing rather
+  // than inventing one.
+  function cardImgAlt(p) {
+    if (!p.category || !p.city || !p.state) return p.name + ' property photo';
+    return p.name + ' — ' + fmtSF(totalSF(p)) + ' ' + p.category +
+      ' available in ' + p.city + ', ' + p.state;
+  }
+
+  function cardImgHTML(p) {
+    var alt = cardImgAlt(p);
+    var base = p.img.replace(/\.jpe?g$/i, '');
+    // No derivable variants (non-JPEG source) -> keep the plain <img>.
+    if (base === p.img || !p.imgW) {
+      return '<img src="' + p.img + '" alt="' + alt + '" width="400" height="250" loading="lazy" decoding="async">';
+    }
+    function srcset(ext) {
+      return base + '-480w.' + ext + ' 480w, ' + base + '.' + ext + ' ' + p.imgW + 'w';
+    }
+    return '<picture>' +
+      '<source type="image/avif" srcset="' + srcset('avif') + '" sizes="' + CARD_IMG_SIZES + '">' +
+      '<source type="image/webp" srcset="' + srcset('webp') + '" sizes="' + CARD_IMG_SIZES + '">' +
+      '<img src="' + p.img + '" alt="' + alt + '" width="400" height="250" loading="lazy" decoding="async">' +
+      '</picture>';
+  }
+
   // ── Card HTML ─────────────────────────────────────────────────────────────────
   function cardHTML(p) {
     var multiUnit = p.units.length > 1;
@@ -211,7 +246,7 @@
 
     var html = '<article class="as-card' + (isExpanded ? ' as-card--expanded' : '') + '" data-id="' + p.id + '">' +
       '<div class="as-card__img">' +
-      '<img src="' + p.img + '" alt="' + p.name + ' property photo" loading="lazy" decoding="async">' +
+      cardImgHTML(p) +
       '<span class="as-card__badge as-card__badge--available">' + badgeText + '</span>' +
       '</div>' +
       '<div class="as-card__body">' +

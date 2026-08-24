@@ -36,6 +36,12 @@
   /* styles.css line 25 sets body{padding-top:36px} for the announcement bar;
      this page has none, so neutralize it. */
   body{padding-top:0}
+  /* styles.css offsets .skip-link:focus by the announcement-bar height (36px, 32px
+     at <=640px). With that bar absent and .site-nav fixed at top:0, the focused
+     skip link would land behind the nav. !important is needed because the sitewide
+     rules are more specific (one carries a media query, both target the same class)
+     and styles.css is a separate sheet -- this page-scoped block loads after it. */
+  .skip-link:focus{top:0!important}
 
   .site-nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--navy);border-bottom:1px solid rgba(201,169,110,.15)}
   @media(min-width:768px){.site-nav{padding:0 40px}}

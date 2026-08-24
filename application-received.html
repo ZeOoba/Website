@@ -18,7 +18,10 @@
 <link rel="stylesheet" href="/styles.css?v=16" media="print" id="styles-css-async">
 <noscript><link rel="stylesheet" href="/styles.css?v=16"></noscript>
 <script>(function(){var l=document.getElementById("styles-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
-<link rel="stylesheet" href="/application-style.css?v=1">
+<link rel="preload" as="style" href="/application-style.css?v=1">
+<link rel="stylesheet" href="/application-style.css?v=1" media="print" id="application-style-css-async">
+<noscript><link rel="stylesheet" href="/application-style.css?v=1"></noscript>
+<script>(function(){var l=document.getElementById("application-style-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 <style>
 @font-face{font-family:'DM Sans';src:url('/fonts/dm-sans-latin.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
 @font-face{font-family:'EB Garamond';src:url('/fonts/eb-garamond-latin.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
@@ -51,7 +54,7 @@ h1,h2{font-family:var(--font-display);font-weight:400;color:var(--navy);line-hei
 .confirmation h1{font-size:36px;color:var(--navy);margin-bottom:12px}
 @media(min-width:768px){.confirmation h1{font-size:44px}}
 .confirmation__lede{font-size:17px;color:var(--charcoal);margin-bottom:24px;line-height:1.6}
-.confirmation__list{text-align:left;background:#FBF8F1;border-left:3px solid var(--gold);padding:20px 24px;border-radius:0 6px 6px 0;margin:24px 0}
+.confirmation__list{text-align:left;background:#F5F3EF;border-left:3px solid var(--gold);padding:20px 24px;border-radius:0 6px 6px 0;margin:24px 0}
 .confirmation__list h2{font-size:14px;color:var(--navy);text-transform:uppercase;letter-spacing:.14em;margin-bottom:12px;font-family:var(--font-body);font-weight:500}
 .confirmation__list ol{margin-left:18px;font-size:14px;line-height:1.8;color:var(--charcoal)}
 .confirmation__contact{font-size:13px;color:var(--slate);margin-top:24px;line-height:1.7}

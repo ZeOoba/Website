@@ -9,6 +9,50 @@ const ALLOWED_EXTS = ['pdf', 'xlsx', 'xls', 'doc', 'docx'];
 const MAX_BYTES = 60 * 1024 * 1024;
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 
+// ---------- Interim per-IP rate limit ----------
+// This endpoint mints a Graph upload session (a real SharePoint write target)
+// on every accepted call, and reCAPTCHA has been logged-but-NOT-enforced since
+// the 2026-07-19 hotfix below — so until the widget is fixed there is nothing
+// at all standing between a script and an unbounded run of upload sessions.
+// This is the interim floor.
+//
+// Deliberately the same shape as the /api/chat limiter in
+// netlify/edge-functions/chat.ts (in-memory Map of hit timestamps per IP,
+// sliding window). Same caveat applies: the Map lives in one warm container,
+// so the effective ceiling is per-container, not global. That is a genuine
+// weakening versus the Blobs-backed limiter in _shared/broker-score-store.mjs
+// — but that module is ESM importing @netlify/blobs, and this entry is
+// CommonJS, which is exactly the bundling failure class that took production
+// down twice on 2026-08-16 (see tests/functions/esm-cjs-bundling-contract.test.js).
+// A per-container bound is worth far more than the zero bound we have now;
+// promoting it to Blobs belongs with the V2/ESM conversion of this function.
+const RATE_WINDOW_MS = 10 * 60 * 1000;   // 10 minutes
+const RATE_DEFAULT = 10;                 // sessions per IP per window
+const rateBuckets = new Map();
+
+function clientIp(event) {
+  const headers = event.headers || {};
+  return headers['x-nf-client-connection-ip']
+      || String(headers['x-forwarded-for'] || '').split(',')[0].trim()
+      || 'unknown';
+}
+
+function rateLimit(ip, max) {
+  const now = Date.now();
+  const bucket = (rateBuckets.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
+  if (bucket.length >= max) {
+    rateBuckets.set(ip, bucket);
+    return { ok: false, retryAfter: Math.ceil((RATE_WINDOW_MS - (now - bucket[0])) / 1000) };
+  }
+  bucket.push(now);
+  rateBuckets.set(ip, bucket);
+  return { ok: true };
+}
+
+// Test-only hook: the bucket map is module-level, so without this every test in
+// a file would share (and silently exhaust) one another's budget.
+function __resetRateLimit() { rateBuckets.clear(); }
+
 function logFailure(fetchImpl, { errorCode, detail }) {
   const siteUrl = process.env.URL || 'https://oxfordra.net';
   return forwardToNetlifyForm(siteUrl, 'pipeline-failures', { 'source-function': 'broker-upload-session', 'error-code': errorCode, 'submission-id': '', detail: detail || '', 'occurred-at': new Date().toISOString() }, { fetchImpl });
@@ -33,6 +77,23 @@ function slugify(value) {
 
 exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   if (event.httpMethod !== 'POST') return fail(405, 'method_not_allowed');
+
+  // Rate limit first, so a flood cannot reach JSON parsing, Graph, or the
+  // Netlify Forms writes below.
+  const ip = clientIp(event);
+  const maxPerWindow = parseInt(process.env.BROKER_UPLOAD_RATE_LIMIT_PER_10MIN || String(RATE_DEFAULT), 10) || RATE_DEFAULT;
+  const rl = rateLimit(ip, maxPerWindow);
+  if (!rl.ok) {
+    // Fail loudly, per this function's existing convention: console.error for
+    // the deploy log plus a pipeline-failures row so it is visible without one.
+    console.error('[broker-upload-session] rate limit exceeded', { ip, maxPerWindow, retryAfter: rl.retryAfter });
+    await logFailure(fetchImpl, { errorCode: 'rate_limited', detail: `ip=${ip} max=${maxPerWindow}/10min` });
+    return {
+      statusCode: 429,
+      headers: { 'content-type': 'application/json', 'retry-after': String(rl.retryAfter) },
+      body: JSON.stringify({ ok: false, error: 'rate_limited' }),
+    };
+  }
 
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return fail(400, 'invalid_json'); }
@@ -96,3 +157,6 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   const intakeToken = signIntakeToken({ type: 'upload', path: session.path, size: fileSize, exp: Date.now() + TOKEN_TTL_MS }, process.env.INTAKE_TOKEN_SECRET);
   return ok({ ok: true, uploadUrl: session.uploadUrl, intakeToken });
 };
+
+exports.__resetRateLimit = __resetRateLimit;
+exports.RATE_DEFAULT = RATE_DEFAULT;

@@ -694,7 +694,10 @@ h3{font-size:22px;margin-bottom:8px}
 
 <!-- Floating CTA -->
 <div class="floating-cta" id="floatingCta" aria-hidden="true">
-<a href="/for-brokers" class="btn btn--gold">Submit a Deal</a>
+<!-- tabindex="-1" tracks aria-hidden: the CTA is hidden by opacity/pointer-events, which
+     does NOT remove the link from the tab order. The visibility observer below clears it
+     when the CTA is shown and restores it when hidden. -->
+<a href="/for-brokers" class="btn btn--gold" tabindex="-1">Submit a Deal</a>
 </div>
 
 <!-- Mobile Sticky CTA Bar -->
@@ -813,10 +816,18 @@ h3{font-size:22px;margin-bottom:8px}
   if(!cta)return;
   var hero=document.querySelector('.hero');
   if(!hero)return;
+  /* Keep the inner link's tab order in step with aria-hidden: the CTA is hidden via
+     opacity/pointer-events, which leaves it focusable unless tabindex="-1" is set. */
+  var ctaLinks=cta.querySelectorAll('a[href]');
+  function setCtaFocusable(on){
+    Array.prototype.forEach.call(ctaLinks,function(a){
+      if(on)a.removeAttribute('tabindex');else a.setAttribute('tabindex','-1');
+    });
+  }
   var obs=new IntersectionObserver(function(entries){
     entries.forEach(function(e){
-      if(!e.isIntersecting){cta.classList.add('is-visible');cta.setAttribute('aria-hidden','false')}
-      else{cta.classList.remove('is-visible');cta.setAttribute('aria-hidden','true')}
+      if(!e.isIntersecting){cta.classList.add('is-visible');cta.setAttribute('aria-hidden','false');setCtaFocusable(true)}
+      else{cta.classList.remove('is-visible');cta.setAttribute('aria-hidden','true');setCtaFocusable(false)}
     });
   },{threshold:0});
   obs.observe(hero);

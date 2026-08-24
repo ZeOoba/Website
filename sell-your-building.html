@@ -24,7 +24,7 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.json">
-<link rel="preload" as="image" type="image/avif" href="/images/20-9050-red-branch-exterior.avif">
+<link rel="preload" as="image" type="image/avif" href="/images/20-9050-red-branch-exterior.avif" imagesrcset="/images/20-9050-red-branch-exterior-480w.avif 480w, /images/20-9050-red-branch-exterior.avif 800w" imagesizes="100vw" fetchpriority="high">
 <link rel="preload" as="font" type="font/woff2" href="/fonts/dm-sans-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/eb-garamond-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/eb-garamond-italic-latin.woff2" crossorigin>
@@ -153,8 +153,11 @@ h3{font-size:22px;margin-bottom:8px}
 .btn:hover{text-decoration:none}
 .btn--gold{background:var(--gold);color:var(--navy);border-color:var(--gold)}
 .btn--gold:hover{background:#b8963e;border-color:#b8963e}
-.btn--outline{background:transparent;color:var(--gold);border-color:var(--gold)}
+.btn--outline{background:transparent;color:var(--gold-accessible);border-color:var(--gold)}
 .btn--outline:hover{background:var(--gold);color:var(--navy)}
+/* --gold-accessible is tuned for LIGHT backgrounds; on the navy hero/CTA bands it would
+   fall below AA. Those bands keep plain --gold, which already clears AA on navy. */
+.section--navy .btn--outline,.subpage-hero .btn--outline{color:var(--gold)}
 .btn--white{background:var(--white);color:var(--navy);border-color:var(--white)}
 .btn--white:hover{background:var(--parchment);border-color:var(--parchment)}
 @media(max-width:768px){.hero{min-height:auto;padding:110px 24px 60px}.hero h1{font-size:36px}.hero__sub{font-size:18px}}

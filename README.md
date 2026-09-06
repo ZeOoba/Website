@@ -125,15 +125,20 @@ flowchart TD
 │   ├── functions/             Netlify Functions (forms, broker OM intake, lead notify)
 │   │   └── _shared/           Shared helpers (Graph API auth/mail/files, validation, scoring)
 │   └── edge-functions/        Edge function for the /api/chat assistant + its knowledge base
+├── .github/workflows/ci.yml    PR gate — runs `npm run verify` (plus a manual chat-eval job)
 ├── scripts/
 │   ├── build-dist.mjs         Assembles dist/ for deploy (see above)
 │   ├── build-kb.mjs           Builds the chat assistant's knowledge base
+│   ├── serve-dist.mjs         Static server for dist/ that APPLIES _headers (CSP); `npm run serve`
+│   ├── verify-jsonld.mjs      Runs validate-jsonld.js over every built page + required-page floor
+│   ├── run-unit-tests.mjs     Enumerates *.test.js and calls `node --test` (Node 20/24 portable)
 │   ├── eval-chat.mjs          Runs the chat assistant eval suite (see evals/)
-│   ├── validate-jsonld.js     Validates JSON-LD structured data on site pages
+│   ├── validate-jsonld.js     Validates JSON-LD structured data on ONE page
 │   ├── netlify-guard.js       Blocks indirected/obfuscated `netlify deploy --prod` calls
 │   ├── patch-netlify-shim.js  postinstall hook wiring netlify-guard.js into netlify-cli's bin
 │   └── meta.md                Canonical firm facts fed into the chat assistant's knowledge base
 ├── tests/functions/            node:test unit tests for netlify/functions/
+├── tests/site/                 Headless-browser CSP gate + Netlify-runtime function smoke test
 ├── evals/                      Chat assistant eval fixtures + dated result runs
 ├── dist/                       BUILD OUTPUT — git-ignored, assembled by build-dist.mjs
 ├── _headers                    Netlify response headers (CSP, caching, HSTS, preloads)
@@ -145,30 +150,51 @@ flowchart TD
 
 ## Local development
 
-Per `package.json`, the only defined script is `postinstall`; there is no site build step beyond assembling `dist/` — pages are hand-authored static HTML.
+There is no site compiler — pages are hand-authored static HTML — but there *is* a build step: `dist/` is assembled from an explicit allowlist, and the chat assistant's knowledge base is regenerated from site content.
 
 ```bash
-npm install                    # installs netlify-cli (pinned v26.2.0) + deps;
-                                # postinstall runs scripts/patch-netlify-shim.js,
-                                # which wires netlify-guard.js into netlify-cli's bin
-node scripts/build-dist.mjs    # assemble dist/ locally to inspect exactly what would ship
+npm ci                         # installs netlify-cli (pinned v26.2.0) + playwright + deps;
+                               # postinstall runs scripts/patch-netlify-shim.js,
+                               # which wires netlify-guard.js into netlify-cli's bin
+npx playwright install chromium  # one-time, for the CSP smoke test
+npm run build                  # build-kb.mjs + build-dist.mjs — exactly what netlify.toml runs
+npm run serve                  # serve dist/ on :8788 WITH _headers applied (see below)
 ```
 
-`npm install` pins `netlify-cli` to a tested version so deploys resolve a local install rather than depending on `npx`'s evictable cache.
+`npm run serve` uses `scripts/serve-dist.mjs`, which parses `_headers` and applies it to every response. Use it rather than a generic static server for any manual browser check: an ordinary static server sends no CSP header at all, so the page will appear to work while every allowlist bug stays invisible.
+
+`npm ci` pins `netlify-cli` to a tested version so deploys resolve a local install rather than depending on `npx`'s evictable cache.
 
 **Deploys to production require separate, explicit permission** — this is a standing rule for this repo (Hard Invariant 2). Editing `README.md` or any other file here does not deploy anything by itself; `dist/` and the live site are only touched by an explicit, confirmed `netlify deploy` invocation.
 
 ## Testing
 
-Unit tests for the Netlify Functions live in `tests/functions/` and use Node's built-in test runner (`node:test`, no framework dependency):
+`npm run verify` is the whole gate. `.github/workflows/ci.yml` runs exactly this command on every pull request, so a red CI run reproduces locally with one command and no arguments.
 
 ```bash
-node --test tests/functions/
+npm run verify           # build -> jsonld -> unit -> CSP -> functions runtime
 ```
 
-`application-script.file-size.test.js` at the repo root guards the size of the hand-written DOM script rather than testing exports (it has none — it's a DOM IIFE).
+Its five stages, each also runnable alone:
 
-The chat assistant has a separate eval harness (`scripts/eval-chat.mjs` against fixtures in `evals/fixtures.json`), with dated result snapshots retained in `evals/`.
+| Command | What it proves | Why it can't be a unit test |
+|---|---|---|
+| `npm run build` | `dist/` assembles; every root entry is classified as published or private | — |
+| `npm run verify:jsonld` | every page's JSON-LD parses, **and** the key pages still have a block at all | — |
+| `npm run test:unit` | function/module logic (`node:test`, no framework dependency) | — |
+| `npm run test:site` | four representative pages load with **zero CSP violations** in headless Chromium, served with `_headers` applied | CSP is a property of a served response plus a real renderer; `require()` cannot see it |
+| `npm run test:functions` | `chat-lead` behaves correctly when driven over HTTP through `netlify functions:serve` | a `require()`d handler cannot reveal a runtime-shape mismatch (CJS vs. V2 function runtime) |
+
+Unit tests live in `tests/functions/`; the browser and Netlify-runtime smoke tests live in `tests/site/`. `application-script.file-size.test.js` at the repo root guards the size of the hand-written DOM script rather than testing exports (it has none — it's a DOM IIFE).
+
+`tests/site/functions-smoke.test.mjs` is written as an extensible template: `invokeFunction()` and the server harness are generic, so covering another function is a matter of adding cases. It deliberately covers only a non-broker function.
+
+The chat assistant has a separate eval harness (`scripts/eval-chat.mjs` against fixtures in `evals/fixtures.json`, dated snapshots retained in `evals/`). It is **not** in `npm run verify`: it needs a live `/api/chat` origin and spends real model tokens per case. Run it against a deploy preview instead — `npm run eval:chat -- --base=https://<preview>.netlify.app`, or via the CI workflow's manual `eval-chat` job.
+
+### What CI still can't catch
+
+- **Netlify Blobs credential injection.** `functions:serve` does not provision a real Blobs store, so the smoke test proves the runtime-shape contract, not credential auto-injection. That still needs a deploy preview.
+- **reCAPTCHA verdicts.** Google will not mint real tokens for a headless localhost origin. CI proves the widget's script/frame origins are CSP-allowed (the failure mode that silently kills it), not that a real token verifies server-side.
 
 ## Key pages
 
@@ -211,6 +237,8 @@ Shared helpers (Microsoft Graph auth/mail/file access, reCAPTCHA verification, f
 - `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (camera/microphone/geolocation all disabled), and HSTS with `preload`.
 - Long-lived immutable caching (`max-age=31536000`) for `/images/*`, `/fonts/*`, `*.css`, `*.js`; `must-revalidate` for `*.html`; 1-day caching for `*.pdf`.
 - Font and hero-image `Link: rel=preload` hints on `/` and `/index.html` (four self-hosted webfonts + the homepage hero image, `fetchpriority=high`).
+
+The CSP allowlist is now enforced pre-merge by `npm run test:site`. Adding a third-party script, style, font, frame, or XHR origin to any page without adding it to the matching `_headers` directive will fail the PR with the blocked URI and the directive that blocked it — instead of surfacing as a console error on the live site after deploy.
 
 ## Content notes
 

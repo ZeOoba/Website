@@ -1,0 +1,100 @@
+# CI for oxfordra.net.
+#
+# Before this workflow existed the repo had no automated verification of
+# correctness at all: package.json's only script was `postinstall`, which
+# patches a deploy *authorization* guard into the netlify CLI — an access
+# check, not a correctness check. Verification was "run validate-jsonld.js by
+# hand, grep for some strings, look at the site in a browser": human-remembered,
+# therefore skippable, and skipped.
+#
+# The `verify` job below is the pre-merge gate. It is deliberately built out of
+# environment emulators rather than more `require()`-level unit tests, because
+# the regressions this repo actually shipped were properties of environments:
+# the served response headers (CSP) and the Netlify function runtime.
+#
+# NOTHING HERE DEPLOYS. There is no `netlify deploy` in this file and there must
+# never be one — oxfordra.net production deploys require Gabriel's explicit
+# per-deploy confirmation.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      eval_base:
+        description: >-
+          Base URL to run the chat eval against (e.g. a Netlify deploy-preview
+          URL). Leave blank to skip the eval job.
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build & verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches netlify.toml [build.environment] NODE_VERSION — CI must run
+          # the same major as the deploy build, or it verifies a different site.
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium for the CSP smoke test
+        run: npx playwright install --with-deps chromium
+
+      # `npm run verify` chains: build -> verify:jsonld -> test:unit ->
+      # test:site (CSP) -> test:functions (Netlify runtime). Any failure fails
+      # the PR. Kept as one step so the local command and the CI command are
+      # literally identical — a developer can reproduce a red build with
+      # `npm run verify` and nothing else.
+      - name: Verify
+        run: npm run verify
+
+  # NOT part of the PR gate, on purpose. eval-chat.mjs drives the live
+  # /api/chat edge function, which costs real model tokens per case and needs a
+  # deployed origin; running it per-PR would either bill every push or hit
+  # production. Run it by hand against a deploy preview before a release:
+  #   Actions -> CI -> Run workflow -> eval_base = https://<preview>.netlify.app
+  eval-chat:
+    name: Chat regression eval (manual)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'workflow_dispatch' && inputs.eval_base != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run chat eval
+        run: npm run eval:chat -- --base=${{ inputs.eval_base }}
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: evals/results-*.json
+          if-no-files-found: warn

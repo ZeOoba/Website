@@ -1,16 +1,26 @@
 {
   "name": "oxfordra-website",
   "private": true,
-  "description": "Deploy tooling for oxfordra.net. No site build step — netlify.toml publishes the repo root (or dist/, once fix/publish-dist-exclude-internal merges). This package.json exists solely to pin netlify-cli to a tested version so deploys resolve a local install instead of depending on npx's evictable cache.",
+  "description": "Build and verification tooling for oxfordra.net. `npm run build` assembles the dist/ publish directory (the same command netlify.toml runs); `npm run verify` is the full pre-merge gate that .github/workflows/ci.yml executes. Also pins netlify-cli to a tested version so deploys resolve a local install instead of npx's evictable cache.",
   "scripts": {
-    "postinstall": "node scripts/patch-netlify-shim.js"
+    "postinstall": "node scripts/patch-netlify-shim.js",
+    "build": "node scripts/build-kb.mjs && node scripts/build-dist.mjs",
+    "serve": "node scripts/serve-dist.mjs --port 8788",
+    "verify:jsonld": "node scripts/verify-jsonld.mjs",
+    "test:unit": "node scripts/run-unit-tests.mjs",
+    "test:site": "node --test tests/site/csp-smoke.test.mjs",
+    "test:functions": "node --test tests/site/functions-smoke.test.mjs",
+    "verify": "npm run build && npm run verify:jsonld && npm run test:unit && npm run test:site && npm run test:functions",
+    "test": "npm run verify",
+    "eval:chat": "node scripts/eval-chat.mjs"
   },
   "dependencies": {
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "@netlify/blobs": "10.7.9",
     "mammoth": "^1.12.0",
-    "@netlify/blobs": "10.7.9"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
-    "netlify-cli": "26.2.0"
+    "netlify-cli": "26.2.0",
+    "playwright": "^1.56.1"
   }
 }

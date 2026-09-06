@@ -24,7 +24,11 @@
 const fs = require("fs");
 const path = require("path");
 
-const BIN_DIR = path.join(__dirname, "..", "node_modules", ".bin");
+// Overridable only for the regression test (tests/site/netlify-shim-patch.test.mjs),
+// which points this at a disposable fixture directory instead of the real node_modules
+// so it can safely reproduce the POSIX-symlink corruption bug against a throwaway target.
+const BIN_DIR = process.env.PATCH_NETLIFY_SHIM_BIN_DIR_OVERRIDE ||
+  path.join(__dirname, "..", "node_modules", ".bin");
 const GUARD_RELATIVE = "..\\..\\scripts\\netlify-guard.js";
 const GUARD_RELATIVE_POSIX = "../../scripts/netlify-guard.js";
 
@@ -94,6 +98,17 @@ exit $ret
 function patchOne(name, content) {
   const target = path.join(BIN_DIR, name);
   try {
+    // CI bug (2026-09-06, caught by the first CI run ever to invoke the real CLI on
+    // Linux): npm's default POSIX bin-linking makes node_modules/.bin/<name> a SYMLINK
+    // into node_modules/netlify-cli/bin/run.js -- it only ever generates a standalone
+    // file on Windows. fs.writeFileSync on a symlink path follows the link and writes
+    // THROUGH it, silently clobbering the real netlify-cli entry point with this shim's
+    // own content instead of replacing the symlink. That corrupted run.js so badly
+    // `node run.js` became a syntax error, and the guard itself was never actually
+    // installed (the symlink still pointed at now-garbage run.js, not at this shim).
+    // rm the directory entry first -- unlink/rm never follows a symlink -- so the write
+    // always creates a fresh, non-symlinked file regardless of platform or prior state.
+    fs.rmSync(target, { force: true });
     fs.writeFileSync(target, content, { encoding: "utf8" });
     try { fs.chmodSync(target, 0o755); } catch (e) { /* best-effort on non-POSIX filesystems */ }
     console.log("[patch-netlify-shim] patched " + name + " -> scripts/netlify-guard.js");

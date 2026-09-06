@@ -10,7 +10,8 @@
     "test:unit": "node scripts/run-unit-tests.mjs",
     "test:site": "node --test tests/site/csp-smoke.test.mjs",
     "test:functions": "node --test tests/site/functions-smoke.test.mjs",
-    "verify": "npm run build && npm run verify:jsonld && npm run test:unit && npm run test:site && npm run test:functions",
+    "test:shim": "node --test tests/site/netlify-shim-patch.test.mjs",
+    "verify": "npm run build && npm run verify:jsonld && npm run test:unit && npm run test:site && npm run test:shim && npm run test:functions",
     "test": "npm run verify",
     "eval:chat": "node scripts/eval-chat.mjs"
   },

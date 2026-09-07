@@ -8,13 +8,17 @@ const { verifyRecaptcha } = require('./_shared/recaptcha.js');
 const ALLOWED_EXTS = ['pdf', 'xlsx', 'xls', 'doc', 'docx'];
 const MAX_BYTES = 60 * 1024 * 1024;
 const TOKEN_TTL_MS = 15 * 60 * 1000;
+// Google siteverify error-codes that mean OUR config is broken, not that a
+// user failed/skipped the challenge — see the reCAPTCHA block below.
+const CONFIG_ERROR_CODES = new Set(['invalid-input-secret', 'missing-input-secret', 'bad-request']);
 
 // ---------- Interim per-IP rate limit ----------
 // This endpoint mints a Graph upload session (a real SharePoint write target)
-// on every accepted call, and reCAPTCHA has been logged-but-NOT-enforced since
-// the 2026-07-19 hotfix below — so until the widget is fixed there is nothing
-// at all standing between a script and an unbounded run of upload sessions.
-// This is the interim floor.
+// on every accepted call. reCAPTCHA enforcement is back on below (2026-09-07),
+// but this floor stays as defense in depth rather than the sole abuse gate —
+// it was built for the 2026-07-19-to-2026-09-07 window when reCAPTCHA was
+// logged-but-not-enforced, and removing it now would trade a second, cheap
+// layer for no benefit.
 //
 // Deliberately the same shape as the /api/chat limiter in
 // netlify/edge-functions/chat.ts (in-memory Map of hit timestamps per IP,
@@ -24,8 +28,9 @@ const TOKEN_TTL_MS = 15 * 60 * 1000;
 // — but that module is ESM importing @netlify/blobs, and this entry is
 // CommonJS, which is exactly the bundling failure class that took production
 // down twice on 2026-08-16 (see tests/functions/esm-cjs-bundling-contract.test.js).
-// A per-container bound is worth far more than the zero bound we have now;
-// promoting it to Blobs belongs with the V2/ESM conversion of this function.
+// A per-container bound is still worth more than a global bound that never
+// ships; promoting it to Blobs belongs with the V2/ESM conversion of this
+// function.
 const RATE_WINDOW_MS = 10 * 60 * 1000;   // 10 minutes
 const RATE_DEFAULT = 10;                 // sessions per IP per window
 const rateBuckets = new Map();
@@ -100,29 +105,12 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
 
   if (checkHoneypot(body)) return ok({ ok: true }); // silent success, per chat-lead.js convention
 
-  // TEMPORARILY NOT ENFORCED (2026-07-19, Gabriel-approved): the reCAPTCHA
-  // Enterprise widget on for-brokers.html is rejecting real users with
-  // "Invalid site key" for a reason not yet root-caused — every registration
-  // detail (site key, domain, API enablement) checks out, but the client
-  // widget still fails, which would make recaptchaToken empty for every
-  // real submission and 403 the entire broker form. Still CALLING
-  // verifyRecaptcha (and logging the result) so the integration stays
-  // exercised and easy to re-enable — just not blocking on it yet.
-  // TODO: restore `if (!recaptchaOk) return fail(403, 'recaptcha_failed');`
-  // once the widget itself is confirmed working (via an actual screenshot,
-  // not just DOM/JS state — see the false positives that shipped earlier
-  // today from checking iframe presence instead of visible content).
-  let recaptchaOk;
-  try {
-    recaptchaOk = await verifyRecaptcha(body.recaptchaToken, { fetchImpl });
-  } catch (err) {
-    console.error('[broker-upload-session] verifyRecaptcha threw', String(err));
-    recaptchaOk = false;
-  }
-  if (!recaptchaOk) {
-    console.error('[broker-upload-session] recaptcha check failed but is not enforced right now', { recaptchaOk });
-  }
-
+  // These two checks are pure/local (no network, no side effect) and are
+  // deliberately ordered BEFORE the reCAPTCHA gate below: a broker who ticks
+  // the box but picks the wrong file type shouldn't burn a single-use
+  // reCAPTCHA token and have to re-solve just to learn that. Keep anything
+  // with a real side effect (logIntake, Graph, reCAPTCHA's own network call)
+  // after the gate.
   const fileName = sanitizeField(body.fileName, 200);
   const fileSize = Number(body.fileSize);
   const ext = (/\.([a-z0-9]+)$/i.exec(fileName) || [, ''])[1].toLowerCase();
@@ -130,6 +118,40 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   if (!fileName || !ALLOWED_EXTS.includes(ext)) return fail(422, 'file_type_rejected');
   if (!Number.isFinite(fileSize) || fileSize <= 0) return fail(422, 'invalid_file_size');
   if (fileSize > MAX_BYTES) return fail(413, 'file_too_large');
+
+  // RE-ENFORCED 2026-09-07 (Gabriel-approved). The original "Invalid site
+  // key" failure (disabled 2026-07-19) was a client-side typo: the site key
+  // in for-brokers.html had a capital I where the registered key has a
+  // lowercase l, fixed in PR #75 and confirmed live — the widget renders and
+  // the checkbox solves normally now. RECAPTCHA_SECRET_KEY was also reset the
+  // same day: Netlify masks any env var flagged `is_secret` in every
+  // CLI/API/`dev:exec` read path by substituting its own display placeholder
+  // rather than refusing, which made the prior value impossible to inspect
+  // and easy to mistake for something it wasn't. It was reset outright to
+  // the value in the reCAPTCHA admin console, verified character-by-character.
+  //
+  // verifyRecaptcha returns { success, errorCodes } rather than a boolean so
+  // a config problem (bad secret, Google outage) is distinguishable in logs
+  // from an ordinary failed/skipped challenge — see CONFIG_ERROR_CODES below.
+  let recaptchaResult;
+  try {
+    recaptchaResult = await verifyRecaptcha(body.recaptchaToken, { fetchImpl });
+  } catch (err) {
+    console.error('[broker-upload-session] verifyRecaptcha threw', String(err));
+    recaptchaResult = { success: false, errorCodes: ['threw'] };
+  }
+  if (!recaptchaResult.success) {
+    const errorCodes = recaptchaResult.errorCodes || [];
+    console.error('[broker-upload-session] recaptcha check failed', { errorCodes });
+    // A real user's failed/skipped challenge is routine and not worth a
+    // pipeline-failures row (that channel would drown in bot noise). A
+    // secret/config-class error is a production incident and must be
+    // visible somewhere other than a function log nobody is tailing.
+    if (errorCodes.some((c) => CONFIG_ERROR_CODES.has(c) || c.startsWith('http-'))) {
+      await logFailure(fetchImpl, { errorCode: 'recaptcha_config_error', detail: errorCodes.join(',') });
+    }
+    return fail(403, 'recaptcha_failed');
+  }
 
   const company = sanitizeField(body.company, 150) || 'Unknown Company';
   const dateStamp = new Date().toISOString().slice(0, 10);

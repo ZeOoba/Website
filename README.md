@@ -83,7 +83,7 @@ flowchart TD
     Gate -->|"commercial-lease-application"| TenantFn["tenant-application-processor.js"]
     Gate -->|"owner-submission-intake"| OwnerFn["owner-lead-notify.js"]
 
-    Visitor -->|"1. POST /api/broker-upload-session\n(broker-upload.js)"| Sess["broker-upload-session.js\n(honeypot enforced, reCAPTCHA\nverified but not enforced;\nmints Graph upload session)"]
+    Visitor -->|"1. POST /api/broker-upload-session\n(broker-upload.js)"| Sess["broker-upload-session.js\n(honeypot + reCAPTCHA enforced;\nmints Graph upload session)"]
     Sess -->|"2. PUT 5 MiB chunks\ndirect from browser"| SP["oxfordraeg.sharepoint.com\n(SharePoint drive)"]
     Visitor -->|"3. POST /api/broker-finalize"| Fin["broker-finalize.js\n(signed intake token,\nper-IP + daily cap)"]
     Fin -->|"triggers"| Score["broker-score-background.js\n(extract -> LLM terms -> score engine)"]
@@ -91,7 +91,7 @@ flowchart TD
     Visitor -->|"4. polls broker-score-status"| Status["broker-score-status.js"]
 
     Visitor -.->|"loads widget,\nfetches token"| Recaptcha["www.google.com/recaptcha"]
-    Sess -.->|"siteverify\n(logged, not enforced)"| Recaptcha
+    Sess -.->|"siteverify\n(enforced, 403 on failure)"| Recaptcha
 
     Fin --> Blobs["Netlify Blobs\n(scores, rate limits,\ndedupe markers)"]
     Score --> Blobs
@@ -111,7 +111,7 @@ flowchart TD
     Score -.-> Forms
 ```
 
-**Reading the diagram:** most of what the visitor touches is same-origin, but the browser itself makes two direct cross-origin calls in these flows: it loads Google's reCAPTCHA widget during the broker-upload honeypot step, and it `PUT`s a broker's offering memorandum straight to SharePoint in 5 MiB chunks — both `www.google.com` and `oxfordraeg.sharepoint.com` sit in the `connect-src` allowlist in `_headers` for exactly these reasons (a third entry, `*.tile.openstreetmap.org`, backs the markets-page maps and is unrelated to this flow). Server-side, the only outbound calls are Microsoft Graph (auth, SharePoint file writes, and all outbound mail), the Anthropic API (the `/api/chat` assistant and the broker deal-term extraction), and Google's reCAPTCHA siteverify endpoint — logged but not currently enforced on failure (`broker-upload-session.js`, since 2026-07-19); there is no database — durable state is Netlify Blobs (score results, per-IP rate limits, daily caps, dedupe markers) plus Netlify Forms, which doubles as the failure log every function writes to via the `pipeline-failures` form. Two functions are never linked from a page or called by client JS: `tenant-application-processor.js` and `owner-lead-notify.js` are wired as Netlify `submission-created` outgoing webhooks — Netlify itself POSTs to each function's URL on every form submitted anywhere on the site, and each gates on `form_name` — that gate is load-bearing, not defensive. The broker pipeline is the only multi-step flow: session, direct upload, finalize, then an out-of-band background scoring job the page polls for.
+**Reading the diagram:** most of what the visitor touches is same-origin, but the browser itself makes two direct cross-origin calls in these flows: it loads Google's reCAPTCHA widget during the broker-upload honeypot step, and it `PUT`s a broker's offering memorandum straight to SharePoint in 5 MiB chunks — both `www.google.com` and `oxfordraeg.sharepoint.com` sit in the `connect-src` allowlist in `_headers` for exactly these reasons (a third entry, `*.tile.openstreetmap.org`, backs the markets-page maps and is unrelated to this flow). Server-side, the only outbound calls are Microsoft Graph (auth, SharePoint file writes, and all outbound mail), the Anthropic API (the `/api/chat` assistant and the broker deal-term extraction), and Google's reCAPTCHA siteverify endpoint — enforced, 403 on failure (`broker-upload-session.js`; disabled 2026-07-19 to 2026-09-07 after a client-side site-key typo, re-enabled once fixed and verified); there is no database — durable state is Netlify Blobs (score results, per-IP rate limits, daily caps, dedupe markers) plus Netlify Forms, which doubles as the failure log every function writes to via the `pipeline-failures` form. Two functions are never linked from a page or called by client JS: `tenant-application-processor.js` and `owner-lead-notify.js` are wired as Netlify `submission-created` outgoing webhooks — Netlify itself POSTs to each function's URL on every form submitted anywhere on the site, and each gates on `form_name` — that gate is load-bearing, not defensive. The broker pipeline is the only multi-step flow: session, direct upload, finalize, then an out-of-band background scoring job the page polls for.
 
 ## Repo layout
 

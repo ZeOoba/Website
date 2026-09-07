@@ -480,7 +480,10 @@ h3{font-size:22px;margin-bottom:8px}
         showUnavailable();
       }
     }).catch(function(err){
-      errorBox.textContent = 'Something went wrong submitting your deal. Please email info@oxfordra.net directly, or try again. (' + (err && err.message ? err.message : 'unknown error') + ')';
+      var code = err && err.message;
+      errorBox.textContent = (code === 'recaptcha_unticked' || code === 'recaptcha_failed')
+        ? 'Please confirm you\'re not a robot, then try again.'
+        : 'Something went wrong submitting your deal. Please email info@oxfordra.net directly, or try again. (' + (code || 'unknown error') + ')';
       errorBox.style.display = '';
       if (window.grecaptcha && window.grecaptcha.enterprise && window.grecaptcha.enterprise.reset && window.ORA_RECAPTCHA_WIDGET_ID !== null) { window.grecaptcha.enterprise.reset(window.ORA_RECAPTCHA_WIDGET_ID); }
       btn.disabled = false;

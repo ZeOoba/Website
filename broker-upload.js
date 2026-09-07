@@ -69,6 +69,9 @@
     var fileInput = formEl.querySelector('input[type="file"]');
     var file = fileInput && fileInput.files && fileInput.files[0];
     if (!file) throw new Error('no_file_selected');
+    // Fail fast on an unticked/expired checkbox before spending a network
+    // round trip and a rate-limit slot on a request the server will 403 too.
+    if (!fields.recaptchaToken) throw new Error('recaptcha_unticked');
 
     var session = await requestSession(fields, file);
     await uploadInChunks(session.uploadUrl, file);

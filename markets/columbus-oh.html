@@ -475,7 +475,8 @@ h3{font-size:22px;margin-bottom:8px}
 
 <!-- Owner Guides -->
 <style>
-.guide-links{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));max-width:1140px;margin:0 auto}
+.guide-links{display:grid;gap:16px;grid-template-columns:1fr;max-width:1140px;margin:0 auto}
+@media(min-width:768px){.guide-links{grid-template-columns:repeat(3,1fr)}}
 .guide-card{display:block;background:var(--white);border:1px solid var(--light-gray);border-radius:var(--radius-card);padding:22px 24px;text-align:left;transition:transform .25s,box-shadow .25s}
 .guide-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover);text-decoration:none}
 .guide-card h3{font-size:19px;margin-bottom:6px;color:var(--navy)}

@@ -22,5 +22,31 @@ https://www.oxfordra.net/* https://oxfordra.net/:splat 301!
 /api/broker-finalize        /.netlify/functions/broker-finalize        200
 /api/broker-score-status    /.netlify/functions/broker-score-status    200
 
+# Canonicalize .html file paths — Netlify otherwise serves /about.html and /about
+# as two 200 URLs with identical content. Forced (!) because the file exists.
+# One rule per sitemap page; tests/site/seo.test.mjs keeps this in sync.
+/index.html                                                    /                                                            301!
+/about.html                                                    /about                                                       301!
+/portfolio.html                                                /portfolio                                                   301!
+/markets/index.html                                            /markets/                                                    301!
+/markets/columbus-oh.html                                      /markets/columbus-oh                                         301!
+/markets/maryland.html                                         /markets/maryland                                            301!
+/track-record.html                                             /track-record                                                301!
+/for-brokers.html                                              /for-brokers                                                 301!
+/sell-your-building.html                                       /sell-your-building                                          301!
+/resources/index.html                                          /resources/                                                  301!
+/resources/selling-industrial-building-without-a-broker.html   /resources/selling-industrial-building-without-a-broker      301!
+/resources/how-industrial-buildings-are-valued.html            /resources/how-industrial-buildings-are-valued               301!
+/resources/1031-exchange-industrial-property-guide.html        /resources/1031-exchange-industrial-property-guide           301!
+/resources/industrial-building-sale-document-checklist.html    /resources/industrial-building-sale-document-checklist       301!
+/available-space.html                                          /available-space                                             301!
+/tenant-resources.html                                         /tenant-resources                                            301!
+/contact.html                                                  /contact                                                     301!
+/privacy.html                                                  /privacy                                                     301!
+/terms.html                                                    /terms                                                       301!
+
+# /404 would otherwise serve 404.html with a 200 (soft 404)
+/404                                                           /404.html                                                    404!
+
 # SPA-style: serve 404.html for unknown paths
 /*                 /404.html       404

@@ -96,7 +96,11 @@ async function main() {
     if (name === 'dist' || name.startsWith('.')) continue;
     const allowed = entry.isDirectory() ? SITE_DIRS.includes(name) : SITE_FILES.includes(name);
     if (allowed) {
-      await fs.cp(path.join(ROOT, name), path.join(DIST, name), { recursive: entry.isDirectory() });
+      // Unit tests that sit next to their module (e.g. assets/chat.test.js) never ship.
+      await fs.cp(path.join(ROOT, name), path.join(DIST, name), {
+        recursive: entry.isDirectory(),
+        filter: (src) => !/\.test\.[cm]?js$/.test(src),
+      });
       copied.push(entry.isDirectory() ? name + '/' : name);
     } else if (EXPECTED_EXCLUSIONS.includes(name)) {
       excluded.push(entry.isDirectory() ? name + '/' : name);

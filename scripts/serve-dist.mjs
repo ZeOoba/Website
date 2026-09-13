@@ -31,6 +31,7 @@ import http from 'node:http';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
+import { parseArgs } from 'node:util';
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
 
@@ -189,16 +190,39 @@ export async function startServer({ root = path.join(ROOT, 'dist'), port = 0 } =
   };
 }
 
+/**
+ * Parse CLI flags. Accepts both `--port 8788` and `--port=8788` (likewise
+ * `--root`); unknown flags throw. An invalid port throws rather than reaching
+ * `server.listen` as NaN.
+ * @param {string[]} args argv without the node/script entries
+ * @returns {{port: number, root?: string}}
+ */
+export function parseCliArgs(args) {
+  const { values } = parseArgs({
+    args,
+    options: { port: { type: 'string' }, root: { type: 'string' } },
+    strict: true,
+    allowPositionals: false,
+  });
+  const raw = values.port ?? '8788';
+  const port = Number(raw);
+  if (!/^\d+$/.test(raw) || port > 65535) {
+    throw new Error(`[serve-dist] invalid --port ${JSON.stringify(raw)}; expected an integer 0-65535.`);
+  }
+  const opts = { port };
+  if (values.root) opts.root = values.root;
+  return opts;
+}
+
 // Standalone CLI mode.
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(url.fileURLToPath(import.meta.url))) {
-  const argv = Object.fromEntries(
-    process.argv.slice(2).map((a) => {
-      const m = a.match(/^--([^=]+)=(.*)$/);
-      return m ? [m[1], m[2]] : [a.replace(/^--/, ''), 'true'];
-    })
-  );
-  const opts = { port: parseInt(argv.port || '8788', 10) };
-  if (argv.root) opts.root = argv.root;
+  let opts;
+  try {
+    opts = parseCliArgs(process.argv.slice(2));
+  } catch (err) {
+    console.error(String(err.message || err));
+    process.exit(1);
+  }
   startServer(opts).then(
     ({ url: u }) => console.log(`[serve-dist] serving with _headers applied at ${u}`),
     (err) => {

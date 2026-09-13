@@ -29,9 +29,9 @@ import url from 'node:url';
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
 
-// Root-level test files that live outside tests/ by design (they sit next to
-// the module they test because that module has no exports of its own).
-const EXTRA_TESTS = ['application-script.file-size.test.js'];
+// Test files that live outside tests/ by design (they sit next to the module
+// they test). build-dist.mjs keeps every *.test.js out of the published site.
+const EXTRA_TESTS = ['application-script.file-size.test.js', 'assets/chat.test.js'];
 
 async function walk(dir) {
   const out = [];

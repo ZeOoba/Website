@@ -23,7 +23,7 @@ ORA is also actively evaluating expansion into growing major Mid-Atlantic and Mi
 - **Asset type:** Class B/C shallow-bay industrial, flex/industrial, light-industrial, occasionally industrial-adjacent retail
 - **Clear height:** 18'+ preferred
 - **Capital:** 100% proprietary family capital, all-cash to close
-- **Speed:** 30-day close standard, no financing contingency
+- **Speed:** 30–45 day close standard (fastest to date: 28 days), no financing contingency
 - **Leverage:** Conservative — all-cash to close, historically 14–16% portfolio LTV
 - **Underwriting:** Basis below replacement cost; conservative debt-service coverage; demonstrable margin of safety
 

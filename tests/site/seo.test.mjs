@@ -221,3 +221,29 @@ test('QC-6 no *.test.* file is published into dist/', () => {
   const leaked = walk(dist).filter((f) => /\.test\.[cm]?js$/.test(f)).map((f) => path.relative(dist, f));
   assert.deepEqual(leaked, [], 'test files leaked into dist/');
 });
+
+test('QC-8 the inline .btn--outline base rule uses --gold-accessible, with raw --gold only on dark grounds', () => {
+  for (const file of htmlFiles()) {
+    const html = read(file);
+    for (const [rule] of html.matchAll(/(?:^|[}\n])\.btn--outline\{[^}]*\}/g)) {
+      assert.ok(!/[{;]color:var\(--gold\)/.test(rule), `${file}: base .btn--outline text is raw --gold (~2.2:1 on white/parchment): ${rule.trim()}`);
+    }
+  }
+  // Home hero and Featured Results sit on navy/photo grounds and keep full gold.
+  assert.match(read('index.html'), /\.hero \.btn--outline[^{]*\{color:var\(--gold\)\}/, 'index.html needs a dark-ground override for hero outline buttons');
+  assert.match(read('index.html'), /\.section--navy \.btn--outline[^{]*\{color:var\(--gold\)\}/, 'index.html needs a dark-ground override for navy-section outline buttons');
+});
+
+test('QC-9 dark-ground .btn--outline gold overrides never beat :hover (gold text on a gold hover fill)', () => {
+  // `.section--navy .btn--outline{color:gold}` has the same specificity as
+  // `.btn--outline:hover` and sits later, so the hover label vanished. Scope every
+  // such override with :not(:hover).
+  for (const file of htmlFiles()) {
+    const css = read(file).replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const [, selectors] of css.matchAll(/([^{}]*\.btn--outline[^{}]*)\{color:var\(--gold\)\}/g)) {
+      for (const sel of selectors.split(',').map((s) => s.trim()).filter(Boolean)) {
+        assert.ok(/:not\(:hover\)$/.test(sel), `${file}: "${sel}" sets gold text without :not(:hover)`);
+      }
+    }
+  }
+});

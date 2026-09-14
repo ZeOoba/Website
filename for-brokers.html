@@ -120,7 +120,7 @@ h3{font-size:22px;margin-bottom:8px}
 .btn--outline:hover{background:var(--gold);color:var(--navy)}
 /* --gold-accessible is tuned for LIGHT backgrounds; on the navy hero/CTA bands it would
    fall below AA. Those bands keep plain --gold, which already clears AA on navy. */
-.section--navy .btn--outline,.subpage-hero .btn--outline{color:var(--gold)}
+.section--navy .btn--outline:not(:hover),.subpage-hero .btn--outline:not(:hover){color:var(--gold)}
 .btn--white{background:var(--white);color:var(--navy);border-color:var(--white)}
 .btn--white:hover{background:var(--parchment);border-color:var(--parchment)}
 @media(max-width:768px){.hero{min-height:auto;padding:110px 24px 60px}.hero h1{font-size:36px}.hero__sub{font-size:18px}}

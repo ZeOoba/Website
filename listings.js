@@ -58,7 +58,7 @@
           "sf": 1800,
           "sfLabel": "1,800 SF",
           "rate": "$9.00",
-          "rateType": "MG",
+          "rateType": "NNN",
           "use": "Industrial"
         }
       ]

@@ -2,16 +2,21 @@
  * sync-listings.mjs — reconcile a LoopNet read against data/listings.json.
  *
  * LoopNet has no API and 403s non-browser fetches, so the READ is done by the
- * weekly scheduled task through a real signed-in Chrome session. That task
+ * weekly scheduled task in a real browser: the public company page
+ * (LOOPNET_COMPANY_URL) plus each listing's detail page, read TWICE. That task
  * hands this script one JSON file:
  *
- *   { "dashboard": [Property...], "public": [Property...] }
- *   Property = { loopnetId?, address, city, state, brokers?: [string],
- *                units: [{ suite, sf, sfMax?, rate (number, $/SF/yr), rateType }] }
+ *   { "reads": [[Property...], [Property...]] }
+ *   Property = { loopnetId?, address, city, state, brokers?: [string], forSale?: boolean,
+ *                units: [{ suite, sf, sfMax?, rate (number, $/SF/yr), rateType? }] }
  *
- * `dashboard` is the My Listings manager; `public` is the company page
- * (LOOPNET_COMPANY_URL). Both are required and must agree — a disagreement
- * means one read was partial, and a partial read must never delist space.
+ * Both reads are required and must agree — a disagreement means one was
+ * partial, and a partial read must never delist space. `rateType` may be
+ * omitted when LoopNet does not state it: an existing unit keeps the site's
+ * value, a new unit is flagged for input rather than guessed.
+ *
+ * Site-side flags in listings.json: `loopnetId` (match key), `pinned: true`
+ * (listing is kept and left untouched even when LoopNet does not carry it).
  *
  * planSync() is pure. Outcomes:
  *   noop   nothing to change
@@ -35,7 +40,8 @@ const DATA_FILE = path.join(ROOT, 'data', 'listings.json');
 export const LOOPNET_COMPANY_URL = 'https://www.loopnet.com/company/oxford-realty-advisors/dkrft8kl/';
 
 // Standing exclusions (Gabriel, 2026-09-18): listings on the company page that
-// must never appear on oxfordra.net. Applied to both reads before any guard or
+// must never appear on oxfordra.net — plus every for-sale listing, since
+// /available-space is a leasing page. Applied to both reads before any guard or
 // diff, so an excluded listing is never added, flagged, or counted.
 export const EXCLUDE = { brokers: ['scott manhoff'], cities: ['potomac'] };
 
@@ -77,6 +83,7 @@ function findHit(p, byKey) {
 }
 
 export function isExcluded(p) {
+  if (p.forSale) return true;
   if (EXCLUDE.cities.includes(norm(p.city))) return true;
   return (p.brokers || []).some((b) => EXCLUDE.brokers.includes(norm(b)));
 }
@@ -97,16 +104,16 @@ function problems(read, label) {
         Number.isFinite(u.sf) && u.sf > 0 && Number.isFinite(u.rate) && u.rate > 0 &&
         (u.sfMax === undefined || (Number.isFinite(u.sfMax) && u.sfMax > u.sf));
       if (!ok) out.push(`${who} suite "${u && u.suite}" is missing suite/sf/rate`);
-      else if (!(u.rateType in RATE_TYPES)) out.push(`${who} suite "${u.suite}" has unknown rate type "${u.rateType}"`);
+      else if (u.rateType !== undefined && !(u.rateType in RATE_TYPES)) out.push(`${who} suite "${u.suite}" has unknown rate type "${u.rateType}"`);
     }
   }
   return out;
 }
 
-// Canonical fingerprint of a read, for the dashboard-vs-public comparison.
+// Canonical fingerprint of a read, for the read-vs-read comparison.
 function fingerprint(read) {
   return read.flatMap((p) => p.units.map((u) =>
-    [keyOf(p), norm(u.suite), u.sf, u.sfMax || '', u.rate.toFixed(2), u.rateType].join('|'))).sort();
+    [keyOf(p), norm(u.suite), u.sf, u.sfMax || '', u.rate.toFixed(2), u.rateType || ''].join('|'))).sort();
 }
 
 export function planSync(current, scraped) {
@@ -114,12 +121,11 @@ export function planSync(current, scraped) {
   const alert = (...reasons) => ({ ...result, action: 'alert', reasons });
 
   const s = scraped || {};
-  if (!Array.isArray(s.dashboard) || !Array.isArray(s.public)) return alert('read is missing the dashboard or public listing set');
-  const dashboard = s.dashboard.filter((p) => !isExcluded(p));
-  const pub = s.public.filter((p) => !isExcluded(p));
-  if (dashboard.length === 0 || pub.length === 0) return alert('read returned zero listings (block page, signed-out session, or layout change)');
+  if (!Array.isArray(s.reads) || s.reads.length !== 2 || !s.reads.every(Array.isArray)) return alert('expected exactly two independent reads of the LoopNet pages');
+  const [dashboard, pub] = s.reads.map((read) => read.filter((p) => !isExcluded(p)));
+  if (dashboard.length === 0 || pub.length === 0) return alert('read returned zero listings (block page or layout change)');
 
-  const bad = [...problems(dashboard, 'dashboard'), ...problems(pub, 'public')];
+  const bad = [...problems(dashboard, 'read 1'), ...problems(pub, 'read 2')];
   if (bad.length) return alert(...bad);
 
   const fd = fingerprint(dashboard);
@@ -127,13 +133,14 @@ export function planSync(current, scraped) {
   if (fd.length !== fp.length || fd.some((x, i) => x !== fp[i])) {
     const onlyD = fd.filter((x) => !fp.includes(x));
     const onlyP = fp.filter((x) => !fd.includes(x));
-    return alert(`dashboard and public pages disagree (dashboard-only: ${onlyD.join(', ') || 'none'}; public-only: ${onlyP.join(', ') || 'none'})`);
+    return alert(`the two reads disagree (read-1-only: ${onlyD.join(', ') || 'none'}; read-2-only: ${onlyP.join(', ') || 'none'})`);
   }
 
   const currentUnits = current.reduce((n, p) => n + p.units.length, 0);
   const byKey = indexRead(dashboard);
   const matchedUnits = current.reduce((n, p) => {
     const hit = findHit(p, byKey);
+    if (!hit && p.pinned) return n + p.units.length;
     return n + (hit ? hit.units.length : 0);
   }, 0);
   if (currentUnits > 0 && matchedUnits < currentUnits * 0.5) {
@@ -144,21 +151,28 @@ export function planSync(current, scraped) {
   const claimed = new Set();
   for (const p of current) {
     const hit = findHit(p, byKey);
+    if (!hit && p.pinned) { next.push(clone(p)); continue; }
     if (!hit) { result.changes.push(`removed property: ${p.name} (no longer on LoopNet)`); continue; }
     claimed.add(hit);
     const np = clone(p);
     const old = new Map(p.units.map((u) => [norm(u.suite), u]));
     np.units = hit.units.map((u) => {
       const prev = old.get(norm(u.suite));
+      const rateType = u.rateType || (prev && prev.rateType);
+      if (!rateType) {
+        result.needsInput.push(`new unit with no rate type on LoopNet: ${p.name} Suite ${u.suite} - ${sfLabel(u)} @ ${money(u.rate)} - add it to data/listings.json by hand`);
+        return null;
+      }
       const nu = { suite: prev ? prev.suite : u.suite, sf: u.sf };
       if (u.sfMax) nu.sfMax = u.sfMax;
-      Object.assign(nu, { sfLabel: sfLabel(u), rate: money(u.rate), rateType: u.rateType, use: prev ? prev.use : p.category });
+      Object.assign(nu, { sfLabel: sfLabel(u), rate: money(u.rate), rateType, use: prev ? prev.use : p.category });
       if (!prev) result.changes.push(`new unit: ${p.name} Suite ${nu.suite} - ${nu.sfLabel} @ ${nu.rate} ${nu.rateType}`);
       else if (JSON.stringify(prev) !== JSON.stringify(nu)) {
         result.changes.push(`changed: ${p.name} Suite ${nu.suite} - ${prev.sfLabel} @ ${prev.rate} ${prev.rateType} -> ${nu.sfLabel} @ ${nu.rate} ${nu.rateType}`);
       }
       return prev && JSON.stringify(prev) === JSON.stringify(nu) ? clone(prev) : nu;
-    });
+    }).filter(Boolean);
+    if (np.units.length === 0) { result.changes.push(`removed property: ${p.name} (no usable units on LoopNet)`); continue; }
     const kept = new Set(hit.units.map((u) => norm(u.suite)));
     for (const u of p.units) if (!kept.has(norm(u.suite))) result.changes.push(`removed unit: ${p.name} Suite ${u.suite} (no longer on LoopNet)`);
     next.push(np);

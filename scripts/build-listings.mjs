@@ -16,6 +16,7 @@
  */
 
 import { promises as fs } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import url from 'node:url';
 
@@ -217,21 +218,32 @@ function splice(src, re, replacement, label) {
 const GENERATORS = {
   'listings.js': (src, listings) =>
     splice(src, /()  var LISTINGS = \[[\s\S]*?\n  \];\n()/, renderListingsBlock(listings), 'listings.js LISTINGS block'),
-  'available-space.html': (src, listings) =>
+  'available-space.html': (src, listings, version) =>
     splice(
-      splice(src, /(<div class="as-listings" id="listingsPanel">\n)[\s\S]*?(        <div class="as-no-results" id="noResults")/, renderCards(listings), '#listingsPanel cards'),
-      /(<script type="application\/ld\+json" id="listing-schema">\n)[\s\S]*?(    <\/script>)/, renderSchema(listings), 'listing-schema JSON-LD'),
+      splice(
+        splice(src, /(<div class="as-listings" id="listingsPanel">\n)[\s\S]*?(        <div class="as-no-results" id="noResults")/, renderCards(listings), '#listingsPanel cards'),
+        /(<script type="application\/ld\+json" id="listing-schema">\n)[\s\S]*?(    <\/script>)/, renderSchema(listings), 'listing-schema JSON-LD'),
+      /(<script defer src="[/]listings[.]js[?]v=)[^"]*(")/, version, 'listings.js cache-buster'),
 };
+
+// _headers serves /*.js as immutable for a year, so listings.js must get a new
+// URL whenever its content changes or returning visitors keep stale listings.
+// Hash of the LF-normalised file: identical on Windows and CI checkouts.
+export const listingsVersion = (listingsJs) =>
+  createHash('sha256').update(listingsJs.replace(/\r\n/g, '\n')).digest('hex').slice(0, 10);
 
 // Returns the files that differ from what listings.json generates; rewrites
 // them when `write` is set. Preserves each file's existing line endings.
 async function run(write) {
   const listings = JSON.parse(await fs.readFile(DATA_FILE, 'utf8'));
   const drift = [];
+  let version; // set by listings.js (first entry), consumed by available-space.html
   for (const [name, gen] of Object.entries(GENERATORS)) {
     const raw = await fs.readFile(path.join(ROOT, name), 'utf8');
     const eol = raw.includes('\r\n') ? '\r\n' : '\n';
-    const next = gen(raw.replace(/\r\n/g, '\n'), listings).replace(/\n/g, eol);
+    const lf = gen(raw.replace(/\r\n/g, '\n'), listings, version);
+    if (name === 'listings.js') version = listingsVersion(lf);
+    const next = lf.replace(/\n/g, eol);
     if (next !== raw) {
       drift.push(name);
       if (write) await fs.writeFile(path.join(ROOT, name), next);

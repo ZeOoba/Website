@@ -10,7 +10,9 @@ const url = require('node:url');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const load = () => import(url.pathToFileURL(path.join(ROOT, 'scripts', 'sync-listings.mjs')).href);
-const DATA = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'listings.json'), 'utf8'));
+// Frozen fixture, NOT data/listings.json: the live data changes with every sync
+// PR and must never be able to break these tests.
+const DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixture-listings.json'), 'utf8'));
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
 // A scrape that mirrors the current data exactly.
@@ -157,14 +159,23 @@ test('for-sale listings are excluded', async () => {
   assert.deepStrictEqual(r.needsInput, []);
 });
 
-test('rate type: carried forward when LoopNet is silent; a new unit without one is flagged, not guessed', async () => {
+test('rate type: carried forward per unit, else the property-uniform type; mixed-type property flags the new unit', async () => {
   const { planSync } = await load();
   const s = mirror();
   delete s[0].units[0].rateType;
   s[0].units[0].rate = 12;
-  s[0].units.push({ suite: '2020', sf: 1800, rate: 12 });
+  s[0].units.push({ suite: '2020', sf: 1800, rate: 12, use: 'Industrial' });
   const r = planSync(DATA, { reads: [s, clone(s)] });
   assert.strictEqual(r.action, 'apply');
-  assert.deepStrictEqual(r.next[0].units.map((u) => [u.suite, u.rate, u.rateType]), [['2016', '$12.00', 'MG']]);
-  assert.ok(r.needsInput.some((m) => /2020/.test(m) && /rate type/.test(m)));
+  assert.deepStrictEqual(r.next[0].units.map((u) => [u.suite, u.rate, u.rateType, u.use]),
+    [['2016', '$12.00', 'MG', 'Flex'], ['2020', '$12.00', 'MG', 'Industrial']]);
+
+  const cur = clone(DATA);
+  cur[5].units[1].rateType = 'NNN';            // mixed types at Raytown
+  const m = mirror();
+  m[5].units[1].rateType = 'NNN';
+  m[5].units.push({ suite: '112', sf: 1000, rate: 11 });
+  const r2 = planSync(cur, { reads: [m, clone(m)] });
+  assert.strictEqual(r2.next[5].units.length, 2);
+  assert.ok(r2.needsInput.some((x) => /112/.test(x) && /rate type/.test(x)));
 });

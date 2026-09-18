@@ -8,12 +8,13 @@
  *
  *   { "reads": [[Property...], [Property...]] }
  *   Property = { loopnetId?, address, city, state, brokers?: [string], forSale?: boolean,
- *                units: [{ suite, sf, sfMax?, rate (number, $/SF/yr), rateType? }] }
+ *                units: [{ suite, sf, sfMax?, rate (number, $/SF/yr), rateType?, use? }] }
  *
  * Both reads are required and must agree — a disagreement means one was
  * partial, and a partial read must never delist space. `rateType` may be
- * omitted when LoopNet does not state it: an existing unit keeps the site's
- * value, a new unit is flagged for input rather than guessed.
+ * omitted when LoopNet does not state it (it normally does not): an existing
+ * unit keeps the site's value; a new unit inherits the property's rate type
+ * when every current unit there shares one, else it is flagged for input.
  *
  * Site-side flags in listings.json: `loopnetId` (match key), `pinned: true`
  * (listing is kept and left untouched even when LoopNet does not carry it).
@@ -156,16 +157,18 @@ export function planSync(current, scraped) {
     claimed.add(hit);
     const np = clone(p);
     const old = new Map(p.units.map((u) => [norm(u.suite), u]));
+    const types = [...new Set(p.units.map((u) => u.rateType))];
+    const propertyRateType = types.length === 1 ? types[0] : undefined;
     np.units = hit.units.map((u) => {
       const prev = old.get(norm(u.suite));
-      const rateType = u.rateType || (prev && prev.rateType);
+      const rateType = u.rateType || (prev && prev.rateType) || propertyRateType;
       if (!rateType) {
         result.needsInput.push(`new unit with no rate type on LoopNet: ${p.name} Suite ${u.suite} - ${sfLabel(u)} @ ${money(u.rate)} - add it to data/listings.json by hand`);
         return null;
       }
       const nu = { suite: prev ? prev.suite : u.suite, sf: u.sf };
       if (u.sfMax) nu.sfMax = u.sfMax;
-      Object.assign(nu, { sfLabel: sfLabel(u), rate: money(u.rate), rateType, use: prev ? prev.use : p.category });
+      Object.assign(nu, { sfLabel: sfLabel(u), rate: money(u.rate), rateType, use: u.use || (prev ? prev.use : p.category) });
       if (!prev) result.changes.push(`new unit: ${p.name} Suite ${nu.suite} - ${nu.sfLabel} @ ${nu.rate} ${nu.rateType}`);
       else if (JSON.stringify(prev) !== JSON.stringify(nu)) {
         result.changes.push(`changed: ${p.name} Suite ${nu.suite} - ${prev.sfLabel} @ ${prev.rate} ${prev.rateType} -> ${nu.sfLabel} @ ${nu.rate} ${nu.rateType}`);

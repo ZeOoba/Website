@@ -29,7 +29,7 @@
       "loopnetId": "37330657",
       "units": [
         {
-          "suite": "2016",
+          "suite": "2014",
           "sf": 1800,
           "sfLabel": "1,800 SF",
           "rate": "$11.67",
@@ -54,12 +54,12 @@
       "loopnetId": "41318384",
       "units": [
         {
-          "suite": "390",
+          "suite": "386",
           "sf": 1800,
           "sfLabel": "1,800 SF",
-          "rate": "$13.33",
+          "rate": "$9.00",
           "rateType": "MG",
-          "use": "Flex"
+          "use": "Industrial"
         }
       ]
     },
@@ -113,10 +113,18 @@
       "loopnetId": "33776831",
       "units": [
         {
-          "suite": "A1-2",
+          "suite": "C5-6",
           "sf": 1200,
           "sfMax": 2400,
           "sfLabel": "1,200\u20132,400 SF",
+          "rate": "$10.99",
+          "rateType": "+UTIL",
+          "use": "Industrial"
+        },
+        {
+          "suite": "B15",
+          "sf": 1200,
+          "sfLabel": "1,200 SF",
           "rate": "$10.99",
           "rateType": "+UTIL",
           "use": "Flex"
@@ -139,10 +147,10 @@
       "loopnetId": "39958427",
       "units": [
         {
-          "suite": "2814",
+          "suite": "2802",
           "sf": 1500,
           "sfLabel": "1,500 SF",
-          "rate": "$13.60",
+          "rate": "$13.20",
           "rateType": "MG",
           "use": "Flex"
         }
@@ -165,17 +173,10 @@
       "units": [
         {
           "suite": "107-108",
-          "sf": 5745,
-          "sfLabel": "5,745 SF",
-          "rate": "$10.00",
-          "rateType": "+UTIL",
-          "use": "Retail"
-        },
-        {
-          "suite": "110",
-          "sf": 2865,
-          "sfLabel": "2,865 SF",
-          "rate": "$10.00",
+          "sf": 2872,
+          "sfMax": 5745,
+          "sfLabel": "2,872\u20135,745 SF",
+          "rate": "$9.99",
           "rateType": "+UTIL",
           "use": "Retail"
         }

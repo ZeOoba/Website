@@ -6,68 +6,177 @@
 (function () {
   'use strict';
 
-  // NOTE: When adding/removing/editing a listing here, also update the static
-  // fallback cards in available-space.html's #listingsPanel (id="listing-schema"
-  // JSON-LD too) — that markup is what AI/search crawlers see before this script
-  // runs, and there is no build step to generate it automatically.
+  // GENERATED: do not edit LISTINGS by hand. Edit data/listings.json and run
+  // `npm run build:listings` — it rewrites this block plus the static fallback
+  // cards and id="listing-schema" JSON-LD in available-space.html (the markup
+  // AI/search crawlers see before this script runs). `npm run verify` fails on drift.
 
   // ── Property Data (current availabilities only) ──────────────────────────────
   var LISTINGS = [
     {
-      id: 1, name: '2012-2026 Zettler Rd', city: 'Columbus', state: 'OH', market: 'Columbus',
-      category: 'Flex', lat: 39.957, lng: -82.960,
-      img: '/images/10-zettler-2012-2026-exterior-.jpg', imgW: 800, slug: '2012-2026-zettler-rd',
-      desc: 'Adjacent small-bay flex industrial on Zettler Rd, Columbus.',
-      units: [
-        { suite: '2016', sf: 1800, sfLabel: '1,800 SF', rate: '$11.67', rateType: 'MG', use: 'Flex' }
+      "id": 1,
+      "name": "2012-2026 Zettler Rd",
+      "city": "Columbus",
+      "state": "OH",
+      "market": "Columbus",
+      "category": "Flex",
+      "lat": 39.957,
+      "lng": -82.96,
+      "img": "/images/10-zettler-2012-2026-exterior-.jpg",
+      "imgW": 800,
+      "slug": "2012-2026-zettler-rd",
+      "desc": "Adjacent small-bay flex industrial on Zettler Rd, Columbus.",
+      "loopnetId": "37330657",
+      "units": [
+        {
+          "suite": "2016",
+          "sf": 1800,
+          "sfLabel": "1,800 SF",
+          "rate": "$11.67",
+          "rateType": "MG",
+          "use": "Flex"
+        }
       ]
     },
     {
-      id: 2, name: '384-398 Morrison Rd', city: 'Columbus', state: 'OH', market: 'Columbus',
-      category: 'Flex', lat: 39.938, lng: -82.974,
-      img: '/images/17-warehouse-columbus-external.jpg', imgW: 700, slug: '384-398-morrison-rd',
-      desc: 'Flex/warehouse complex on Morrison Rd, Columbus, OH.',
-      units: [
-        { suite: '390', sf: 1800, sfLabel: '1,800 SF', rate: '$13.33', rateType: 'MG', use: 'Flex' }
+      "id": 2,
+      "name": "384-398 Morrison Rd",
+      "city": "Columbus",
+      "state": "OH",
+      "market": "Columbus",
+      "category": "Flex",
+      "lat": 39.938,
+      "lng": -82.974,
+      "img": "/images/17-warehouse-columbus-external.jpg",
+      "imgW": 700,
+      "slug": "384-398-morrison-rd",
+      "desc": "Flex/warehouse complex on Morrison Rd, Columbus, OH.",
+      "loopnetId": "41318384",
+      "units": [
+        {
+          "suite": "390",
+          "sf": 1800,
+          "sfLabel": "1,800 SF",
+          "rate": "$13.33",
+          "rateType": "MG",
+          "use": "Flex"
+        }
       ]
     },
     {
-      id: 3, name: '2000-2002 Zettler Rd', city: 'Columbus', state: 'OH', market: 'Columbus',
-      category: 'Industrial', lat: 39.958, lng: -82.961,
-      img: '/images/07-2000_2002-front.jpg', imgW: 700, slug: '2000-2002-zettler-rd',
-      desc: 'Small-bay industrial in Columbus near the I-70/I-270 interchange.',
-      units: [
-        { suite: '2000', sf: 4960, sfLabel: '4,960 SF', rate: '$8.00', rateType: 'NNN', use: 'Industrial' },
-        { suite: '2002', sf: 6200, sfLabel: '6,200 SF', rate: '$8.00', rateType: 'NNN', use: 'Industrial' }
+      "id": 3,
+      "name": "2000-2002 Zettler Rd",
+      "city": "Columbus",
+      "state": "OH",
+      "market": "Columbus",
+      "category": "Industrial",
+      "lat": 39.958,
+      "lng": -82.961,
+      "img": "/images/07-2000_2002-front.jpg",
+      "imgW": 700,
+      "slug": "2000-2002-zettler-rd",
+      "desc": "Small-bay industrial in Columbus near the I-70/I-270 interchange.",
+      "units": [
+        {
+          "suite": "2000",
+          "sf": 4960,
+          "sfLabel": "4,960 SF",
+          "rate": "$8.00",
+          "rateType": "NNN",
+          "use": "Industrial"
+        },
+        {
+          "suite": "2002",
+          "sf": 6200,
+          "sfLabel": "6,200 SF",
+          "rate": "$8.00",
+          "rateType": "NNN",
+          "use": "Industrial"
+        }
       ]
     },
     {
-      id: 4, name: 'Northwood Business Center', subtitle: '2203 Northwood Dr',
-      city: 'Easton', state: 'MD', market: 'Maryland',
-      category: 'Flex', lat: 38.780, lng: -76.080,
-      img: '/images/06-exterior-beauty.jpg', imgW: 700, slug: '2203-northwood-dr',
-      desc: 'Multi-tenant industrial flex park in Easton, MD.',
-      units: [
-        { suite: 'A1-2', sf: 1200, sfMax: 2400, sfLabel: '1,200\u20132,400 SF', rate: '$10.99', rateType: '+UTIL', use: 'Flex' }
+      "id": 4,
+      "name": "Northwood Business Center",
+      "subtitle": "2203 Northwood Dr",
+      "city": "Easton",
+      "state": "MD",
+      "market": "Maryland",
+      "category": "Flex",
+      "lat": 38.78,
+      "lng": -76.08,
+      "img": "/images/06-exterior-beauty.jpg",
+      "imgW": 700,
+      "slug": "2203-northwood-dr",
+      "desc": "Multi-tenant industrial flex park in Easton, MD.",
+      "units": [
+        {
+          "suite": "A1-2",
+          "sf": 1200,
+          "sfMax": 2400,
+          "sfLabel": "1,200\u20132,400 SF",
+          "rate": "$10.99",
+          "rateType": "+UTIL",
+          "use": "Flex"
+        }
       ]
     },
     {
-      id: 5, name: '2800-2826 Banwick Rd', city: 'Columbus', state: 'OH', market: 'Columbus',
-      category: 'Flex', lat: 39.939, lng: -82.953,
-      img: '/images/01-2800-2826-banwick-exterior.jpg', imgW: 800, slug: '2800-2826-banwick-rd',
-      desc: 'Shallow-bay flex industrial in Columbus, OH near I-270.',
-      units: [
-        { suite: '2814', sf: 1500, sfLabel: '1,500 SF', rate: '$13.60', rateType: 'MG', use: 'Flex' }
+      "id": 5,
+      "name": "2800-2826 Banwick Rd",
+      "city": "Columbus",
+      "state": "OH",
+      "market": "Columbus",
+      "category": "Flex",
+      "lat": 39.939,
+      "lng": -82.953,
+      "img": "/images/01-2800-2826-banwick-exterior.jpg",
+      "imgW": 800,
+      "slug": "2800-2826-banwick-rd",
+      "desc": "Shallow-bay flex industrial in Columbus, OH near I-270.",
+      "loopnetId": "39958427",
+      "units": [
+        {
+          "suite": "2814",
+          "sf": 1500,
+          "sfLabel": "1,500 SF",
+          "rate": "$13.60",
+          "rateType": "MG",
+          "use": "Flex"
+        }
       ]
     },
     {
-      id: 6, name: '9620 E State Route 350', city: 'Raytown', state: 'MO', market: 'Kansas City',
-      category: 'Retail', lat: 38.946, lng: -94.462,
-      img: '/images/05-exterior-front.jpg', imgW: 485, slug: '9620-state-route-350',
-      desc: 'Flex industrial in the Raytown submarket of Kansas City, MO.',
-      units: [
-        { suite: '107-108', sf: 5745, sfLabel: '5,745 SF', rate: '$10.00', rateType: '+UTIL', use: 'Retail' },
-        { suite: '110', sf: 2865, sfLabel: '2,865 SF', rate: '$10.00', rateType: '+UTIL', use: 'Retail' }
+      "id": 6,
+      "name": "9620 E State Route 350",
+      "city": "Raytown",
+      "state": "MO",
+      "market": "Kansas City",
+      "category": "Retail",
+      "lat": 38.946,
+      "lng": -94.462,
+      "img": "/images/05-exterior-front.jpg",
+      "imgW": 485,
+      "slug": "9620-state-route-350",
+      "desc": "Flex industrial in the Raytown submarket of Kansas City, MO.",
+      "loopnetId": "33608684",
+      "units": [
+        {
+          "suite": "107-108",
+          "sf": 5745,
+          "sfLabel": "5,745 SF",
+          "rate": "$10.00",
+          "rateType": "+UTIL",
+          "use": "Retail"
+        },
+        {
+          "suite": "110",
+          "sf": 2865,
+          "sfLabel": "2,865 SF",
+          "rate": "$10.00",
+          "rateType": "+UTIL",
+          "use": "Retail"
+        }
       ]
     }
   ];

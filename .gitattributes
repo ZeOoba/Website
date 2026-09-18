@@ -1,3 +1,11 @@
 # Normalize line endings repo-wide: git stores LF; Windows working tree gets CRLF via core.autocrlf.
 # Added 2026-07-12 to end perpetual phantom-modified flags from pre-existing CRLF blobs.
 * text=auto
+
+# images/ is 118 of 234 tracked files (5.4 MB) and live (67 touches in the last 150 commits,
+# per the 2026-09-18 cross-repo architecture review), so it is NOT search/CI-filtered the way
+# ora-skills/_archive or BrainVault/_Claude/Sessions were -- it stays a normal part of every
+# clone and checkout. linguist-generated only collapses it in GitHub's diff/code-search/
+# language-stats views, so a PR touching a handful of source files doesn't get dominated by a
+# wall of binary image diffs. Display only -- no effect on git itself, builds, or deploys.
+images/** linguist-generated=true

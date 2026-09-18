@@ -76,6 +76,7 @@
       "imgW": 700,
       "slug": "2000-2002-zettler-rd",
       "desc": "Small-bay industrial in Columbus near the I-70/I-270 interchange.",
+      "pinned": true,
       "units": [
         {
           "suite": "2000",
@@ -109,6 +110,7 @@
       "imgW": 700,
       "slug": "2203-northwood-dr",
       "desc": "Multi-tenant industrial flex park in Easton, MD.",
+      "loopnetId": "33776831",
       "units": [
         {
           "suite": "A1-2",

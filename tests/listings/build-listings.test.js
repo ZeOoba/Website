@@ -12,7 +12,9 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const load = () => import(url.pathToFileURL(path.join(ROOT, 'scripts', 'build-listings.mjs')).href);
-const DATA = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'listings.json'), 'utf8'));
+// Frozen fixture, NOT data/listings.json: the live data changes with every sync
+// PR and must never be able to break these tests.
+const DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixture-listings.json'), 'utf8'));
 
 test('committed listings.js and available-space.html are in sync with data/listings.json', async () => {
   const { checkAll } = await load();
@@ -66,4 +68,15 @@ test('validate rejects a listing missing a required field', async () => {
   bad[1].lat = 1;
   bad[2].units = [];
   assert.throws(() => validate(bad), /units/);
+});
+
+test('cache-buster: available-space.html loads listings.js at ?v=<hash of listings.js>', async () => {
+  const { listingsVersion } = await load();
+  const js = fs.readFileSync(path.join(ROOT, 'listings.js'), 'utf8');
+  const html = fs.readFileSync(path.join(ROOT, 'available-space.html'), 'utf8');
+  const m = /<script defer src="[/]listings[.]js[?]v=([^"]*)"/.exec(html);
+  assert.ok(m, 'listings.js script tag not found');
+  assert.strictEqual(m[1], listingsVersion(js));
+  assert.notStrictEqual(listingsVersion(js), listingsVersion(js + ' '));
+  assert.strictEqual(listingsVersion(['a', 'b'].join(String.fromCharCode(13, 10))), listingsVersion(['a', 'b'].join(String.fromCharCode(10))));
 });

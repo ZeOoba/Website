@@ -15,7 +15,7 @@
     "loopnetId": "37330657",
     "units": [
       {
-        "suite": "2016",
+        "suite": "2014",
         "sf": 1800,
         "sfLabel": "1,800 SF",
         "rate": "$11.67",
@@ -40,12 +40,12 @@
     "loopnetId": "41318384",
     "units": [
       {
-        "suite": "390",
+        "suite": "386",
         "sf": 1800,
         "sfLabel": "1,800 SF",
-        "rate": "$13.33",
-        "rateType": "MG",
-        "use": "Flex"
+        "rate": "$9.00",
+        "rateType": "NNN",
+        "use": "Industrial"
       }
     ]
   },
@@ -99,10 +99,18 @@
     "loopnetId": "33776831",
     "units": [
       {
-        "suite": "A1-2",
+        "suite": "C5-6",
         "sf": 1200,
         "sfMax": 2400,
         "sfLabel": "1,200–2,400 SF",
+        "rate": "$10.99",
+        "rateType": "+UTIL",
+        "use": "Industrial"
+      },
+      {
+        "suite": "B15",
+        "sf": 1200,
+        "sfLabel": "1,200 SF",
         "rate": "$10.99",
         "rateType": "+UTIL",
         "use": "Flex"
@@ -125,10 +133,10 @@
     "loopnetId": "39958427",
     "units": [
       {
-        "suite": "2814",
+        "suite": "2802",
         "sf": 1500,
         "sfLabel": "1,500 SF",
-        "rate": "$13.60",
+        "rate": "$13.20",
         "rateType": "MG",
         "use": "Flex"
       }
@@ -151,19 +159,106 @@
     "units": [
       {
         "suite": "107-108",
-        "sf": 5745,
-        "sfLabel": "5,745 SF",
-        "rate": "$10.00",
+        "sf": 2872,
+        "sfMax": 5745,
+        "sfLabel": "2,872–5,745 SF",
+        "rate": "$9.99",
         "rateType": "+UTIL",
         "use": "Retail"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "name": "1100 Rarig Ave",
+    "city": "Columbus",
+    "state": "OH",
+    "market": "Columbus",
+    "category": "Flex",
+    "lat": 39.994,
+    "lng": -82.923,
+    "img": "/images/04-1100-rarig-exterior-2-drive-ins-dock.jpg",
+    "imgW": 800,
+    "slug": "1100-rarig-ave",
+    "desc": "Multi-tenant industrial/flex building on Rarig Ave, Columbus, OH.",
+    "loopnetId": "33272230",
+    "units": [
+      {
+        "suite": "J",
+        "sf": 1800,
+        "sfLabel": "1,800 SF",
+        "rate": "$13.00",
+        "rateType": "MG",
+        "use": "Industrial"
       },
       {
-        "suite": "110",
-        "sf": 2865,
-        "sfLabel": "2,865 SF",
-        "rate": "$10.00",
-        "rateType": "+UTIL",
-        "use": "Retail"
+        "suite": "G-H",
+        "sf": 3000,
+        "sfLabel": "3,000 SF",
+        "rate": "$13.00",
+        "rateType": "MG",
+        "use": "Flex"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "name": "9050 Red Branch Rd",
+    "city": "Columbia",
+    "state": "MD",
+    "market": "Maryland",
+    "category": "Flex",
+    "lat": 39.229,
+    "lng": -76.817,
+    "img": "/images/20-9050-red-branch-exterior.jpg",
+    "imgW": 800,
+    "slug": "9050-red-branch-rd",
+    "desc": "Multi-tenant flex/industrial buildings with dock and drive-in units in Columbia, MD.",
+    "loopnetId": "30496667",
+    "units": [
+      {
+        "suite": "H",
+        "sf": 5000,
+        "sfLabel": "5,000 SF",
+        "rate": "$13.95",
+        "rateType": "NNN",
+        "use": "Flex"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "name": "Easton Technology Center",
+    "subtitle": "29000 Information Ln",
+    "city": "Easton",
+    "state": "MD",
+    "market": "Maryland",
+    "category": "Flex",
+    "lat": 38.813,
+    "lng": -76.07,
+    "img": "/images/08-20161026_120215.jpg",
+    "imgW": 800,
+    "slug": "29000-information-ln",
+    "desc": "Warehouse, office and lab/R&D suites with at-grade drive-in doors near the airport in Easton, MD.",
+    "loopnetId": "5166229",
+    "units": [
+      {
+        "suite": "402",
+        "sf": 1500,
+        "sfMax": 3000,
+        "sfLabel": "1,500–3,000 SF",
+        "rate": "$15.20",
+        "rateType": "MG",
+        "use": "Industrial"
+      },
+      {
+        "suite": "106",
+        "sf": 1500,
+        "sfMax": 3000,
+        "sfLabel": "1,500–3,000 SF",
+        "rate": "$15.20",
+        "rateType": "MG",
+        "use": "Flex"
       }
     ]
   }

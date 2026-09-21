@@ -21,7 +21,6 @@ import path from 'node:path';
 import url from 'node:url';
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
-const DATA_FILE = path.join(ROOT, 'data', 'listings.json');
 
 // rateType -> JSON-LD wording. An unknown type throws rather than guessing.
 export const RATE_TYPES = { MG: 'modified gross', NNN: 'triple net', '+UTIL': 'plus utilities' };
@@ -232,27 +231,53 @@ const GENERATORS = {
 export const listingsVersion = (listingsJs) =>
   createHash('sha256').update(listingsJs.replace(/\r\n/g, '\n')).digest('hex').slice(0, 10);
 
+// The sitemap entry for the page these generators rewrite. Search engines use
+// <lastmod> to decide when to recrawl a page marked changefreq=weekly.
+export const SITEMAP_LOC = 'https://oxfordra.net/available-space';
+
+// Set <lastmod> for one <loc>; every other byte (and the EOL style) is untouched.
+export function stampSitemapLastmod(xml, loc, date) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`sitemap lastmod must be an ISO date (YYYY-MM-DD), got "${date}"`);
+  const re = new RegExp(`(<loc>${loc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</loc>\\s*<lastmod>)[^<]*(</lastmod>)`, 'g');
+  const hits = xml.match(re) || [];
+  if (hits.length !== 1) throw new Error(`sitemap.xml: expected exactly 1 <loc>${loc}</loc> with a <lastmod>, found ${hits.length}`);
+  return xml.replace(re, (_m, open, close) => open + date + close);
+}
+
 // Returns the files that differ from what listings.json generates; rewrites
-// them when `write` is set. Preserves each file's existing line endings.
-async function run(write) {
-  const listings = JSON.parse(await fs.readFile(DATA_FILE, 'utf8'));
+// them when `write` is set (and, only then, stamps the sitemap <lastmod> so the
+// weekly LoopNet sync tells crawlers the page changed). Every output, sitemap
+// included, is computed before the first write, so a bad sitemap fails the run
+// with nothing on disk changed. Preserves each file's existing line endings.
+// `root` is injectable so tests can run the real write path on a scratch copy.
+export async function generate({ write = false, today = new Date().toISOString().slice(0, 10), root = ROOT } = {}) {
+  const listings = JSON.parse(await fs.readFile(path.join(root, 'data', 'listings.json'), 'utf8'));
   const drift = [];
+  const writes = [];
   let version; // set by listings.js (first entry), consumed by available-space.html
   for (const [name, gen] of Object.entries(GENERATORS)) {
-    const raw = await fs.readFile(path.join(ROOT, name), 'utf8');
+    const raw = await fs.readFile(path.join(root, name), 'utf8');
     const eol = raw.includes('\r\n') ? '\r\n' : '\n';
     const lf = gen(raw.replace(/\r\n/g, '\n'), listings, version);
     if (name === 'listings.js') version = listingsVersion(lf);
     const next = lf.replace(/\n/g, eol);
     if (next !== raw) {
       drift.push(name);
-      if (write) await fs.writeFile(path.join(ROOT, name), next);
+      writes.push([path.join(root, name), next]);
     }
   }
+  if (write && drift.length) {
+    const file = path.join(root, 'sitemap.xml');
+    const raw = await fs.readFile(file, 'utf8');
+    const next = stampSitemapLastmod(raw, SITEMAP_LOC, today);
+    if (next !== raw) writes.push([file, next]);
+  }
+  if (write) for (const [file, content] of writes) await fs.writeFile(file, content);
   return drift;
 }
 
-export const checkAll = () => run(false);
+const run = (write) => generate({ write });
+export const checkAll = () => generate({ write: false });
 
 if (process.argv[1] && path.resolve(process.argv[1]) === url.fileURLToPath(import.meta.url)) {
   const check = process.argv.includes('--check');

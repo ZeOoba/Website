@@ -63,10 +63,12 @@
   "@type": "Organization",
   "@id": "https://oxfordra.net/#organization",
   "name": "Oxford Realty Advisors",
+  "legalName": "Oxford Realty Advisors, LLC",
   "url": "https://oxfordra.net",
   "logo": "https://oxfordra.net/images/oxford-logo-512.png",
+  "image": "https://oxfordra.net/images/og-image.png",
+  "description": "Private industrial real estate investment firm specializing in value-add shallow-bay flex properties across Maryland, Columbus OH, and Kansas City MO.",
   "foundingDate": "2005",
-  "description": "Private family-owned industrial real estate investment firm with 500,000+ SF across three core markets.",
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "9510 Persimmon Tree Road, Suite 200",
@@ -77,12 +79,19 @@
   },
   "telephone": "+1-301-512-6125",
   "email": "info@oxfordra.net",
+  "contactPoint": {"@type": "ContactPoint", "contactType": "customer service", "telephone": "+1-301-512-6125", "email": "info@oxfordra.net", "availableLanguage": "English"},
   "sameAs": [
     "https://www.loopnet.com/company/oxford-realty-advisors/potomac-md/dkrft8kl/",
     "https://www.linkedin.com/company/oxford-realty-advisors-llc/",
     "https://www.crunchbase.com/organization/oxford-realty-advisors"
   ],
   "founder": {"@type": "Person", "name": "Eric Goldberg", "jobTitle": "Founder"},
+  "knowsAbout": ["Industrial real estate investment", "Shallow-bay industrial and flex properties", "Value-add real estate", "All-cash acquisitions of industrial buildings", "1031 exchanges for industrial property owners", "Industrial building valuation"],
+  "areaServed": [
+    {"@type": "State", "name": "Maryland"},
+    {"@type": "City", "name": "Columbus", "containedInPlace": {"@type": "State", "name": "Ohio"}},
+    {"@type": "City", "name": "Kansas City", "containedInPlace": {"@type": "State", "name": "Missouri"}}
+  ],
   "employee": [
     {"@type": "Person", "name": "Eric Goldberg", "jobTitle": "Founder"},
     {"@type": "Person", "name": "Gabriel Goldberg", "jobTitle": "Vice President, Acquisitions"}

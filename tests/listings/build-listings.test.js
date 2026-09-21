@@ -80,3 +80,89 @@ test('cache-buster: available-space.html loads listings.js at ?v=<hash of listin
   assert.notStrictEqual(listingsVersion(js), listingsVersion(js + ' '));
   assert.strictEqual(listingsVersion(['a', 'b'].join(String.fromCharCode(13, 10))), listingsVersion(['a', 'b'].join(String.fromCharCode(10))));
 });
+
+// A page whose content changes weekly must say so in sitemap.xml; otherwise the
+// weekly LoopNet sync rewrites available-space.html while <lastmod> stays stale.
+const SITEMAP = [
+  '<urlset>',
+  '  <url><loc>https://oxfordra.net/portfolio</loc><lastmod>2026-08-13</lastmod></url>',
+  '  <url><loc>https://oxfordra.net/available-space</loc><lastmod>2026-08-12</lastmod></url>',
+  '</urlset>',
+  '',
+];
+
+test('stampSitemapLastmod rewrites only the target <lastmod>, preserving every other byte and the EOL style', async () => {
+  const { stampSitemapLastmod } = await load();
+  for (const eol of ['\n', '\r\n']) {
+    const xml = SITEMAP.join(eol);
+    const out = stampSitemapLastmod(xml, 'https://oxfordra.net/available-space', '2026-09-21');
+    assert.strictEqual(out, xml.replace('<lastmod>2026-08-12</lastmod>', '<lastmod>2026-09-21</lastmod>'));
+    assert.ok(out.includes('<lastmod>2026-08-13</lastmod>'), 'other pages untouched');
+  }
+});
+
+test('stampSitemapLastmod is idempotent, and refuses a missing/duplicate loc or a non-ISO date', async () => {
+  const { stampSitemapLastmod } = await load();
+  const xml = SITEMAP.join('\n');
+  const once = stampSitemapLastmod(xml, 'https://oxfordra.net/available-space', '2026-09-21');
+  assert.strictEqual(stampSitemapLastmod(once, 'https://oxfordra.net/available-space', '2026-09-21'), once);
+  assert.throws(() => stampSitemapLastmod(xml, 'https://oxfordra.net/nope', '2026-09-21'), /exactly 1/);
+  assert.throws(() => stampSitemapLastmod(xml + xml, 'https://oxfordra.net/available-space', '2026-09-21'), /exactly 1/);
+  assert.throws(() => stampSitemapLastmod(xml, 'https://oxfordra.net/available-space', '9/21/2026'), /ISO/);
+});
+
+test('the real sitemap.xml has exactly one stampable <loc>/<lastmod> for SITEMAP_LOC', async () => {
+  const { SITEMAP_LOC, stampSitemapLastmod } = await load();
+  const xml = fs.readFileSync(path.join(ROOT, 'sitemap.xml'), 'utf8');
+  assert.doesNotThrow(() => stampSitemapLastmod(xml, SITEMAP_LOC, '2026-01-01'));
+});
+
+// The real write path, on a scratch copy of the repo files (never the working tree).
+function scratchRoot() {
+  const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'build-listings-'));
+  fs.mkdirSync(path.join(root, 'data'));
+  for (const f of ['data/listings.json', 'listings.js', 'available-space.html', 'sitemap.xml']) {
+    fs.copyFileSync(path.join(ROOT, f), path.join(root, f));
+  }
+  return root;
+}
+const slurp = (root, f) => fs.readFileSync(path.join(root, f), 'utf8');
+function drift(root) { // change one rate so the generated files no longer match
+  const file = path.join(root, 'data', 'listings.json');
+  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  data[0].units[0].rate = data[0].units[0].rate === '$99.99' ? '$88.88' : '$99.99';
+  fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+}
+const lastmodOf = (xml, loc) => new RegExp('<loc>' + loc + '</loc><lastmod>([^<]*)').exec(xml)[1];
+
+test('generate(): check mode reports drift but writes nothing, sitemap included', async () => {
+  const { generate } = await load();
+  const root = scratchRoot();
+  drift(root);
+  const before = ['listings.js', 'available-space.html', 'sitemap.xml'].map((f) => slurp(root, f));
+  assert.deepStrictEqual(await generate({ write: false, root, today: '2030-01-01' }), ['listings.js', 'available-space.html']);
+  assert.deepStrictEqual(['listings.js', 'available-space.html', 'sitemap.xml'].map((f) => slurp(root, f)), before);
+});
+
+test('generate(): write mode with drift stamps only the available-space <lastmod>; a second run is a no-op', async () => {
+  const { generate, SITEMAP_LOC } = await load();
+  const root = scratchRoot();
+  const sitemap0 = slurp(root, 'sitemap.xml');
+  drift(root);
+  assert.deepStrictEqual(await generate({ write: true, root, today: '2030-01-01' }), ['listings.js', 'available-space.html']);
+  const sitemap1 = slurp(root, 'sitemap.xml');
+  assert.strictEqual(lastmodOf(sitemap1, SITEMAP_LOC), '2030-01-01');
+  assert.strictEqual(sitemap1, sitemap0.replace('<loc>' + SITEMAP_LOC + '</loc><lastmod>' + lastmodOf(sitemap0, SITEMAP_LOC), '<loc>' + SITEMAP_LOC + '</loc><lastmod>2030-01-01'));
+  assert.deepStrictEqual(await generate({ write: true, root, today: '2031-01-01' }), []);
+  assert.strictEqual(slurp(root, 'sitemap.xml'), sitemap1, 'no drift, so the sitemap is not re-stamped');
+});
+
+test('generate(): a sitemap that cannot be stamped fails the run before any file is written', async () => {
+  const { generate } = await load();
+  const root = scratchRoot();
+  fs.writeFileSync(path.join(root, 'sitemap.xml'), slurp(root, 'sitemap.xml').replace(/<lastmod>[^<]*<\/lastmod>/g, ''));
+  drift(root);
+  const before = ['listings.js', 'available-space.html'].map((f) => slurp(root, f));
+  await assert.rejects(() => generate({ write: true, root, today: '2030-01-01' }), /exactly 1/);
+  assert.deepStrictEqual(['listings.js', 'available-space.html'].map((f) => slurp(root, f)), before);
+});

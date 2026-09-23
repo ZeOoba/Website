@@ -38,6 +38,7 @@
 <link rel="preload" href="/fonts/eb-garamond-italic-latin.woff2" as="font" type="font/woff2" crossorigin>
 
 <!-- CSS -->
+<link rel="preload" as="image" type="image/avif" href="/images/01-2800-2826-banwick-exterior.avif" imagesrcset="/images/01-2800-2826-banwick-exterior-480w.avif 480w, /images/01-2800-2826-banwick-exterior.avif 800w" imagesizes="100vw" fetchpriority="high">
 <link rel="preload" as="style" href="/styles.css?v=18">
 <link rel="stylesheet" href="/styles.css?v=18" media="print" id="styles-css-async">
 <noscript><link rel="stylesheet" href="/styles.css?v=18"></noscript>
@@ -234,12 +235,19 @@ h2{font-size:28px;margin-bottom:16px}h3{font-size:22px;margin-bottom:8px}
 <main id="main-content">
 
 <!-- ═══ PAGE HEADER ═══ -->
-<section class="section section--navy" aria-label="Page header" style="padding-top:120px;">
-<div class="container">
-<div class="section__header">
-<h1 class="text-white" style="font-size:clamp(32px,5vw,52px);margin-bottom:12px;">About Oxford Realty Advisors</h1>
-<p class="section__intro text-white-muted" style="font-size:clamp(16px,2.5vw,22px);font-family:var(--font-display);font-style:italic;">A Private Investment Firm Built for Generations</p>
+<section class="subpage-hero" aria-label="About Oxford Realty Advisors">
+<div class="subpage-hero__bg">
+<picture>
+<source type="image/avif" srcset="/images/01-2800-2826-banwick-exterior-480w.avif 480w, /images/01-2800-2826-banwick-exterior.avif 800w" sizes="100vw">
+<source type="image/webp" srcset="/images/01-2800-2826-banwick-exterior-480w.webp 480w, /images/01-2800-2826-banwick-exterior.webp 800w" sizes="100vw">
+<img src="/images/01-2800-2826-banwick-exterior.jpg" alt="2800-2826 Banwick Road, a 24,000 SF industrial/flex property in Columbus, OH" width="1600" height="1067" decoding="async" fetchpriority="high">
+</picture>
 </div>
+<div class="subpage-hero__overlay"></div>
+<div class="subpage-hero__content">
+<span class="section__label section__label--light">Who We Are</span>
+<h1>About Oxford Realty Advisors</h1>
+<p>A private investment firm built for generations.</p>
 </div>
 </section>
 

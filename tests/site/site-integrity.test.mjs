@@ -289,8 +289,9 @@ function mediaRules(css) {
 const TOGGLE_CLASS = 'nav__mobile-btn';
 const MOBILE_NAV_ID = 'mobileNav';
 // Pages that already ship this defect. Fixing one makes the test fail until its
-// entry is removed, so the list can only shrink.
-const KNOWN_NAV_GAPS = new Set(['application-received.html']);
+// entry is removed, so the list can only shrink. (application-received.html was
+// the last one; it gained its hamburger in the PR that added this test.)
+const KNOWN_NAV_GAPS = new Set([]);
 
 test('a page that hides its nav links at a breakpoint shows a wired hamburger at that breakpoint', () => {
   const script = read('script.js');

@@ -30,11 +30,11 @@
   Link: </fonts/eb-garamond-italic-latin.woff2>; rel=preload; as=font; type=font/woff2; crossorigin
   Link: </fonts/dm-sans-latin.woff2>; rel=preload; as=font; type=font/woff2; crossorigin
   Link: </fonts/ibm-plex-mono-latin.woff2>; rel=preload; as=font; type=font/woff2; crossorigin
-  Link: </images/09-3540-rear-exterior-1.avif>; rel=preload; as=image; type=image/avif; fetchpriority=high
+  Link: </images/02-1100-rarig-exterior-1.avif>; rel=preload; as=image; type=image/avif; fetchpriority=high
 
 /index.html
   Link: </fonts/eb-garamond-latin.woff2>; rel=preload; as=font; type=font/woff2; crossorigin
   Link: </fonts/eb-garamond-italic-latin.woff2>; rel=preload; as=font; type=font/woff2; crossorigin
   Link: </fonts/dm-sans-latin.woff2>; rel=preload; as=font; type=font/woff2; crossorigin
   Link: </fonts/ibm-plex-mono-latin.woff2>; rel=preload; as=font; type=font/woff2; crossorigin
-  Link: </images/09-3540-rear-exterior-1.avif>; rel=preload; as=image; type=image/avif; fetchpriority=high
+  Link: </images/02-1100-rarig-exterior-1.avif>; rel=preload; as=image; type=image/avif; fetchpriority=high

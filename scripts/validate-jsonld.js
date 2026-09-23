@@ -2,31 +2,51 @@
 'use strict';
 const fs = require('fs');
 
-const file = process.argv[2];
-if (!file) {
-  console.error('Usage: node scripts/validate-jsonld.js <path/to/file.html>');
-  process.exit(1);
-}
+// One definition of "a JSON-LD script tag", shared with verify-jsonld.mjs so the
+// page census and the parser can never disagree. Attribute order and quote
+// style are free: `<script id="x" type="application/ld+json">` counts. The
+// leading \s keeps `data-type="application/ld+json"` from matching.
+const JSONLD_OPEN_SOURCE = String.raw`<script\b[^>]*\stype\s*=\s*["']?application\/ld\+json["']?[^>]*>`;
+const jsonLdOpenTags = () => new RegExp(JSONLD_OPEN_SOURCE, 'gi');
+const jsonLdBlocks = () => new RegExp(JSONLD_OPEN_SOURCE + String.raw`([\s\S]*?)<\/script>`, 'gi');
 
-const html = fs.readFileSync(file, 'utf8');
-const blocks = [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)];
+module.exports = { JSONLD_OPEN_SOURCE, jsonLdOpenTags, jsonLdBlocks };
 
-if (blocks.length === 0) {
-  console.error('No JSON-LD blocks found in ' + file);
-  process.exit(1);
-}
-
-let failed = false;
-blocks.forEach(function (match, i) {
-  const raw = match[1].trim();
-  try {
-    const parsed = JSON.parse(raw);
-    const type = parsed['@type'] || '(no @type)';
-    console.log('[' + (i + 1) + '/' + blocks.length + '] OK — ' + type + ' — ' + file);
-  } catch (err) {
-    failed = true;
-    console.error('[' + (i + 1) + '/' + blocks.length + '] INVALID JSON — ' + err.message + ' — ' + file);
+if (require.main === module) {
+  const file = process.argv[2];
+  if (!file) {
+    console.error('Usage: node scripts/validate-jsonld.js <path/to/file.html>');
+    process.exit(1);
   }
-});
 
-process.exit(failed ? 1 : 0);
+  const html = fs.readFileSync(file, 'utf8');
+  const opened = [...html.matchAll(jsonLdOpenTags())].length;
+  const blocks = [...html.matchAll(jsonLdBlocks())];
+
+  if (opened === 0) {
+    console.error('No JSON-LD blocks found in ' + file);
+    process.exit(1);
+  }
+
+  let failed = false;
+  // A JSON-LD tag the block pattern could not pair with a </script> was never
+  // parsed. Fail rather than report the blocks that did parse as the whole page.
+  if (blocks.length !== opened) {
+    failed = true;
+    console.error('JSON-LD block count mismatch — ' + opened + ' tag(s) opened, ' + blocks.length + ' parsed — ' + file);
+  }
+
+  blocks.forEach(function (match, i) {
+    const raw = match[1].trim();
+    try {
+      const parsed = JSON.parse(raw);
+      const type = parsed['@type'] || '(no @type)';
+      console.log('[' + (i + 1) + '/' + blocks.length + '] OK — ' + type + ' — ' + file);
+    } catch (err) {
+      failed = true;
+      console.error('[' + (i + 1) + '/' + blocks.length + '] INVALID JSON — ' + err.message + ' — ' + file);
+    }
+  });
+
+  process.exit(failed ? 1 : 0);
+}

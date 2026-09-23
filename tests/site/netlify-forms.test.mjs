@@ -52,6 +52,34 @@ function formName(form) {
   return hidden ? hidden.value : null;
 }
 
+// Every Netlify form the site registers, pinned. The test below skips a form
+// with no hidden form-name input, so deleting both data-netlify and form-name
+// from a page used to pass: the form simply vanished from the check. Adding or
+// retiring a form means editing this list on purpose.
+const EXPECTED_NETLIFY_FORMS = [
+  'broker-intake-form.html#broker-submission-intake',
+  'broker-ledger-form.html#broker-network-ledger',
+  'chat-lead-form.html#chat-lead',
+  'contact.html#contact',
+  'pipeline-failures-form.html#pipeline-failures',
+  'sell-your-building.html#owner-submission-intake',
+  'tenant-application.html#commercial-lease-application',
+  'tenant-resources.html#leasing-inquiry',
+];
+
+test('the registered Netlify forms are exactly the pinned set, each posting a matching form-name', () => {
+  const found = [];
+  for (const file of htmlFiles()) {
+    for (const form of forms(readFileSync(path.join(ROOT, file), 'utf8'))) {
+      if (!(form.attrs['data-netlify'] === 'true' || 'netlify' in form.attrs)) continue;
+      const name = form.attrs.name ?? formName(form);
+      found.push(`${file}#${name}`);
+      assert.equal(formName(form), name, `${file}#${name}: hidden form-name input must equal the form name`);
+    }
+  }
+  assert.deepEqual(found.sort(), [...EXPECTED_NETLIFY_FORMS].sort(), 'Netlify-registered forms drifted from the pinned set');
+});
+
 test('every form that posts a form-name is registered with Netlify Forms', () => {
   const unregistered = [];
   for (const file of htmlFiles()) {
@@ -74,4 +102,30 @@ test('tenant-resources leasing-inquiry form has a honeypot and a wired success s
   assert.equal(form.attrs.id, 'leasingForm', 'form needs id="leasingForm" for the submit handler');
   assert.match(form.body, /id="leasingSuccess"/, 'success message element missing');
   assert.match(html, /getElementById\('leasingSuccess'\)/, 'no script reveals #leasingSuccess');
+});
+
+test('the leasing-inquiry submit handler binds to the form: right id, runs after the form is parsed', () => {
+  const html = readFileSync(path.join(ROOT, 'tenant-resources.html'), 'utf8');
+  const formMatch = [...html.matchAll(/<form\b([^>]*)>[\s\S]*?<\/form>/gi)].find((m) => attrs(m[1]).name === 'leasing-inquiry');
+  assert.ok(formMatch, 'leasing-inquiry form not found');
+  const formId = attrs(formMatch[1]).id;
+  const formEnd = formMatch.index + formMatch[0].length;
+
+  const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+  const handler = scripts.find((m) => /getElementById\(\s*['"]leasingSuccess['"]\s*\)/.test(m[2]));
+  assert.ok(handler, 'no inline script reveals #leasingSuccess');
+  const body = handler[2];
+  assert.match(body, new RegExp(String.raw`getElementById\(\s*['"]${formId}['"]\s*\)`), `handler never looks up the form by its id "${formId}"`);
+
+  // An inline script runs where it is parsed; above </form> the getElementById
+  // returns null and the `if(!form) return` guard makes the handler a silent no-op.
+  const a = attrs(handler[1]);
+  const deferred = (a.src && ('defer' in a || a.type === 'module')) || /DOMContentLoaded/.test(body);
+  assert.ok(handler.index >= formEnd || deferred, 'handler script runs before the leasing form exists (move it below </form> or defer it)');
+
+  // Every element the handler touches must exist, or the submit path throws mid-flight.
+  const ids = new Set([...html.matchAll(/\sid\s*=\s*["']([^"']+)["']/gi)].map((m) => m[1]));
+  for (const [, id] of body.matchAll(/getElementById\(\s*['"]([^'"]+)['"]\s*\)/g)) {
+    assert.ok(ids.has(id), `handler looks up #${id}, which is not on the page`);
+  }
 });

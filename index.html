@@ -378,10 +378,10 @@ h3{font-size:22px;margin-bottom:8px}
 .fg-card__row + .fg-card__row{margin-top:14px;padding-top:14px;border-top:1px dashed rgba(27,42,74,.12)}
 .fg-card__label{font-family:var(--font-body);font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--slate)}
 .fg-card__row--lender .fg-card__text{font-family:var(--font-body);font-size:13.5px;line-height:1.5;color:var(--slate)}
-.fg-card__row--lender .fg-card__text::before{content:"\2715";display:inline-block;color:#a33a3a;font-weight:700;margin-right:6px}
+.fg-card__row--lender .fg-card__text::before{content:"\2715" / "";display:inline-block;color:var(--error,#c62828);font-weight:700;margin-right:6px}
 .fg-card__row--oxford .fg-card__label{color:var(--gold-accessible,#806339)}
 .fg-card__row--oxford .fg-card__text{font-family:var(--font-body);font-size:14.5px;line-height:1.5;color:var(--navy);font-weight:500}
-.fg-card__row--oxford .fg-card__text::before{content:"\2713";display:inline-block;color:var(--gold);font-weight:700;margin-right:6px}
+.fg-card__row--oxford .fg-card__text::before{content:"\2713" / "";display:inline-block;color:var(--gold);font-weight:700;margin-right:6px}
 @media(max-width:960px){
   .fg-grid{grid-template-columns:repeat(2,1fr)}
 }

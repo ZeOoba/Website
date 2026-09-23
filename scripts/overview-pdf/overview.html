@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Oxford Realty Advisors — Firm Overview</title>
+<meta name="author" content="Oxford Realty Advisors, LLC">
+<meta name="description" content="Firm overview: private, family-capital industrial and flex real estate investor across Maryland, Columbus OH, and Kansas City MO.">
+<meta name="keywords" content="Oxford Realty Advisors, industrial real estate, flex, shallow-bay, acquisitions">
+<!--
+  Source for /Oxford-Realty-Advisors-Overview.pdf. Rebuild with:
+    node scripts/overview-pdf/build-overview-pdf.mjs
+  Every firm figure below must trace to the ORA Master Workbook (source of record)
+  or an executed settlement statement. See the provenance table in the PR that last
+  changed this file. Do NOT publish a numeric LTV (Gabriel, 2026-09-23) or a
+  building/property count (Sepich count unresolved in the workbook, OI-4). Do not
+  say every acquisition closed all-cash: 9050 Red Branch assumed a loan and
+  Northwood was seller-financed (settlement statements).
+-->
+<style>
+/* Static instances of the site's fonts (fonts/*.ttf, made from /fonts/*.woff2).
+   Chromium embeds variable fonts as Type3; static TrueType embeds cleanly. */
+@font-face{font-family:"DM Sans";src:url(fonts/DMSans-Regular.ttf) format("truetype");font-weight:100 499;font-style:normal}
+@font-face{font-family:"DM Sans";src:url(fonts/DMSans-SemiBold.ttf) format("truetype");font-weight:500 900;font-style:normal}
+@font-face{font-family:"EB Garamond";src:url(fonts/EBGaramond-Medium.ttf) format("truetype");font-weight:100 900;font-style:normal}
+@font-face{font-family:"EB Garamond";src:url(fonts/EBGaramond-Italic.ttf) format("truetype");font-weight:100 900;font-style:italic}
+@font-face{font-family:"IBM Plex Mono";src:url(fonts/IBMPlexMono-Regular.ttf) format("truetype");font-weight:100 900;font-style:normal}
+
+:root{
+  --navy:#1B2A4A; --navy-dark:#141F33; --gold:#C9A96E; --gold-deep:#806339;
+  --parchment:#F5F3EF; --charcoal:#2D2D2D; --slate:#596B7D; --rule:#E8E4DE;
+  --display:"EB Garamond",Georgia,serif; --body:"DM Sans",Arial,sans-serif; --mono:"IBM Plex Mono",monospace;
+}
+@page{size:8.5in 11in;margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#fff}
+body{font-family:var(--body);color:var(--charcoal);font-size:9.6pt;line-height:1.5;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:8.5in;height:11in;position:relative;overflow:hidden;page-break-after:always;break-after:page}
+.page:last-child{page-break-after:auto;break-after:auto}
+
+/* ---------- interior chrome ---------- */
+.band{background:var(--navy);color:#fff;height:.62in;padding:0 .6in;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--gold)}
+.band .section{font-family:var(--mono);font-size:7.5pt;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.band .firm{font-family:var(--display);font-size:11.5pt;font-weight:500;letter-spacing:.02em}
+.body{padding:.36in .6in 0}
+.foot{position:absolute;left:.6in;right:.6in;bottom:.38in;border-top:1px solid var(--rule);padding-top:7pt;
+  display:flex;justify-content:space-between;font-family:var(--mono);font-size:6.8pt;color:var(--slate);letter-spacing:.02em}
+.eyebrow{font-family:var(--mono);font-size:7.4pt;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-deep);margin-bottom:5pt}
+h2{font-family:var(--display);font-weight:500;color:var(--navy);font-size:21pt;line-height:1.15;margin-bottom:10pt}
+h3{font-family:var(--display);font-weight:500;color:var(--navy);font-size:15pt;line-height:1.2;margin-bottom:8pt}
+p{margin-bottom:8pt}
+.lede{font-size:9.9pt;line-height:1.55}
+.rule-gold{width:.55in;height:2px;background:var(--gold);margin:4pt 0 12pt}
+
+/* ---------- cover ---------- */
+.cover{background:var(--navy);color:#fff}
+.cover .inner{padding:.7in .7in 0}
+.wordmark{font-family:var(--display);font-weight:500;font-size:13pt;letter-spacing:.09em;color:var(--gold)}
+.wordmark-rule{height:1px;background:rgba(201,169,110,.45);margin:10pt 0 0}
+.cover .kicker{margin-top:1.3in;font-family:var(--mono);font-size:8pt;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.cover h1{font-family:var(--display);font-weight:500;font-size:40pt;line-height:1.04;margin:10pt 0 12pt;letter-spacing:-.005em}
+.cover .tagline{font-family:var(--display);font-style:italic;font-size:15pt;color:#E9DFC9;margin-bottom:18pt}
+.cover .intro{font-size:10.4pt;line-height:1.65;color:#DCE1EA;max-width:5.9in}
+.hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:.42in;border-top:1px solid rgba(201,169,110,.45);border-bottom:1px solid rgba(201,169,110,.45)}
+.hero-stats>div{padding:14pt 0 13pt 14pt;border-left:1px solid rgba(201,169,110,.3)}
+.hero-stats>div:first-child{border-left:0;padding-left:0}
+.hero-stats .v{font-family:var(--display);font-weight:500;font-size:27pt;line-height:1;color:#fff}
+.hero-stats .l{font-family:var(--mono);font-size:7pt;letter-spacing:.13em;text-transform:uppercase;color:var(--gold);margin-top:6pt}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9pt;margin-top:.26in}
+.stat-grid>div{background:rgba(255,255,255,.05);border:1px solid rgba(201,169,110,.28);border-radius:4px;padding:11pt 10pt 10pt}
+.stat-grid .v{font-family:var(--display);font-weight:500;font-size:20pt;line-height:1;color:#fff}
+.stat-grid .l{font-family:var(--mono);font-size:6.6pt;letter-spacing:.12em;text-transform:uppercase;color:#C2CAD6;margin-top:6pt}
+.timeline{display:grid;grid-template-columns:repeat(4,1fr);margin-top:.34in;position:relative}
+.timeline:before{content:"";position:absolute;left:0;right:0;top:4.5pt;height:1px;background:rgba(201,169,110,.55)}
+.timeline>div{position:relative;padding-top:16pt;padding-right:10pt}
+.timeline>div:before{content:"";position:absolute;left:0;top:0;width:9pt;height:9pt;border-radius:50%;background:var(--gold)}
+.timeline .y{font-family:var(--mono);font-size:8.4pt;color:var(--gold);letter-spacing:.06em}
+.timeline .t{font-size:8.4pt;color:#DCE1EA;line-height:1.4;margin-top:2pt}
+.cover-note{margin-top:.3in;font-size:7.4pt;color:#9FAABB;line-height:1.45}
+.cover-foot{position:absolute;left:.7in;right:.7in;bottom:.5in;border-top:1px solid rgba(201,169,110,.45);padding-top:9pt;
+  display:flex;justify-content:space-between;font-family:var(--mono);font-size:7.2pt;color:#C2CAD6;letter-spacing:.02em}
+.cover-foot a{color:#C2CAD6;text-decoration:none}
+
+/* ---------- firm page ---------- */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:.32in;margin-top:4pt}
+.criteria{width:100%;border-collapse:collapse;margin-top:2pt}
+.criteria th{text-align:left;vertical-align:top;font-family:var(--mono);font-weight:400;font-size:7pt;letter-spacing:.11em;text-transform:uppercase;color:var(--gold-deep);width:1.55in;padding:5pt 10pt 4.5pt 0;border-top:1px solid var(--rule)}
+.criteria td{padding:4.5pt 0;border-top:1px solid var(--rule);font-size:9.1pt;color:var(--charcoal)}
+.criteria tr:last-child th,.criteria tr:last-child td{border-bottom:1px solid var(--rule)}
+.callout{background:var(--parchment);border-left:3px solid var(--gold);padding:9pt 13pt;margin-top:10pt}
+.callout .v{font-family:var(--display);font-weight:500;font-size:19pt;color:var(--navy);line-height:1}
+.callout .l{font-size:8.8pt;color:var(--charcoal);margin-top:5pt;line-height:1.45}
+.pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:11pt;margin-top:10pt}
+.pillars>div{border-top:2px solid var(--gold);padding-top:8pt}
+.pillars .n{font-family:var(--mono);font-size:7pt;color:var(--gold-deep);letter-spacing:.1em}
+.pillars .h{font-family:var(--display);font-size:12.5pt;font-weight:500;color:var(--navy);margin:2pt 0 3pt}
+.pillars p{font-size:8.7pt;line-height:1.45;margin:0}
+
+/* ---------- markets page ---------- */
+.markets{display:grid;grid-template-columns:repeat(3,1fr);gap:11pt;margin-top:4pt}
+.market{background:var(--parchment);border-top:3px solid var(--navy);padding:12pt 12pt 11pt}
+.market .name{font-family:var(--display);font-size:14pt;font-weight:500;color:var(--navy);line-height:1.1}
+.market .since{font-family:var(--mono);font-size:6.8pt;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-deep);margin-top:3pt}
+.market .figs{display:flex;gap:14pt;margin:9pt 0 7pt}
+.market .figs .v{font-family:var(--display);font-size:16pt;font-weight:500;color:var(--navy);line-height:1}
+.market .figs .l{font-family:var(--mono);font-size:6.4pt;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);margin-top:3pt}
+.market .where{font-size:8.3pt;line-height:1.45;color:var(--charcoal)}
+.expansion{font-size:8.8pt;color:var(--slate);margin-top:9pt}
+.expansion b{color:var(--navy);font-weight:600}
+.cases{width:100%;border-collapse:collapse;margin-top:4pt;font-size:8.6pt}
+.cases thead th{background:var(--navy);color:#fff;font-family:var(--mono);font-weight:400;font-size:6.6pt;letter-spacing:.1em;text-transform:uppercase;text-align:left;padding:7pt 7pt;white-space:nowrap}
+.cases thead th.num{text-align:right}
+.cases td{padding:8pt 7pt;border-bottom:1px solid var(--rule);vertical-align:top}
+.cases tbody tr:nth-child(even) td{background:#FAF9F6}
+.cases td.num{text-align:right;font-family:var(--mono);font-size:8.2pt;white-space:nowrap}
+.cases td.prop{font-weight:600;color:var(--navy);white-space:nowrap}
+.cases td.mkt{white-space:nowrap}
+.cases td.thesis{color:var(--slate);font-size:8.1pt;line-height:1.4}
+.cases td.mult{font-family:var(--display);font-size:12pt;font-weight:500;color:var(--navy);text-align:right}
+.note{font-size:7.2pt;color:var(--slate);line-height:1.45;margin-top:7pt}
+
+/* ---------- leadership page ---------- */
+.leaders{display:grid;grid-template-columns:1fr 1fr;gap:.3in;margin-top:4pt}
+.leader .name{font-family:var(--display);font-size:16pt;font-weight:500;color:var(--navy);line-height:1.1}
+.leader .role{font-family:var(--mono);font-size:7pt;letter-spacing:.11em;text-transform:uppercase;color:var(--gold-deep);margin:4pt 0 1pt}
+.leader .edu{font-size:8.4pt;color:var(--slate);margin-bottom:7pt}
+.leader p{font-size:8.8pt;line-height:1.5}
+.quotes{display:grid;grid-template-columns:1fr;gap:7pt;margin-top:4pt}
+.quote{border-left:3px solid var(--gold);padding:2pt 0 2pt 13pt}
+.quote q{display:block;font-family:var(--display);font-style:italic;font-size:10.2pt;line-height:1.4;color:var(--charcoal);quotes:"\201C" "\201D"}
+.quote .who{font-size:8.2pt;margin-top:4pt;color:var(--slate)}
+.quote .who b{color:var(--navy);font-weight:600}
+.why{display:grid;grid-template-columns:1fr 1fr;gap:0 .3in;margin-top:4pt;list-style:none}
+.why li{font-size:8.8pt;padding:4.5pt 0 4.5pt 15pt;border-bottom:1px solid var(--rule);position:relative}
+.why li:before{content:"";position:absolute;left:0;top:8.5pt;width:6pt;height:6pt;background:var(--gold);transform:rotate(45deg)}
+.cta{background:var(--navy);color:#fff;margin-top:12pt;padding:11pt 16pt;display:flex;justify-content:space-between;align-items:center}
+.cta .h{font-family:var(--display);font-size:14pt;font-weight:500}
+.cta .s{font-size:8.4pt;color:#C2CAD6;margin-top:2pt}
+.cta .c{font-family:var(--mono);font-size:8pt;color:var(--gold);text-align:right;line-height:1.6}
+.cta a{color:var(--gold);text-decoration:none}
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1 — COVER ============ -->
+<section class="page cover">
+  <div class="inner">
+    <div class="wordmark">OXFORD REALTY ADVISORS</div>
+    <div class="wordmark-rule"></div>
+
+    <div class="kicker">Firm Overview</div>
+    <h1>Industrial Real Estate Investment</h1>
+    <div class="tagline">Building generational value in America’s industrial backbone.</div>
+    <p class="intro">Oxford Realty Advisors is a private real estate investment firm acquiring value-add industrial and flex properties across the Mid-Atlantic and Midwest. 100% family capital. No outside investors. No fund structure.</p>
+
+    <div class="hero-stats">
+      <div><div class="v">100%</div><div class="l">Family Capital</div></div>
+      <div><div class="v">40-Year</div><div class="l">Hold Horizon</div></div>
+      <div><div class="v">30–45 Days</div><div class="l">To Close, From LOI</div></div>
+    </div>
+
+    <div class="stat-grid">
+      <div><div class="v">500,000+</div><div class="l">Square Feet</div></div>
+      <div><div class="v">130+</div><div class="l">Tenants</div></div>
+      <div><div class="v">3</div><div class="l">Core Markets</div></div>
+      <div><div class="v">21</div><div class="l">Years Operating</div></div>
+    </div>
+
+    <div class="timeline">
+      <div><div class="y">2005</div><div class="t">Founded</div></div>
+      <div><div class="y">2021</div><div class="t">Entered Columbus, Ohio</div></div>
+      <div><div class="y">2024</div><div class="t">Entered Kansas City</div></div>
+      <div><div class="y">Today</div><div class="t">500,000+ SF across three core markets</div></div>
+    </div>
+    <p class="cover-note">Portfolio figures as of September 2026. Square footage and tenant counts are gross, including two properties held in 50% partnerships.</p>
+  </div>
+  <div class="cover-foot">
+    <span><a href="https://oxfordra.net">oxfordra.net</a> &nbsp;|&nbsp; 301.512.6125 &nbsp;|&nbsp; <a href="mailto:info@oxfordra.net">info@oxfordra.net</a></span>
+    <span>9510 Persimmon Tree Road, Suite 200, Potomac, MD 20854</span>
+  </div>
+</section>
+
+<!-- ============ PAGE 2 — THE FIRM ============ -->
+<section class="page">
+  <div class="band"><span class="section">The Firm</span><span class="firm">Oxford Realty Advisors</span></div>
+  <div class="body">
+    <div class="eyebrow">Who We Are</div>
+    <h2>A Private Investment Firm Built for Generations</h2>
+    <div class="rule-gold"></div>
+    <p class="lede">Founded in 2005, Oxford began as a commercial real estate advisory practice before recognizing that the greatest opportunity lay in owning. Today we are a principal investor and operator with more than 500,000 SF across three core markets, predominantly shallow-bay industrial and flex space, acquired with 100% family capital, no outside investors, and no fund structure.</p>
+    <p class="lede">We target the structural undersupply of functional Class B/C industrial space in secondary markets, acquiring what institutional buyers avoid: high-vacancy assets with deferred maintenance, environmental complexity, or fractured ownership. Below-market leases reset at expiry, occupancy climbs through active management, and proceeds recycle into accretive acquisitions. Conservative leverage means we can close all-cash, with no financing contingency, and hold through any cycle.</p>
+
+    <div class="pillars">
+      <div><div class="n">01 · Basis</div><div class="h">Buy below replacement cost</div><p>A margin of safety is built in at acquisition, not hoped for at exit.</p></div>
+      <div><div class="n">02 · Operate</div><div class="h">Manage actively</div><p>Leasing, capital work, and tenant relationships handled hands-on in every market.</p></div>
+      <div><div class="n">03 · Hold</div><div class="h">Compound for decades</div><p>Permanent family capital. No fund life, no forced sale, no exit clock.</p></div>
+    </div>
+
+    <div class="two-col" style="margin-top:.2in">
+      <div>
+        <div class="eyebrow">Investment Criteria</div>
+        <h3>What We Look For</h3>
+        <table class="criteria">
+          <tr><th>Deal Size</th><td>$1M – $10M</td></tr>
+          <tr><th>Property Type</th><td>Class B/C industrial, flex, shallow-bay, IOS</td></tr>
+          <tr><th>Building Size</th><td>Under 50,000 SF per building</td></tr>
+          <tr><th>Clear Height</th><td>18'+ preferred</td></tr>
+          <tr><th>Strategy</th><td>Value-add, long-term hold</td></tr>
+          <tr><th>Acquisition Basis</th><td>Significantly below replacement cost</td></tr>
+          <tr><th>Complexity</th><td>Vacancy, deferred maintenance, environmental and legal issues welcome</td></tr>
+        </table>
+      </div>
+      <div>
+        <div class="eyebrow">Capital</div>
+        <h3>How We Close</h3>
+        <table class="criteria">
+          <tr><th>Capital</th><td>100% family: no fund, no LPs, no investment committee</td></tr>
+          <tr><th>Leverage</th><td>Conservative; able to close all-cash</td></tr>
+          <tr><th>Timeline</th><td>30–45 days from LOI</td></tr>
+          <tr><th>Contingencies</th><td>No financing or appraisal contingency</td></tr>
+          <tr><th>Decision</th><td>One call, one decision-maker</td></tr>
+          <tr><th>Markets</th><td>Mid-Atlantic (DC Metro, Baltimore, Eastern Shore) and Midwest (Columbus, Kansas City)</td></tr>
+        </table>
+        <div class="callout">
+          <div class="v">$36 – $85 / SF</div>
+          <div class="l">Acquisition price per square foot across the five case studies on page 3.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Oxford Realty Advisors &nbsp;|&nbsp; oxfordra.net &nbsp;|&nbsp; 301.512.6125</span><span>Page 2</span></div>
+</section>
+
+<!-- ============ PAGE 3 — MARKETS & TRACK RECORD ============ -->
+<section class="page">
+  <div class="band"><span class="section">Markets &amp; Track Record</span><span class="firm">Oxford Realty Advisors</span></div>
+  <div class="body">
+    <div class="eyebrow">Target Markets</div>
+    <h2>Three Core Markets Across the Mid-Atlantic and Midwest</h2>
+    <div class="rule-gold"></div>
+
+    <div class="markets">
+      <div class="market">
+        <div class="name">Maryland</div>
+        <div class="since">Mid-Atlantic</div>
+        <div class="figs">
+          <div><div class="v">255K+</div><div class="l">Square Feet</div></div>
+          <div><div class="v">70+</div><div class="l">Tenants</div></div>
+        </div>
+        <div class="where">DC Metro (Columbia), Baltimore (Owings Mills, Baltimore City), and the Eastern Shore (Easton, Salisbury, Cambridge)</div>
+      </div>
+      <div class="market">
+        <div class="name">Columbus, Ohio</div>
+        <div class="since">Entered 2021</div>
+        <div class="figs">
+          <div><div class="v">215K+</div><div class="l">Square Feet</div></div>
+          <div><div class="v">50+</div><div class="l">Tenants</div></div>
+        </div>
+        <div class="where">East Side flex corridors (East Fifth Avenue, Zettler, Banwick, Morrison, Rarig, Livingston), Westerville Road, and Dublin</div>
+      </div>
+      <div class="market">
+        <div class="name">Kansas City, Missouri</div>
+        <div class="since">Entered 2024</div>
+        <div class="figs">
+          <div><div class="v">34K+</div><div class="l">Square Feet</div></div>
+          <div><div class="v">9</div><div class="l">Tenants</div></div>
+        </div>
+        <div class="where">Raytown, along State Route 350</div>
+      </div>
+    </div>
+    <p class="expansion"><b>Expanding:</b> actively evaluating additional Mid-Atlantic and Midwest markets.</p>
+
+    <div class="eyebrow" style="margin-top:.3in">Selected Case Studies</div>
+    <h3>Value Created Through Basis Discipline and Active Management</h3>
+    <table class="cases">
+      <thead><tr>
+        <th>Property</th><th>Market</th><th class="num">Acquired</th><th class="num">SF</th><th class="num">Price</th><th class="num">$/SF</th><th>Thesis</th><th class="num">Value<br>÷ Price</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="prop">Sepich Portfolio</td><td class="mkt">Columbus, OH</td><td class="num">2021</td><td class="num">109,657</td><td class="num">$4.65M</td><td class="num">$42</td><td class="thesis">Bought from the original developer’s heirs; below-market rents reset through active leasing</td><td class="mult">2.1x</td></tr>
+        <tr><td class="prop">9050 Red Branch Rd</td><td class="mkt">Columbia, MD</td><td class="num">2015</td><td class="num">90,000</td><td class="num">$7.67M</td><td class="num">$85</td><td class="thesis">Stabilized at purchase; NOI grown through active management</td><td class="mult">2.2x</td></tr>
+        <tr><td class="prop">29000 Information Ln</td><td class="mkt">Easton, MD</td><td class="num">2016</td><td class="num">48,000</td><td class="num">$2.00M</td><td class="num">$42</td><td class="thesis">Under-managed, high-vacancy asset leased up</td><td class="mult">3.5x</td></tr>
+        <tr><td class="prop">1900 N Broadway</td><td class="mkt">Baltimore, MD</td><td class="num">2015</td><td class="num">27,671</td><td class="num">$1.35M</td><td class="num">$49</td><td class="thesis">Multi-tenant reconfiguration for a national dialysis operator</td><td class="mult">4.0x</td></tr>
+        <tr><td class="prop">3540 E Fifth Ave</td><td class="mkt">Columbus, OH</td><td class="num">2022</td><td class="num">35,886</td><td class="num">$1.30M</td><td class="num">$36</td><td class="thesis">Value-add repositioning</td><td class="mult">3.4x</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Price is the acquisition price on the settlement statement; $/SF is price divided by the SF shown. Value ÷ Price compares Oxford’s internal estimate of current value (September 2026, 100% basis) with that price; it is not an appraisal and does not reflect capital invested after acquisition. 9050 Red Branch Rd and 1900 N Broadway are held in 50% partnerships.</p>
+  </div>
+  <div class="foot"><span>Oxford Realty Advisors &nbsp;|&nbsp; 9510 Persimmon Tree Road, Suite 200, Potomac, MD 20854</span><span>Page 3</span></div>
+</section>
+
+<!-- ============ PAGE 4 — LEADERSHIP & PARTNERS ============ -->
+<section class="page">
+  <div class="band"><span class="section">Leadership &amp; Partners</span><span class="firm">Oxford Realty Advisors</span></div>
+  <div class="body">
+    <div class="eyebrow">Leadership</div>
+    <h2>A Family Firm, Directly Accountable</h2>
+    <div class="rule-gold"></div>
+    <div class="leaders">
+      <div class="leader">
+        <div class="name">Eric Goldberg</div>
+        <div class="role">Founder</div>
+        <div class="edu">Washington University in St. Louis, Accounting</div>
+        <p>Eric Goldberg founded Oxford Realty Advisors in 2005 after a career in commercial real estate advisory and accounting. He has built Oxford into a vertically integrated owner-operator of industrial and flex properties across multiple markets. His investment philosophy centers on acquiring functional industrial assets at a basis that provides a margin of safety against downside risk while positioning for long-term compounding through operational improvements and rent resets.</p>
+      </div>
+      <div class="leader">
+        <div class="name">Gabriel Goldberg</div>
+        <div class="role">Vice President, Acquisitions</div>
+        <div class="edu">Cornell University, Economics</div>
+        <p>Gabriel Goldberg leads Oxford’s acquisition pipeline, from deal sourcing and underwriting to negotiation and closing. He manages relationships with the firm’s broker network, oversees due diligence for all new acquisitions, and is building the technology infrastructure to scale Oxford’s operations.</p>
+      </div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:.22in">What Our Partners Say</div>
+    <div class="quotes">
+      <div class="quote"><q>I’ve worked with Oxford for about 13 years and we’ve completed half a dozen transactions together. They consistently perform as capable buyers. When the opportunity is right, they overlook small problems and keep the bigger picture in mind. They’ve been on the broker side before, so they know the importance of trust and do not waste my time. Professional, easy to work with, and very responsive.</q><div class="who"><b>Nathan Pealer</b> · Managing Director Investments, Marcus &amp; Millichap</div></div>
+      <div class="quote"><q>Oxford Realty operates in a highly professional fashion. Leasing, management, and asset care are taken in a balanced approach to achieve highly productive properties. Working with Oxford has been a pleasure for all these many years.</q><div class="who"><b>Carl Truitt</b> · Property Manager</div></div>
+      <div class="quote"><q>From day one it has felt more like a partnership than a typical owner/manager relationship. They are always available and very involved — fair, willing to spend money when needed, and always thinking long term.</q><div class="who"><b>Paul Trautman</b> · KRG Real Estate</div></div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:.2in">Why Oxford</div>
+    <ul class="why">
+      <li>Closings in 30–45 days from LOI, no financing contingency</li>
+      <li>One call, one decision-maker, no committee</li>
+      <li>Conservative leverage and a permanent capital base</li>
+      <li>No forced dispositions and a generational hold horizon</li>
+      <li>Comfortable with vacancy and deferred maintenance</li>
+      <li>Environmental complexity welcome</li>
+      <li>Vertically integrated owner-operator</li>
+      <li>We buy to hold, not to flip</li>
+    </ul>
+
+    <div class="cta">
+      <div><div class="h">Have a property that fits?</div><div class="s">Brokers and owners: we respond to every submission within one business day.</div></div>
+      <div class="c"><a href="https://oxfordra.net">oxfordra.net</a><br>301.512.6125 · <a href="mailto:info@oxfordra.net">info@oxfordra.net</a></div>
+    </div>
+  </div>
+  <div class="foot"><span>© 2026 Oxford Realty Advisors, LLC &nbsp;|&nbsp; Portfolio figures as of September 2026</span><span>Page 4</span></div>
+</section>
+
+</body>
+</html>

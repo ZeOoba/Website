@@ -47,9 +47,6 @@ https://www.oxfordra.net/* https://oxfordra.net/:splat 301!
 /tenant-application.html                                       /tenant-application                                          301!
 /application-received.html                                     /application-received                                        301!
 
-# Overview PDF unpublished 2026-09-23 until regenerated (excluded in scripts/build-dist.mjs)
-/Oxford-Realty-Advisors-Overview.pdf                           /                                                            301
-
 # /404 would otherwise serve 404.html with a 200 (soft 404)
 /404                                                           /404.html                                                    404!
 

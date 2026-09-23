@@ -99,6 +99,28 @@ test('no script hides a form whose success message lives inside it', () => {
   assert.deepEqual(offenders, [], 'hide form.children except the success element, not the form itself');
 });
 
+// Collapsing a tall form to its success message leaves the message where the
+// form's top was, usually above the viewport once the visitor has scrolled to
+// the submit button.
+test('every script that reveals an in-form success message scrolls it into view', () => {
+  const offenders = [];
+  for (const file of htmlFiles()) {
+    const html = readFileSync(path.join(ROOT, file), 'utf8');
+    const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+    for (const form of forms(html)) {
+      const successTag = form.body.match(/<div\b[^>]*class="form-success"[^>]*>/);
+      const successId = successTag && attrs(successTag[0].slice(4, -1)).id;
+      if (!successId) continue;
+      for (const js of scripts) {
+        if (js.includes(`getElementById('${successId}')`) && !js.includes('.scrollIntoView(')) {
+          offenders.push(`${file}#${successId}`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], 'call success.scrollIntoView({ block: \'center\' }) after revealing it');
+});
+
 test('sell-your-building owner form has a honeypot and a wired success state', () => {
   const html = readFileSync(path.join(ROOT, 'sell-your-building.html'), 'utf8');
   const form = forms(html).find((f) => formName(f) === 'owner-submission-intake');

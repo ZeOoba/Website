@@ -189,7 +189,6 @@ h2{font-size:28px;margin-bottom:16px}h3{font-size:22px;margin-bottom:8px}
 
 <!-- Contact Form + Info -->
 <style>
-@media(max-width:767px){.contact-grid>.contact-grid__info{order:-1}}
 .contact-routes{margin-top:32px;padding-top:24px;border-top:1px solid var(--divider)}
 .contact-routes h3{font-family:var(--font-body);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--gold-accessible);margin-bottom:12px}
 .contact-routes a{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--light-gray);color:var(--navy);font-size:15px}
@@ -200,7 +199,32 @@ h2{font-size:28px;margin-bottom:16px}h3{font-size:22px;margin-bottom:8px}
 <div class="container">
 <div class="grid-2 contact-grid">
 
-<!-- Left Column: Contact Form -->
+<!-- Contact Info (first in DOM: phone reachable before the form on every device) -->
+<div class="animate-on-scroll contact-grid__info">
+<h2 class="sr-only">Contact Information</h2>
+<div class="contact-info">
+<div class="contact-info__item">
+<h3>Office</h3>
+<p>9510 Persimmon Tree Road, Suite 200<br>Potomac, MD 20854</p>
+</div>
+<div class="contact-info__item">
+<h3>Phone</h3>
+<p><a href="tel:+13015126125">301.512.6125</a></p>
+</div>
+<div class="contact-info__item">
+<h3>Email</h3>
+<p><a href="mailto:info@oxfordra.net">info@oxfordra.net</a></p>
+</div>
+</div>
+<nav class="contact-routes" aria-label="Faster routes">
+<h3>Faster Routes</h3>
+<a href="/for-brokers#broker-network">Submit a deal (brokers) <span>OM &amp; rent roll upload &rarr;</span></a>
+<a href="/sell-your-building#owner-form">Selling your building <span>Owner intake &rarr;</span></a>
+<a href="/available-space">Looking for space <span>Current availabilities &rarr;</span></a>
+<a href="/tenant-resources">Current tenant <span>Tenant resources &rarr;</span></a>
+</nav>
+</div>
+<!-- Contact Form -->
 <div class="animate-on-scroll">
 <form method="POST" name="contact" id="contactForm" data-netlify="true" netlify-honeypot="bot-field">
 <input type="hidden" name="form-name" value="contact">
@@ -239,31 +263,6 @@ h2{font-size:28px;margin-bottom:16px}h3{font-size:22px;margin-bottom:8px}
 </form>
 </div>
 
-<!-- Right Column: Contact Info -->
-<div class="animate-on-scroll contact-grid__info">
-<h2 class="sr-only">Contact Information</h2>
-<div class="contact-info">
-<div class="contact-info__item">
-<h3>Office</h3>
-<p>9510 Persimmon Tree Road, Suite 200<br>Potomac, MD 20854</p>
-</div>
-<div class="contact-info__item">
-<h3>Phone</h3>
-<p><a href="tel:+13015126125">301.512.6125</a></p>
-</div>
-<div class="contact-info__item">
-<h3>Email</h3>
-<p><a href="mailto:info@oxfordra.net">info@oxfordra.net</a></p>
-</div>
-</div>
-<nav class="contact-routes" aria-label="Faster routes">
-<h3>Faster Routes</h3>
-<a href="/for-brokers#broker-network">Submit a deal (brokers) <span>OM &amp; rent roll upload &rarr;</span></a>
-<a href="/sell-your-building#owner-form">Selling your building <span>Owner intake &rarr;</span></a>
-<a href="/available-space">Looking for space <span>Current availabilities &rarr;</span></a>
-<a href="/tenant-resources">Current tenant <span>Tenant resources &rarr;</span></a>
-</nav>
-</div>
 
 </div>
 </div>

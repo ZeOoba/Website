@@ -436,8 +436,13 @@ h3{font-size:22px;margin-bottom:8px}
       body: params.toString()
     }).then(function(res){
       if(!res.ok){ throw new Error('status ' + res.status); }
-      form.style.display = 'none';
+      // Hide the fields, not the form: the success message lives inside it.
+      Array.prototype.forEach.call(form.children, function(el){
+        if(el !== success){ el.style.display = 'none'; }
+      });
       success.style.display = '';
+      // The form collapses to one line, so bring the message into view.
+      success.scrollIntoView({ block: 'center' });
     }).catch(function(err){
       errorBox.textContent = 'Something went wrong submitting your property. Please email info@oxfordra.net directly, or try again. (' + (err && err.message ? err.message : 'unknown error') + ')';
       errorBox.style.display = '';

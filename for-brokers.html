@@ -486,8 +486,12 @@ h3{font-size:22px;margin-bottom:8px}
     btn.disabled = true;
     btn.textContent = 'Uploading…';
     window.ORA_BROKER_UPLOAD.submit(form).then(function(result){
-      form.style.display = 'none';
+      // Hide the fields, not the form: the success message and score card live inside it.
+      Array.prototype.forEach.call(form.children, function(el){
+        if(el !== success){ el.style.display = 'none'; }
+      });
       success.style.display = '';
+      success.scrollIntoView({ block: 'center' });
       if(result && result.submissionId){
         window.ORA_BROKER_UPLOAD.pollForScore(result.submissionId, result.statusToken, renderScoreCard, showUnavailable);
       } else {

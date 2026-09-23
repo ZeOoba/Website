@@ -290,7 +290,7 @@ h3{font-size:22px;margin-bottom:8px}
 <p style="margin-top:16px;">Many of our units are available move-in ready with finished office space, drive-in or dock-height doors, paved parking, and updated electrical. Flexible lease terms from 1–10 years. We respond to all inquiries within one business day.</p>
 </div>
 <div class="tenant-form animate-on-scroll">
-<form method='POST' name='leasing-inquiry'>
+<form method="POST" name="leasing-inquiry" id="leasingForm" data-netlify="true" netlify-honeypot="bot-field">
 <input type="hidden" name="form-name" value="leasing-inquiry">
 <p class="hidden" aria-hidden="true"><label>Don't fill this out: <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
 <div class="form-row">
@@ -367,7 +367,47 @@ h3{font-size:22px;margin-bottom:8px}
 </div>
 <button type="submit" class="btn btn--gold btn--full">Submit Inquiry</button>
 <div class="form-success" id="leasingSuccess" role="alert" style="display:none;">Thank you! We'll review your requirements and respond within one business day.</div>
+<div class="form-error" id="leasingError" role="alert" style="display:none;color:#B0432F;margin-top:12px;"></div>
 </form>
+<script>
+(function(){
+  var form = document.getElementById('leasingForm');
+  if(!form) return;
+  // Listen on document so this runs after script.js's per-form validator,
+  // which calls preventDefault() when a field is invalid.
+  document.addEventListener('submit', function(e){
+    if(e.target !== form || e.defaultPrevented) return;
+    e.preventDefault();
+    var btn = form.querySelector('[type="submit"]');
+    var success = document.getElementById('leasingSuccess');
+    var errorBox = document.getElementById('leasingError');
+    errorBox.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    var params = new URLSearchParams();
+    new FormData(form).forEach(function(value, key){ params.append(key, value); });
+
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    }).then(function(res){
+      if(!res.ok){ throw new Error('status ' + res.status); }
+      // Hide the fields, not the form: the success message lives inside it.
+      Array.prototype.forEach.call(form.children, function(el){
+        if(el !== success){ el.style.display = 'none'; }
+      });
+      success.style.display = '';
+    }).catch(function(err){
+      errorBox.textContent = 'Something went wrong sending your inquiry. Please email info@oxfordra.net or call 301.512.6125. (' + (err && err.message ? err.message : 'unknown error') + ')';
+      errorBox.style.display = '';
+      btn.disabled = false;
+      btn.textContent = 'Submit Inquiry';
+    });
+  });
+})();
+</script>
 </div>
 </div>
 </div>

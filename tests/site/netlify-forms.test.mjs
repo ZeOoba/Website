@@ -75,3 +75,38 @@ test('tenant-resources leasing-inquiry form has a honeypot and a wired success s
   assert.match(form.body, /id="leasingSuccess"/, 'success message element missing');
   assert.match(html, /getElementById\('leasingSuccess'\)/, 'no script reveals #leasingSuccess');
 });
+
+// A success message nested inside its <form> inherits the form's display, so a
+// handler that hides the whole form on success hides the thank-you with it. The
+// sell-your-building owner form shipped that way: the form vanished on a good
+// submission and the owner saw no confirmation.
+test('no script hides a form whose success message lives inside it', () => {
+  const offenders = [];
+  for (const file of htmlFiles()) {
+    const html = readFileSync(path.join(ROOT, file), 'utf8');
+    const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+    for (const form of forms(html)) {
+      const id = form.attrs.id;
+      if (!id || !/class="form-success"/.test(form.body)) continue;
+      for (const js of scripts) {
+        const vars = [...js.matchAll(new RegExp(`(\\w+)\\s*=\\s*document\\.getElementById\\(['"]${id}['"]\\)`, 'g'))].map((m) => m[1]);
+        if (vars.some((v) => new RegExp(`\\b${v}\\.style\\.display\\s*=\\s*['"]none['"]`).test(js))) {
+          offenders.push(`${file}#${id}`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], 'hide form.children except the success element, not the form itself');
+});
+
+test('sell-your-building owner form has a honeypot and a wired success state', () => {
+  const html = readFileSync(path.join(ROOT, 'sell-your-building.html'), 'utf8');
+  const form = forms(html).find((f) => formName(f) === 'owner-submission-intake');
+  assert.ok(form, 'owner-submission-intake form not found');
+  assert.equal(form.attrs['netlify-honeypot'], 'bot-field');
+  assert.match(form.body, /<input\b[^>]*name="bot-field"/, 'honeypot input missing');
+  assert.equal(form.attrs.id, 'ownerForm', 'form needs id="ownerForm" for the submit handler');
+  assert.match(form.body, /id="ownerSuccess"/, 'success message element missing');
+  assert.match(html, /getElementById\('ownerSuccess'\)/, 'no script reveals #ownerSuccess');
+  assert.match(html, /forEach\.call\(form\.children,[\s\S]*?el !== success/, 'success handler must hide the fields around #ownerSuccess');
+});

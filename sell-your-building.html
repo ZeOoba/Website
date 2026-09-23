@@ -417,7 +417,10 @@ h3{font-size:22px;margin-bottom:8px}
     el.addEventListener('input', maybeRevealStep2);
   });
 
-  form.addEventListener('submit', function(e){
+  // Listen on document so this runs after script.js's per-form validator,
+  // which calls preventDefault() when a field is invalid.
+  document.addEventListener('submit', function(e){
+    if(e.target !== form || e.defaultPrevented) return;
     e.preventDefault();
     var btn = document.getElementById('ownerSubmitBtn');
     var success = document.getElementById('ownerSuccess');

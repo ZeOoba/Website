@@ -181,10 +181,10 @@ h3{font-size:22px;margin-bottom:8px}
 .hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative;overflow:hidden;padding:120px 40px 80px;background:var(--navy)}
 .hero__bg{position:absolute;inset:0;z-index:0}
 .hero__bg picture,.hero__bg img{width:100%;height:100%;object-fit:cover}
-.hero__overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(27,42,74,.82) 0%,rgba(27,42,74,.7) 50%,rgba(27,42,74,.85) 100%);z-index:1}
+.hero__overlay{position:absolute;inset:0;background:radial-gradient(ellipse 62% 52% at 50% 44%,rgba(20,31,51,.62) 0%,rgba(20,31,51,0) 72%),linear-gradient(180deg,rgba(27,42,74,.74) 0%,rgba(27,42,74,.46) 48%,rgba(27,42,74,.86) 100%);z-index:1}
 .hero__content{position:relative;z-index:2;max-width:800px}
 .hero__label{font-family:var(--font-body);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.2em;color:var(--gold);margin-bottom:24px;display:block}
-.hero h1{font-family:var(--font-display);font-size:56px;font-weight:400;color:var(--white);line-height:1.12;margin-bottom:24px}
+.hero h1{font-family:var(--font-display);font-size:56px;font-weight:400;color:var(--white);line-height:1.12;margin-bottom:24px;text-wrap:balance}
 .hero__sub{font-family:var(--font-display);font-size:22px;font-weight:400;color:rgba(255,255,255,.75);line-height:1.5;margin-bottom:20px}
 .hero__body{font-family:var(--font-body);font-size:16px;color:rgba(255,255,255,.6);line-height:1.7;max-width:600px;margin:0 auto 40px}
 .hero__ctas{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:64px}
@@ -197,7 +197,7 @@ h3{font-size:22px;margin-bottom:8px}
 @media(max-width:768px){.hero{min-height:auto;padding:110px 24px 60px}.hero h1{font-size:36px}.hero__sub{font-size:18px}.hero__stats{gap:24px}.hero__stat-value{font-size:28px}.hero__ctas{flex-direction:column;align-items:center}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms;animation-iteration-count:1;transition-duration:.01ms;scroll-behavior:auto}.animate-on-scroll{opacity:1;transform:none}}
 </style>
-<link rel="stylesheet" href="/assets/chat.css?v=2" media="print" id="chat-css-async">
+<link rel="stylesheet" href="/assets/chat.css?v=3" media="print" id="chat-css-async">
 <script>(function(){var l=document.getElementById('chat-css-async');if(l){requestAnimationFrame(function(){l.media='all';l.removeAttribute('id')})}})();</script>
 </head>
 <body>
@@ -299,68 +299,6 @@ h3{font-size:22px;margin-bottom:8px}
 </div>
 </section>
 
-<!-- Value Proposition -->
-<section class="section section--parchment" aria-label="About the firm">
-<div class="container">
-<div class="section__header animate-on-scroll">
-<span class="section__label">The Firm</span>
-<h2>Oxford Realty Advisors</h2>
-</div>
-<div class="animate-on-scroll" style="max-width:720px;margin:0 auto;text-align:center">
-<p style="margin-bottom:20px;font-size:16px;line-height:1.7;color:var(--charcoal)">Founded in 2005, Oxford Realty Advisors is a principal investor and operator with 500,000+ SF of shallow-bay industrial and flex space across three core markets &mdash; acquired with 100% family capital, no outside investors, and no fund structure.</p>
-<p style="margin-bottom:32px;font-size:16px;line-height:1.7;color:var(--charcoal)">We target the structural undersupply of functional Class B/C industrial space in secondary markets, acquiring below replacement cost and driving returns through active management. A 15% portfolio LTV means all-cash closings on every deal.</p>
-<a href="/about" class="btn btn--gold">Learn More About Our Firm</a>
-</div>
-</div>
-</section>
-
-<!-- Investment Criteria -->
-<section class="section section--parchment" aria-label="Investment criteria">
-<div class="container">
-<div class="section__header section__header--left animate-on-scroll" style="text-align:left;max-width:1080px;margin-left:auto;margin-right:auto">
-<span class="section__label">Criteria</span>
-<h2>What We Look For</h2>
-</div>
-<dl class="criteria-list animate-on-scroll" aria-label="Investment criteria details">
-<div class="criteria-list__item">
-<dt class="criteria-list__key">Deal Size</dt>
-<dd class="criteria-list__value">$1M &ndash; $10M</dd>
-</div>
-<div class="criteria-list__item">
-<dt class="criteria-list__key">Property Type</dt>
-<dd class="criteria-list__value">Class B/C Industrial, Flex, Shallow-Bay, IOS</dd>
-</div>
-<div class="criteria-list__item">
-<dt class="criteria-list__key">Building Size</dt>
-<dd class="criteria-list__value">&lt; 50,000 SF per building</dd>
-</div>
-<div class="criteria-list__item">
-<dt class="criteria-list__key">Clear Height</dt>
-<dd class="criteria-list__value">18'+ preferred</dd>
-</div>
-<div class="criteria-list__item">
-<dt class="criteria-list__key">Markets</dt>
-<dd class="criteria-list__value">Mid-Atlantic &middot; Midwest</dd>
-</div>
-<div class="criteria-list__item">
-<dt class="criteria-list__key">Strategy</dt>
-<dd class="criteria-list__value">Value-Add, Long-Term Hold</dd>
-</div>
-<div class="criteria-list__item">
-<dt class="criteria-list__key">Acquisition Basis</dt>
-<dd class="criteria-list__value">Significantly below replacement cost</dd>
-</div>
-<div class="criteria-list__item">
-<dt class="criteria-list__key">Complexity</dt>
-<dd class="criteria-list__value">Vacancy &middot; deferred maintenance &middot; environmental &amp; legal issues</dd>
-</div>
-</dl>
-<div style="text-align:center;margin-top:48px">
-<a href="/for-brokers" class="btn btn--gold">Explore Our Broker Program</a>
-</div>
-</div>
-</section>
-
 <!-- Financing Gap -->
 <style>
 .fg-section{background:var(--white)}
@@ -387,8 +325,12 @@ h3{font-size:22px;margin-bottom:8px}
 }
 @media(max-width:620px){
   .fg-lede__primary{font-size:18px}
-  .fg-grid{grid-template-columns:1fr;gap:16px}
-  .fg-card{padding:24px 22px 26px}
+  .fg-grid{gap:12px}
+  .fg-card{padding:20px 16px 22px}
+  .fg-card__category{font-size:18px;margin-bottom:14px}
+}
+@media(max-width:540px){
+  .fg-grid{grid-template-columns:1fr}
 }
 </style>
 <section class="section fg-section" aria-label="The financing gap is our market">
@@ -472,55 +414,8 @@ h3{font-size:22px;margin-bottom:8px}
 </div>
 </section>
 
-<!-- Speed Timeline -->
-<style>
-.st-track{list-style:none;margin:0 auto;padding:0;max-width:960px;display:grid;grid-template-columns:repeat(4,1fr);position:relative}
-.st-track::before{content:"";position:absolute;top:11px;left:12.5%;right:12.5%;height:2px;background:linear-gradient(90deg,var(--gold) 0%,var(--gold) 20%,rgba(201,169,110,.35) 20%,rgba(201,169,110,.35) 100%)}
-.st-step{position:relative;text-align:center;padding:0 12px}
-.st-dot{display:block;width:24px;height:24px;margin:0 auto 20px;border-radius:50%;background:var(--navy);border:2px solid var(--gold);position:relative;z-index:1}
-.st-step:last-child .st-dot{background:var(--gold)}
-.st-when{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);display:block;margin-bottom:8px}
-.st-step h3{font-size:22px;margin-bottom:6px}
-.st-step p{font-size:14px;color:rgba(255,255,255,.65);margin:0;line-height:1.5}
-.st-scale{max-width:720px;margin:48px auto 0;font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)}
-.st-scale__bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.08);margin:8px 0}
-.st-scale__seg--decide{width:7%;background:var(--gold)}
-.st-scale__seg--close{width:93%;background:linear-gradient(90deg,rgba(201,169,110,.55),rgba(201,169,110,.2))}
-.st-scale__legend{display:flex;justify-content:space-between;gap:12px}
-@media(max-width:760px){
-  .st-track{grid-template-columns:1fr;gap:28px;max-width:420px}
-  .st-track::before{top:12px;bottom:12px;left:11px;right:auto;width:2px;height:auto;background:rgba(201,169,110,.35)}
-  .st-step{text-align:left;padding:0 0 0 44px}
-  .st-dot{position:absolute;left:0;top:0;margin:0}
-}
-</style>
-<section class="section section--navy" aria-label="How we close deals">
-<div class="container">
-<div class="section__header animate-on-scroll">
-<span class="section__label section__label--light">How We Close</span>
-<h2>Speed Wins Deals</h2>
-</div>
-<div class="animate-on-scroll" style="margin:0 auto">
-<ol class="st-track" id="dealPipeline" aria-label="Deal timeline from submission to closing">
-<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">Day 1</span><h3>Submit</h3><p>Send your deal via our broker portal</p></li>
-<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">48 Hours</span><h3>Score</h3><p>Preliminary indication of interest</p></li>
-<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">72 Hours</span><h3>LOI</h3><p>Letter of intent delivered</p></li>
-<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">30&ndash;45 Days</span><h3>Close</h3><p>All-cash closing, no financing contingency</p></li>
-</ol>
-<div class="st-scale" aria-hidden="true">
-<div class="st-scale__legend"><span>Decision &middot; 72 hrs</span><span>Closing &middot; 30&ndash;45 days</span></div>
-<div class="st-scale__bar"><span class="st-scale__seg--decide"></span><span class="st-scale__seg--close"></span></div>
-</div>
-<p style="text-align:center;margin-top:32px;font-family:var(--font-display);font-style:italic;font-size:18px;color:rgba(255,255,255,.7)">We have never failed to close a deal under contract.</p>
-<div style="text-align:center;margin-top:32px">
-<a href="/for-brokers#broker-network" class="btn btn--gold">Submit Your Deal</a>
-</div>
-</div>
-</div>
-</section>
-
 <!-- Featured Results -->
-<section class="section section--navy" aria-label="Featured results" style="padding-top:0">
+<section class="section section--navy" aria-label="Featured results">
 <div class="container">
 <div class="section__header animate-on-scroll">
 <span class="section__label section__label--light">Results</span>
@@ -586,8 +481,117 @@ h3{font-size:22px;margin-bottom:8px}
 </div>
 </section>
 
+<!-- Speed Timeline -->
+<style>
+.st-track{list-style:none;margin:0 auto;padding:0;max-width:960px;display:grid;grid-template-columns:repeat(4,1fr);position:relative}
+.st-track::before{content:"";position:absolute;top:11px;left:12.5%;right:12.5%;height:2px;background:linear-gradient(90deg,var(--gold) 0%,var(--gold) 20%,rgba(201,169,110,.35) 20%,rgba(201,169,110,.35) 100%)}
+.st-step{position:relative;text-align:center;padding:0 12px}
+.st-dot{display:block;width:24px;height:24px;margin:0 auto 20px;border-radius:50%;background:var(--navy);border:2px solid var(--gold);position:relative;z-index:1}
+.st-step:last-child .st-dot{background:var(--gold)}
+.st-when{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);display:block;margin-bottom:8px}
+.st-step h3{font-size:22px;margin-bottom:6px}
+.st-step p{font-size:14px;color:rgba(255,255,255,.65);margin:0;line-height:1.5}
+.st-scale{max-width:720px;margin:48px auto 0;font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.st-scale__bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.08);margin:8px 0}
+.st-scale__seg--decide{width:7%;background:var(--gold)}
+.st-scale__seg--close{width:93%;background:linear-gradient(90deg,rgba(201,169,110,.55),rgba(201,169,110,.2))}
+.st-scale__legend{display:flex;justify-content:space-between;gap:12px}
+@media(max-width:760px){
+  .st-track{grid-template-columns:1fr;gap:28px;max-width:420px}
+  .st-track::before{top:12px;bottom:12px;left:11px;right:auto;width:2px;height:auto;background:rgba(201,169,110,.35)}
+  .st-step{text-align:left;padding:0 0 0 44px}
+  .st-dot{position:absolute;left:0;top:0;margin:0}
+}
+</style>
+<section class="section section--navy" aria-label="How we close deals" style="padding-top:0">
+<div class="container">
+<div class="section__header animate-on-scroll">
+<span class="section__label section__label--light">How We Close</span>
+<h2>Speed Wins Deals</h2>
+</div>
+<div class="animate-on-scroll" style="margin:0 auto">
+<ol class="st-track" id="dealPipeline" aria-label="Deal timeline from submission to closing">
+<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">Day 1</span><h3>Submit</h3><p>Send your deal via our broker portal</p></li>
+<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">48 Hours</span><h3>Score</h3><p>Preliminary indication of interest</p></li>
+<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">72 Hours</span><h3>LOI</h3><p>Letter of intent delivered</p></li>
+<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">30&ndash;45 Days</span><h3>Close</h3><p>All-cash closing, no financing contingency</p></li>
+</ol>
+<div class="st-scale" aria-hidden="true">
+<div class="st-scale__legend"><span>Decision &middot; 72 hrs</span><span>Closing &middot; 30&ndash;45 days</span></div>
+<div class="st-scale__bar"><span class="st-scale__seg--decide"></span><span class="st-scale__seg--close"></span></div>
+</div>
+<p style="text-align:center;margin-top:32px;font-family:var(--font-display);font-style:italic;font-size:18px;color:rgba(255,255,255,.7)">We have never failed to close a deal under contract.</p>
+<div style="text-align:center;margin-top:32px">
+<a href="/for-brokers#broker-network" class="btn btn--gold">Submit Your Deal</a>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Investment Criteria -->
+<section class="section section--parchment" aria-label="Investment criteria">
+<div class="container">
+<div class="section__header section__header--left animate-on-scroll" style="text-align:left;max-width:1080px;margin-left:auto;margin-right:auto">
+<span class="section__label">Criteria</span>
+<h2>What We Look For</h2>
+</div>
+<dl class="criteria-list animate-on-scroll" aria-label="Investment criteria details">
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Deal Size</dt>
+<dd class="criteria-list__value">$1M &ndash; $10M</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Property Type</dt>
+<dd class="criteria-list__value">Class B/C Industrial, Flex, Shallow-Bay, IOS</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Building Size</dt>
+<dd class="criteria-list__value">&lt; 50,000 SF per building</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Clear Height</dt>
+<dd class="criteria-list__value">18'+ preferred</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Markets</dt>
+<dd class="criteria-list__value">Mid-Atlantic &middot; Midwest</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Strategy</dt>
+<dd class="criteria-list__value">Value-Add, Long-Term Hold</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Acquisition Basis</dt>
+<dd class="criteria-list__value">Significantly below replacement cost</dd>
+</div>
+<div class="criteria-list__item">
+<dt class="criteria-list__key">Complexity</dt>
+<dd class="criteria-list__value">Vacancy &middot; deferred maintenance &middot; environmental &amp; legal issues</dd>
+</div>
+</dl>
+<div style="text-align:center;margin-top:48px">
+<a href="/for-brokers" class="btn btn--gold">Explore Our Broker Program</a>
+</div>
+</div>
+</section>
+
+<!-- Value Proposition -->
+<section class="section" aria-label="About the firm">
+<div class="container">
+<div class="section__header animate-on-scroll">
+<span class="section__label">The Firm</span>
+<h2>A Family Office, Not a Fund</h2>
+</div>
+<div class="animate-on-scroll" style="max-width:720px;margin:0 auto;text-align:center">
+<p style="margin-bottom:20px;font-size:16px;line-height:1.7;color:var(--charcoal)">Founded in 2005, Oxford Realty Advisors is a principal investor and operator with 500,000+ SF of shallow-bay industrial and flex space across three core markets &mdash; acquired with 100% family capital, no outside investors, and no fund structure.</p>
+<p style="margin-bottom:32px;font-size:16px;line-height:1.7;color:var(--charcoal)">We target the structural undersupply of functional Class B/C industrial space in secondary markets, acquiring below replacement cost and driving returns through active management. A 15% portfolio LTV means all-cash closings on every deal.</p>
+<a href="/about" class="btn btn--gold">Learn More About Our Firm</a>
+</div>
+</div>
+</section>
+
 <!-- Owner Guides -->
-<section class="section" aria-label="Guides for property owners">
+<section class="section section--parchment" aria-label="Guides for property owners">
 <div class="container">
 <div class="section__header animate-on-scroll">
 <span class="section__label">Resources</span>
@@ -616,7 +620,7 @@ h3{font-size:22px;margin-bottom:8px}
 </section>
 
 <!-- ═══ FAQ ═══ -->
-<section class="section section--parchment" aria-label="Frequently asked questions">
+<section class="section" aria-label="Frequently asked questions">
 <div class="container">
 <div class="section__header animate-on-scroll">
 <span class="section__label">FAQ</span>
@@ -689,7 +693,7 @@ h3{font-size:22px;margin-bottom:8px}
 </section>
 
 <!-- CTA Block -->
-<section class="section" aria-label="Call to action">
+<section class="section section--parchment" aria-label="Call to action">
 <div class="container" style="text-align:center">
 <div class="animate-on-scroll" style="max-width:640px;margin:0 auto">
 <h2>Ready to Close in 30&ndash;45 Days?</h2>

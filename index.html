@@ -378,6 +378,7 @@ h3{font-size:22px;margin-bottom:8px}
 .fg-card__row + .fg-card__row{margin-top:14px;padding-top:14px;border-top:1px dashed rgba(27,42,74,.12)}
 .fg-card__label{font-family:var(--font-body);font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--slate)}
 .fg-card__row--lender .fg-card__text{font-family:var(--font-body);font-size:13.5px;line-height:1.5;color:var(--slate)}
+.fg-card__row--lender .fg-card__text::before{content:"\2715";display:inline-block;color:#a33a3a;font-weight:700;margin-right:6px}
 .fg-card__row--oxford .fg-card__label{color:var(--gold-accessible,#806339)}
 .fg-card__row--oxford .fg-card__text{font-family:var(--font-body);font-size:14.5px;line-height:1.5;color:var(--navy);font-weight:500}
 .fg-card__row--oxford .fg-card__text::before{content:"\2713";display:inline-block;color:var(--gold);font-weight:700;margin-right:6px}
@@ -472,34 +473,43 @@ h3{font-size:22px;margin-bottom:8px}
 </section>
 
 <!-- Speed Timeline -->
+<style>
+.st-track{list-style:none;margin:0 auto;padding:0;max-width:960px;display:grid;grid-template-columns:repeat(4,1fr);position:relative}
+.st-track::before{content:"";position:absolute;top:11px;left:12.5%;right:12.5%;height:2px;background:linear-gradient(90deg,var(--gold) 0%,var(--gold) 20%,rgba(201,169,110,.35) 20%,rgba(201,169,110,.35) 100%)}
+.st-step{position:relative;text-align:center;padding:0 12px}
+.st-dot{display:block;width:24px;height:24px;margin:0 auto 20px;border-radius:50%;background:var(--navy);border:2px solid var(--gold);position:relative;z-index:1}
+.st-step:last-child .st-dot{background:var(--gold)}
+.st-when{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);display:block;margin-bottom:8px}
+.st-step h3{font-size:22px;margin-bottom:6px}
+.st-step p{font-size:14px;color:rgba(255,255,255,.65);margin:0;line-height:1.5}
+.st-scale{max-width:720px;margin:48px auto 0;font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.st-scale__bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.08);margin:8px 0}
+.st-scale__seg--decide{width:7%;background:var(--gold)}
+.st-scale__seg--close{width:93%;background:linear-gradient(90deg,rgba(201,169,110,.55),rgba(201,169,110,.2))}
+.st-scale__legend{display:flex;justify-content:space-between;gap:12px}
+@media(max-width:760px){
+  .st-track{grid-template-columns:1fr;gap:28px;max-width:420px}
+  .st-track::before{top:12px;bottom:12px;left:11px;right:auto;width:2px;height:auto;background:rgba(201,169,110,.35)}
+  .st-step{text-align:left;padding:0 0 0 44px}
+  .st-dot{position:absolute;left:0;top:0;margin:0}
+}
+</style>
 <section class="section section--navy" aria-label="How we close deals">
 <div class="container">
 <div class="section__header animate-on-scroll">
 <span class="section__label section__label--light">How We Close</span>
 <h2>Speed Wins Deals</h2>
 </div>
-<div class="animate-on-scroll" style="max-width:800px;margin:0 auto">
-<div class="grid-2" style="gap:24px;text-align:center" id="dealPipeline">
-<div style="padding:32px 24px;border:1px solid rgba(201,169,110,.2);border-radius:var(--radius-card)">
-<span style="font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);display:block;margin-bottom:8px">Day 1</span>
-<h3 style="font-size:22px;margin-bottom:4px">Submit</h3>
-<p style="font-size:14px;color:rgba(255,255,255,.6)">Send your deal via our broker portal</p>
-</div>
-<div style="padding:32px 24px;border:1px solid rgba(201,169,110,.2);border-radius:var(--radius-card)">
-<span style="font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);display:block;margin-bottom:8px">48 Hours</span>
-<h3 style="font-size:22px;margin-bottom:4px">Score</h3>
-<p style="font-size:14px;color:rgba(255,255,255,.6)">Preliminary indication of interest</p>
-</div>
-<div style="padding:32px 24px;border:1px solid rgba(201,169,110,.2);border-radius:var(--radius-card)">
-<span style="font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);display:block;margin-bottom:8px">72 Hours</span>
-<h3 style="font-size:22px;margin-bottom:4px">LOI</h3>
-<p style="font-size:14px;color:rgba(255,255,255,.6)">Letter of intent delivered</p>
-</div>
-<div style="padding:32px 24px;border:1px solid rgba(201,169,110,.2);border-radius:var(--radius-card)">
-<span style="font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);display:block;margin-bottom:8px">30&ndash;45 Days</span>
-<h3 style="font-size:22px;margin-bottom:4px">Close</h3>
-<p style="font-size:14px;color:rgba(255,255,255,.6)">All-cash closing, no contingencies</p>
-</div>
+<div class="animate-on-scroll" style="margin:0 auto">
+<ol class="st-track" id="dealPipeline" aria-label="Deal timeline from submission to closing">
+<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">Day 1</span><h3>Submit</h3><p>Send your deal via our broker portal</p></li>
+<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">48 Hours</span><h3>Score</h3><p>Preliminary indication of interest</p></li>
+<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">72 Hours</span><h3>LOI</h3><p>Letter of intent delivered</p></li>
+<li class="st-step"><span class="st-dot" aria-hidden="true"></span><span class="st-when">30&ndash;45 Days</span><h3>Close</h3><p>All-cash closing, no financing contingency</p></li>
+</ol>
+<div class="st-scale" aria-hidden="true">
+<div class="st-scale__legend"><span>Decision &middot; 72 hrs</span><span>Closing &middot; 30&ndash;45 days</span></div>
+<div class="st-scale__bar"><span class="st-scale__seg--decide"></span><span class="st-scale__seg--close"></span></div>
 </div>
 <p style="text-align:center;margin-top:32px;font-family:var(--font-display);font-style:italic;font-size:18px;color:rgba(255,255,255,.7)">We have never failed to close a deal under contract.</p>
 <div style="text-align:center;margin-top:32px">

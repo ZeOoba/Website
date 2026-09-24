@@ -92,7 +92,8 @@ function tagAttr(html, tag, keyAttr, keyValue, wantAttr) {
 }
 
 test('E-5 every sitemap page declares a self-canonical, og:url and og:image (any attribute order)', () => {
-  const locs = [...read('sitemap.xml').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  const sitemap = read('sitemap.xml').replace(/<!--[\s\S]*?(?:-->|$)/g, ''); // a commented-out <url> is not listed
+  const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
   assert.ok(locs.length >= 19);
   for (const loc of locs) {
     const p = new URL(loc).pathname;

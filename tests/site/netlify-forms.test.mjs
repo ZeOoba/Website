@@ -12,19 +12,25 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const { stripHtmlComments } = createRequire(import.meta.url)('../../scripts/validate-jsonld.js');
 
 // Hidden detection stubs that are intentionally not wired. available-space's
 // listing-inquiry stub is dead: every Inquire button on that page is a mailto:.
 const EXEMPT = new Set(['available-space.html#listing-inquiry']);
 
-function htmlFiles() {
+// Every HTML file that can ship, at any depth. Netlify's form detection parses
+// the whole publish directory, and build-dist.mjs copies assets/ (and the other
+// site dirs) wholesale, so a form in assets/quote.html registers too.
+const PRIVATE_DIRS = new Set(['dist', 'node_modules', '.netlify', '.git', 'tests', 'evals', 'scripts', 'netlify', 'docs', '.claude', 'data']);
+function htmlFiles(rel = '') {
   const files = [];
-  for (const dir of ['', 'markets', 'resources']) {
-    for (const name of readdirSync(path.join(ROOT, dir))) {
-      if (name.endsWith('.html')) files.push(dir ? `${dir}/${name}` : name);
-    }
+  for (const e of readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+    const r = rel ? `${rel}/${e.name}` : e.name;
+    if (e.isDirectory()) { if (!PRIVATE_DIRS.has(e.name)) files.push(...htmlFiles(r)); }
+    else if (e.name.endsWith('.html')) files.push(r);
   }
   return files;
 }
@@ -40,7 +46,7 @@ function attrs(tag) {
 
 // A commented-out form is neither registered by Netlify nor shown to anyone.
 function forms(html) {
-  html = html.replace(/<!--[\s\S]*?-->/g, '');
+  html = stripHtmlComments(html);
   return [...html.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].map((m) => ({
     attrs: attrs(m[1]),
     body: m[2],
@@ -107,22 +113,26 @@ test('tenant-resources leasing-inquiry form has a honeypot and a wired success s
 });
 
 test('the leasing-inquiry submit handler binds to the form: right id, runs after the form is parsed', () => {
-  const html = readFileSync(path.join(ROOT, 'tenant-resources.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const html = stripHtmlComments(readFileSync(path.join(ROOT, 'tenant-resources.html'), 'utf8'));
   const formMatch = [...html.matchAll(/<form\b([^>]*)>[\s\S]*?<\/form>/gi)].find((m) => attrs(m[1]).name === 'leasing-inquiry');
   assert.ok(formMatch, 'leasing-inquiry form not found');
   const formId = attrs(formMatch[1]).id;
   const formEnd = formMatch.index + formMatch[0].length;
 
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
-  const handler = scripts.find((m) => /getElementById\(\s*['"]leasingSuccess['"]\s*\)/.test(m[2]));
+  // JS comments are not code: a lookup or a DOMContentLoaded that only appears
+  // in a comment does nothing. String literals are matched first and kept, so
+  // '//' or '/*' inside a string ('image/*', a URL) is left alone.
+  const code = (js) => js.replace(/("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (m, str) => str ?? '');
+  const handler = scripts.find((m) => /getElementById\(\s*['"]leasingSuccess['"]\s*\)/.test(code(m[2])));
   assert.ok(handler, 'no inline script reveals #leasingSuccess');
-  const body = handler[2];
+  const body = code(handler[2]);
   assert.match(body, new RegExp(String.raw`getElementById\(\s*['"]${formId}['"]\s*\)`), `handler never looks up the form by its id "${formId}"`);
 
   // An inline script runs where it is parsed; above </form> the getElementById
   // returns null and the `if(!form) return` guard makes the handler a silent no-op.
   const a = attrs(handler[1]);
-  const deferred = (a.src && ('defer' in a || a.type === 'module')) || /DOMContentLoaded/.test(body);
+  const deferred = (a.src && ('defer' in a || a.type === 'module')) || /addEventListener\(\s*['"]DOMContentLoaded['"]/.test(body);
   assert.ok(handler.index >= formEnd || deferred, 'handler script runs before the leasing form exists (move it below </form> or defer it)');
 
   // Every element the handler touches must exist, or the submit path throws mid-flight.

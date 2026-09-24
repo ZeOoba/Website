@@ -1,0 +1,51 @@
+# Mutation tests for the site checks (tests/mutation/).
+#
+# Runs when a PR changes the checks themselves, and on demand. It breaks a copy
+# of the site in each way cases.mjs lists and requires the named check to fail,
+# so a check that stops catching its breakage fails here instead of passing
+# quietly. Not a required check: it takes several minutes, and a site-content
+# change can move an anchor it depends on (reported as STALE, with the case id).
+#
+# NOTHING HERE DEPLOYS.
+
+name: Mutation tests
+
+on:
+  pull_request:
+    paths:
+      - 'tests/site/**'
+      - 'tests/mutation/**'
+      - 'scripts/validate-jsonld.js'
+      - 'scripts/verify-jsonld.mjs'
+      - 'scripts/build-dist.mjs'
+      - '.github/workflows/mutation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: Mutation tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium for the rendered nav cases
+        run: npx playwright install --with-deps chromium
+
+      - name: Run mutation tests
+        run: npm run test:mutation -- --require-rendered

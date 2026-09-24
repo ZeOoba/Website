@@ -91,6 +91,13 @@ async function main() {
   const excluded = [];
   const failures = [];
 
+  // An entry on both lists is ambiguous, and the publish branch below wins, so
+  // "excluded" would silently ship. Fail instead of guessing which was meant.
+  const overlap = [...SITE_FILES, ...SITE_DIRS].filter((name) => EXPECTED_EXCLUSIONS.includes(name));
+  if (overlap.length > 0) {
+    failures.push(`listed as both published and excluded: ${overlap.join(', ')} — keep it in exactly one list in scripts/build-dist.mjs`);
+  }
+
   for (const entry of await fs.readdir(ROOT, { withFileTypes: true })) {
     const name = entry.name;
     if (name === 'dist' || name.startsWith('.')) continue;
@@ -124,7 +131,7 @@ async function main() {
     const entries = await fs.readdir(path.join(DIST, dir)).catch(() => []);
     if (entries.length === 0) failures.push(`dist/${dir} is empty`);
   }
-  for (const banned of BANNED) {
+  for (const banned of new Set([...BANNED, ...EXPECTED_EXCLUSIONS])) {
     if (await exists(path.join(DIST, banned))) failures.push(`internal path leaked into dist: ${banned}`);
   }
 

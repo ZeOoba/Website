@@ -65,11 +65,16 @@ function markup(html) {
 }
 const lineOf = (html, index) => html.slice(0, index).split('\n').length;
 
+// Our own origin, in any spelling a link might use (Netlify redirects http and
+// www to https://oxfordra.net).
+const SAME_SITE = /^(?:https?:)?\/\/(?:www\.)?oxfordra\.net(?=[/?#]|$)/i;
+const isExternal = (url) => (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith('//')) && !SAME_SITE.test(url);
+
 // Repo-relative path of a same-site URL. A bare host (`https://oxfordra.net`)
 // is the site root, not a path relative to the linking page.
 const localFile = (url, page) => {
-  const absolute = /^https:\/\/oxfordra\.net/.test(url);
-  let clean = url.replace(/^https:\/\/oxfordra\.net/, '').split(/[?#]/)[0];
+  const absolute = SAME_SITE.test(url);
+  let clean = url.replace(SAME_SITE, '').split(/[?#]/)[0];
   try { clean = decodeURIComponent(clean); } catch { /* malformed escape: keep as written, existence check will fail */ }
   if (absolute && clean === '') return '';
   return clean.startsWith('/') ? clean.slice(1) : path.posix.join(path.posix.dirname(page), clean);
@@ -191,7 +196,7 @@ test('every #fragment link points at an id that exists on its target page', () =
       const fragment = decodeURIComponent(href.slice(hash + 1));
       if (fragment === '' || fragment === 'top') continue; // both scroll to the top natively
       const base = href.slice(0, hash);
-      if (/^[a-z]+:/i.test(base) && !base.startsWith('https://oxfordra.net')) continue; // external site
+      if (isExternal(base)) continue; // external site
       let target = page;
       if (base) {
         const f = localFile(base, page);
@@ -237,7 +242,7 @@ test('every srcset / imagesrcset candidate exists and its `w` descriptor is the 
       for (const set of [tag.srcset, tag.imagesrcset].filter(Boolean)) {
         for (const candidate of set.split(',').map((c) => c.trim()).filter(Boolean)) {
           const [url, descriptor = '1x'] = candidate.split(/\s+/);
-          if (/^[a-z]+:/i.test(url) && !url.startsWith('https://oxfordra.net')) continue;
+          if (isExternal(url)) continue;
           candidates++;
           const file = localFile(url, page);
           const where = `${page}:${lineOf(html, tag._index)} ${url}`;
@@ -265,7 +270,7 @@ test('every same-site <img src>, <source src> and image preload href exists', ()
       ...tags(html, 'link').filter((t) => /\bpreload\b/.test(t.rel ?? '') && t.as === 'image').map((t) => [t, t.href]),
     ];
     for (const [tag, url] of refs) {
-      if (!url || /^data:/i.test(url) || (/^[a-z]+:/i.test(url) && !url.startsWith('https://oxfordra.net'))) continue;
+      if (!url || /^data:/i.test(url) || isExternal(url)) continue;
       checked++;
       const file = localFile(url, page);
       if (!existsSync(path.join(ROOT, file))) missing.push(`${page}:${lineOf(html, tag._index)} ${url}`);
@@ -279,6 +284,12 @@ test('every same-site <img src>, <source src> and image preload href exists', ()
 // visitor lands somewhere other than where the link says. Checked against the
 // built dist/, so a file that exists in the repo but is not published (not in
 // build-dist.mjs's allowlist) also fails.
+// _redirects rules that SERVE content (status 200 rewrites/proxies), e.g. an
+// /api/* path answered by a function. A link to one of those is not stale.
+const REWRITES = read('_redirects').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
+  .map((l) => l.split(/\s+/)).filter(([, , status]) => /^200!?$/.test(status ?? ''))
+  .map(([from]) => new RegExp('^' + from.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/:[\w]+/g, '[^/]+') + '$'));
+
 test('every same-site link lands on a file that ships in dist/', () => {
   const dist = path.join(ROOT, 'dist');
   assert.ok(existsSync(dist), 'dist/ missing — run `npm run build` first');
@@ -288,8 +299,10 @@ test('every same-site link lands on a file that ships in dist/', () => {
     const html = markup(read(page));
     for (const a of tags(html, 'a')) {
       const href = (a.href ?? '').trim();
-      if (!href || href.startsWith('#')) continue; // same-page fragments: see the #fragment test
-      if (/^[a-z][a-z0-9+.-]*:/i.test(href) && !href.startsWith('https://oxfordra.net')) continue; // mailto:, tel:, other sites
+      if (!href || href.startsWith('#') || href.startsWith('?')) continue; // same page: see the #fragment test
+      if (isExternal(href)) continue; // mailto:, tel:, other sites
+      const urlPath = '/' + localFile(href, page);
+      if (urlPath.startsWith('/.netlify/') || REWRITES.some((re) => re.test(urlPath))) continue; // served by Netlify, not a file
       checked++;
       const target = pageTarget(href, page);
       if (!existsSync(path.join(dist, target))) broken.push(`${page}:${lineOf(html, a._index)} ${href} → dist/${target} does not exist`);
@@ -309,7 +322,7 @@ test('each versioned asset is requested with one ?v= across every page', () => {
     for (const t of [...tags(html, 'script'), ...tags(html, 'link')]) {
       const url = t.src ?? t.href;
       const v = url?.match(/[?&]v=([^&#]+)/)?.[1];
-      if (!v || (/^[a-z]+:/i.test(url) && !url.startsWith('https://oxfordra.net'))) continue;
+      if (!v || isExternal(url)) continue;
       const file = localFile(url, page);
       if (!versions.has(file)) versions.set(file, new Map());
       const byV = versions.get(file);
@@ -360,35 +373,58 @@ test('block containers (section, main, div, …) are balanced and properly neste
 // A width-only reading of a media query: a list of { min, max } ranges in px
 // (any one may match), or [] when it can never apply on screen (print). Other
 // features (orientation, hover, prefers-*) are ignored.
+// Both syntaxes: `(max-width:960px)` and Media Queries 4 ranges such as
+// `(width<=767px)` or `(600px<=width<1280px)` (styles.css uses the latter).
 function mediaRanges(query) {
   const px = (n, unit) => Number(n) * (unit === 'px' ? 1 : 16);
+  const EPS = 0.01; // strict `<` / `>` excludes the boundary pixel
   return query.toLowerCase().split(',').flatMap((part) => {
+    // `not print` is every screen; any other `not` query is left out.
+    if (/^\s*not\b/.test(part)) return /^\s*not\s+print\s*$/.test(part) ? [{ min: 0, max: Infinity }] : [];
     if (/\bprint\b/.test(part) && !/\b(screen|all)\b/.test(part)) return [];
-    if (/^\s*not\b/.test(part)) return [];
-    const max = part.match(/max-width\s*:\s*([\d.]+)(px|em|rem)/);
-    const min = part.match(/min-width\s*:\s*([\d.]+)(px|em|rem)/);
-    return [{ min: min ? px(min[1], min[2]) : 0, max: max ? px(max[1], max[2]) : Infinity }];
+    let min = 0, max = Infinity;
+    const lower = (v) => { min = Math.max(min, v); };
+    const upper = (v) => { max = Math.min(max, v); };
+    for (const [, n, u] of part.matchAll(/max-width\s*:\s*([\d.]+)(px|em|rem)/g)) upper(px(n, u));
+    for (const [, n, u] of part.matchAll(/min-width\s*:\s*([\d.]+)(px|em|rem)/g)) lower(px(n, u));
+    for (const [, op, n, u] of part.matchAll(/\bwidth\s*(<=|<|>=|>)\s*([\d.]+)(px|em|rem)/g)) {
+      const v = px(n, u);
+      if (op === '<=') upper(v); else if (op === '<') upper(v - EPS); else if (op === '>=') lower(v); else lower(v + EPS);
+    }
+    for (const [, n, u, op] of part.matchAll(/([\d.]+)(px|em|rem)\s*(<=|<|>=|>)\s*width\b/g)) {
+      const v = px(n, u);
+      if (op === '<=') lower(v); else if (op === '<') lower(v + EPS); else if (op === '>=') upper(v); else upper(v - EPS);
+    }
+    return min <= max ? [{ min, max }] : [];
   });
 }
 
 // Specificity as [ids, classes/attributes/pseudo-classes, elements].
 function specificity(selector) {
-  const s = selector.replace(/::?(?:before|after|placeholder|marker|selection)\b/g, '');
+  const s = selector.replace(/::?(?:before|after|placeholder|marker|selection)\b/g, '').replace(/:where\([^)]*\)/g, ''); // :where() adds nothing
   const ids = (s.match(/#[\w-]+/g) ?? []).length;
   const classes = (s.match(/\.[\w-]+|\[[^\]]*\]|:(?!not\(|is\(|where\()[\w-]+/g) ?? []).length;
   const elements = (s.replace(/\[[^\]]*\]|\([^)]*\)/g, '').match(/(?:^|[\s>+~])[a-z][\w-]*/gi) ?? []).length;
   return [ids, classes, elements];
 }
 
+// Intersection of two range lists (null = unconditional).
+function intersect(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  return a.flatMap((x) => b.map((y) => ({ min: Math.max(x.min, y.min), max: Math.min(x.max, y.max) }))).filter((r) => r.min <= r.max);
+}
+
 // Style rules in source order, one entry per selector: { ranges, selector,
 // display, important, spec, order }. ranges is null for an unconditional rule.
-// Only @media blocks are descended into; other at-rule blocks are skipped.
+// @media nests (ranges intersect); @supports and @layer are descended into as
+// unconditional; other at-rule blocks (@font-face, @keyframes, …) are skipped.
 function cssRules(css) {
   const out = [];
-  css = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const src = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const blockEnd = (open) => {
     let depth = 1, j = open + 1;
-    while (depth && j < css.length) depth += css[j] === '{' ? 1 : css[j] === '}' ? -1 : 0, j++;
+    while (depth && j < src.length) depth += src[j] === '{' ? 1 : src[j] === '}' ? -1 : 0, j++;
     return j;
   };
   const push = (ranges, selectors, decls) => {
@@ -397,18 +433,20 @@ function cssRules(css) {
       out.push({ ranges, selector, display: d?.[1], important: Boolean(d?.[2]), spec: specificity(selector), order: out.length });
     }
   };
-  let i = 0;
-  while (i < css.length) {
-    const open = css.indexOf('{', i);
-    if (open === -1) break;
-    const prelude = css.slice(i, open).replace(/^[\s;}]+/, '').replace(/^@(?:import|charset|namespace)[^;]*;\s*/g, '').trim();
-    const end = blockEnd(open);
-    if (prelude.startsWith('@media')) {
-      const ranges = mediaRanges(prelude.slice(6));
-      for (const [, selectors, decls] of css.slice(open + 1, end - 1).matchAll(/([^{}]+)\{([^{}]*)\}/g)) push(ranges, selectors, decls);
-    } else if (!prelude.startsWith('@')) push(null, prelude, css.slice(open + 1, end - 1));
-    i = end;
-  }
+  const walk = (from, to, ranges) => {
+    let i = from;
+    while (i < to) {
+      const open = src.indexOf('{', i);
+      if (open === -1 || open >= to) break;
+      const prelude = src.slice(i, open).replace(/^[\s;}]+/, '').replace(/^(?:@(?:import|charset|namespace|layer)[^;{]*;\s*)+/g, '').trim();
+      const end = blockEnd(open);
+      if (prelude.startsWith('@media')) walk(open + 1, end - 1, intersect(ranges, mediaRanges(prelude.slice(6))));
+      else if (/^@(supports|layer)\b/.test(prelude)) walk(open + 1, end - 1, ranges);
+      else if (!prelude.startsWith('@')) push(ranges, prelude, src.slice(open + 1, end - 1));
+      i = end;
+    }
+  };
+  walk(0, src.length, null);
   return out;
 }
 
@@ -418,8 +456,12 @@ function cssRules(css) {
 // pseudo-elements never describe the resting element, so they are skipped.
 function displayAt(rules, cls, w) {
   const targets = (sel) => {
-    const last = sel.split(/[\s>+~]+/).pop();
-    return new RegExp(`\\.${cls}(?![\\w-])`).test(last) && !/:/.test(last);
+    // Last compound, with :not()/:is()/:where() arguments removed: those filter
+    // the resting element rather than name a state, so `.x:not(.open)` counts.
+    const last = sel.replace(/\([^)]*\)/g, (m) => m.replace(/[\s>+~]/g, '')).split(/[\s>+~]+/).pop();
+    const named = new RegExp(`\\.${cls}(?![\\w-])|\\[class[~*]?=\\s*["']?${cls}["']?\\s*\\]`).test(last);
+    const state = /:/.test(last.replace(/:(?:not|is|where)\([^)]*\)/g, ''));
+    return named && !state;
   };
   const beats = (a, b) => {
     for (let k = 0; k < a.length; k++) if (a[k] !== b[k]) return a[k] > b[k];
@@ -471,8 +513,14 @@ function pageCss(raw, page) {
   const doc = stripHtmlComments(raw).replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, '');
   const seen = new Set();
   const parts = [];
-  for (const m of doc.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>|<link\b[^>]*>/gi)) {
-    if (m[1] !== undefined) { parts.push(m[1]); continue; }
+  for (const m of doc.matchAll(/<style\b([^>]*)>([\s\S]*?)<\/style>|<link\b[^>]*>/gi)) {
+    if (m[2] !== undefined) {
+      // <style media="…"> applies only where the query matches. (Linked sheets'
+      // media="print" is the async-load trick; script flips it to "all".)
+      const media = attrs(`<style${m[1]}>`).media;
+      parts.push(media && media !== 'all' ? `@media ${media}{${m[2]}}` : m[2]);
+      continue;
+    }
     const l = attrs(m[0]);
     if (!/\bstylesheet\b/.test(l.rel ?? '') || !l.href) continue;
     const f = localFile(l.href, page);
@@ -522,7 +570,7 @@ test('wherever a page hides its nav links, a wired hamburger is showing', () => 
       for (const a of links) {
         const href = a.href ?? '';
         if (!href || href.startsWith('#')) gaps.push(`#${MOBILE_NAV_ID} link href="${href}" goes nowhere`);
-        else if (!/^[a-z]+:/i.test(href) || href.startsWith('https://oxfordra.net')) {
+        else if (!isExternal(href)) {
           if (!existsSync(path.join(ROOT, pageTarget(href, page)))) gaps.push(`#${MOBILE_NAV_ID} link ${href} → ${pageTarget(href, page)} does not exist`);
         }
       }

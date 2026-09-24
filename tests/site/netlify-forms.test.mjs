@@ -121,8 +121,9 @@ test('the leasing-inquiry submit handler binds to the form: right id, runs after
 
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
   // JS comments are not code: a lookup or a DOMContentLoaded that only appears
-  // in a comment does nothing. (`[^:]` keeps the `//` of a URL.)
-  const code = (js) => js.replace(/\/\*[\s\S]*?\*\/|(^|[^:\\])\/\/[^\n]*/g, '$1');
+  // in a comment does nothing. String literals are matched first and kept, so
+  // '//' or '/*' inside a string ('image/*', a URL) is left alone.
+  const code = (js) => js.replace(/("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (m, str) => str ?? '');
   const handler = scripts.find((m) => /getElementById\(\s*['"]leasingSuccess['"]\s*\)/.test(code(m[2])));
   assert.ok(handler, 'no inline script reveals #leasingSuccess');
   const body = code(handler[2]);

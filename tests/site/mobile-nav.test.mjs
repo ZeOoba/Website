@@ -44,7 +44,25 @@ function navPages(rel = '') {
   return out.sort();
 }
 
-const WIDTHS = [375, 800, 1280];
+// Phone, tablet, and both sides of the 1279/1280 breakpoint most pages use;
+// 1024 sits inside the tablet-landscape band where a half-moved breakpoint
+// (links hidden to 1279, hamburger shown only to 1023) would leave no nav.
+const WIDTHS = [375, 800, 1024, 1279, 1280];
+
+// Injected into every page: "a visitor can see this". checkVisibility covers
+// display, content-visibility, visibility and opacity (ancestors included);
+// the box must also be non-empty and overlap the viewport, so an element
+// parked at left:-9999px does not count.
+function installSeen() {
+  window.__seen = (el) => {
+    if (!el) return false;
+    const ok = el.checkVisibility
+      ? el.checkVisibility({ opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true })
+      : getComputedStyle(el).visibility === 'visible';
+    const r = el.getBoundingClientRect();
+    return ok && r.width > 0 && r.height > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
+  };
+}
 
 let server;
 let browser;
@@ -61,17 +79,15 @@ after(async () => {
   if (server) await server.close();
 });
 
-test('the built site has pages with a nav to check', () => {
-  assert.ok(pages.length >= 20, `only ${pages.length} pages carry .nav__links; the scan is broken`);
-});
-
 for (const width of WIDTHS) {
   test(`at ${width}px every page's navigation is reachable (links visible, or a working hamburger)`, { timeout: 300_000 }, async () => {
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     // Same-origin only: the check is about our markup, CSS and script.js, and
     // third-party tags (analytics, chat, maps) must not make it flaky or noisy.
     await context.route('**/*', (route) => (route.request().url().startsWith(server.url) ? route.continue() : route.abort()));
+    await context.addInitScript(installSeen);
     const page = await context.newPage();
+    assert.ok(pages.length >= 20, `only ${pages.length} pages carry a nav; the scan is broken`);
     const failures = [];
     let viaHamburger = 0;
 
@@ -81,15 +97,16 @@ for (const width of WIDTHS) {
       if (response.status() !== 200) { fail(`HTTP ${response.status()}`); continue; }
 
       // "Visible" means a link a visitor can see, not just a non-hidden box.
-      const linksVisible = await page.evaluate((sel) => [...document.querySelectorAll(sel)].some((box) =>
-        getComputedStyle(box).visibility !== 'hidden' &&
-        [...box.querySelectorAll('a[href]')].some((a) => { const r = a.getBoundingClientRect(); return r.width > 0 && r.height > 0; })), LINKS);
+      const linksVisible = await page.evaluate((sel) =>
+        [...document.querySelectorAll(sel)].some((box) => [...box.querySelectorAll('a[href]')].some((a) => window.__seen(a))), LINKS);
       if (linksVisible) continue;
       viaHamburger++;
 
       const button = page.locator('.nav__mobile-btn').first();
       const box = await button.boundingBox().catch(() => null);
       if (!box || box.width < 1 || box.height < 1) { fail(`nav links hidden and the hamburger has no box (${JSON.stringify(box)})`); continue; }
+      // Playwright clicks an opacity:0 element happily; a visitor cannot find it.
+      if (!(await button.evaluate((el) => window.__seen(el)))) { fail('nav links hidden and the hamburger is transparent, invisible or off-screen'); continue; }
       try {
         await button.click({ timeout: 5_000 });
       } catch (err) {
@@ -100,11 +117,11 @@ for (const width of WIDTHS) {
       const panel = page.locator('#mobileNav');
       const state = await panel.evaluate((el) => ({ open: el.classList.contains('is-open') })).catch(() => ({ open: false }));
       const expanded = await button.getAttribute('aria-expanded');
-      const visibleLinks = await panel.locator('a[href]').evaluateAll((as) => as.filter((a) => a.getBoundingClientRect().height > 0).length).catch(() => 0);
+      const visibleLinks = await panel.locator('a[href]').evaluateAll((as) => as.filter((a) => window.__seen(a)).length).catch(() => 0);
       if (!state.open) fail('clicking the hamburger did not open #mobileNav');
       if (expanded !== 'true') fail(`aria-expanded is "${expanded}" after opening`);
       if (!(await panel.isVisible())) fail('#mobileNav is not visible after opening');
-      if (visibleLinks === 0) fail('#mobileNav shows no links after opening');
+      if (visibleLinks === 0) fail('#mobileNav shows no visible links after opening (hidden, transparent or off-screen)');
 
       await page.keyboard.press('Escape');
       const closed = await panel.evaluate((el) => !el.classList.contains('is-open')).catch(() => false);

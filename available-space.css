@@ -1365,3 +1365,16 @@
     margin-bottom: 16px;
   }
 }
+/* Navy CTA band (closing "Next steps" section): outline buttons need light
+   text on navy; the default slate-on-transparent is ~2.6:1 and the navy
+   hover text would vanish. */
+.section--navy .btn--outline {
+  color: #C9A96E;
+  border-color: rgba(201, 169, 110, 0.6);
+}
+
+.section--navy .btn--outline:hover {
+  background: #C9A96E;
+  border-color: #C9A96E;
+  color: #1B2A4A;
+}

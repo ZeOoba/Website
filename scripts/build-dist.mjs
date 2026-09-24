@@ -62,12 +62,13 @@ const SITE_FILES = [
   'llms.txt',
   'robots.txt',
   'sitemap.xml',
-  'Oxford-Realty-Advisors-Overview.pdf',
 ];
 
 // Root entries that exist and must stay unpublished. An entry in neither list
 // fails the build until it is classified.
-const EXPECTED_EXCLUSIONS = ['application-script.file-size.test.js', 'data', 'deno.lock', 'docs', 'evals', 'netlify', 'netlify.toml', 'node_modules', 'package-lock.json', 'package.json', 'README.md', 'scripts', 'tests'];
+// Oxford-Realty-Advisors-Overview.pdf: unpublished 2026-09-23 (stale facts, marked CONFIDENTIAL);
+// _redirects 301s its URL to /. Move back to SITE_FILES once regenerated.
+const EXPECTED_EXCLUSIONS = ['Oxford-Realty-Advisors-Overview.pdf', 'application-script.file-size.test.js', 'data', 'deno.lock', 'docs', 'evals', 'netlify', 'netlify.toml', 'node_modules', 'package-lock.json', 'package.json', 'README.md', 'scripts', 'tests'];
 
 // Belt-and-braces: fail rather than ship an incomplete or leaking dist/.
 const REQUIRED = ['index.html', '404.html', '_headers', '_redirects', 'styles.css', 'script.js'];

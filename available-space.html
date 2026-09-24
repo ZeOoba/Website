@@ -42,13 +42,13 @@
   <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin></noscript>
   <script>(function(){var l=document.getElementById("leaflet-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 <!-- Stylesheets -->
-  <link rel="preload" as="style" href="/styles.css?v=17">
-  <link rel="stylesheet" href="/styles.css?v=17" media="print" id="styles-css-async">
-  <noscript><link rel="stylesheet" href="/styles.css?v=17"></noscript>
+  <link rel="preload" as="style" href="/styles.css?v=18">
+  <link rel="stylesheet" href="/styles.css?v=18" media="print" id="styles-css-async">
+  <noscript><link rel="stylesheet" href="/styles.css?v=18"></noscript>
   <script>(function(){var l=document.getElementById("styles-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
-  <link rel="preload" as="style" href="/available-space.css?v=5">
-  <link rel="stylesheet" href="/available-space.css?v=5" media="print" id="available-space-css-async">
-  <noscript><link rel="stylesheet" href="/available-space.css?v=5"></noscript>
+  <link rel="preload" as="style" href="/available-space.css?v=6">
+  <link rel="stylesheet" href="/available-space.css?v=6" media="print" id="available-space-css-async">
+  <noscript><link rel="stylesheet" href="/available-space.css?v=6"></noscript>
   <script>(function(){var l=document.getElementById("available-space-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
   <!-- Inline @font-face declarations -->
@@ -95,7 +95,7 @@
       background-color: #1B2A4A;
     }
     .nav__links{display:flex;gap:0;align-items:center}
-    .nav__link{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.8);padding:6px 14px;transition:color .3s,background .3s;text-decoration:none}
+    .nav__link{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.8);padding:6px 11px;transition:color .3s,background .3s;text-decoration:none;white-space:nowrap}
     .nav__link:hover,.nav__link:focus{color:#C9A96E;text-decoration:none}
     .nav__link--active{color:#C9A96E}
     .nav__link--cta{background:#C9A96E;color:#1B2A4A;border-radius:6px;padding:8px 18px;font-size:.75rem;letter-spacing:.14em;font-weight:500;text-transform:uppercase;margin-left:8px}
@@ -108,8 +108,15 @@
     .nav__mobile a{display:block;padding:12px 0;font-family:var(--font-body);font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:#fff;border-bottom:1px solid rgba(255,255,255,.06);transition:color .3s;text-decoration:none}
     .nav__mobile a:hover{color:#C9A96E;text-decoration:none}
     .nav__logo img,.nav__logo svg{height:auto;width:auto;max-height:28px;display:block}
-    @media(max-width:960px){.nav__links{display:none}.nav__mobile-btn{display:block}.nav__inner{padding:0 24px}}
-  </style>
+    @media(max-width:1279px){.nav__links{display:none}.nav__mobile-btn{display:block}.nav__inner{padding:0 24px}}
+  
+/* Announcement bar: critical copy of styles.css rules (prevents the pre-stylesheet stacked-text flash) */
+.announcement-bar{position:fixed!important;top:0!important;left:0;right:0;z-index:1001;height:36px;background:var(--navy-dark,#141F33);border-bottom:1px solid rgba(201,169,110,.2);display:flex;align-items:center;justify-content:center;font-family:var(--font-body,"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;line-height:1;padding:0 16px;color:rgba(255,255,255,.85);overflow:hidden;white-space:nowrap}
+.announcement-bar__label{color:var(--gold,#C9A96E);white-space:nowrap;flex-shrink:0}.announcement-bar__sep{color:var(--gold,#C9A96E);margin:0 12px;opacity:.7;flex-shrink:0}
+.announcement-bar__rotator{position:relative;display:inline-block;height:14px;min-width:240px}.announcement-bar__item{position:absolute;top:0;left:0;white-space:nowrap;opacity:0;transition:opacity .5s ease}.announcement-bar__item.is-active{opacity:1}
+body{padding-top:36px}.nav{top:36px!important}
+@media(max-width:640px){.announcement-bar{font-size:10px;padding:0 12px;height:32px;letter-spacing:.1em}.announcement-bar__label,.announcement-bar__sep{display:none}.announcement-bar__rotator{min-width:0;text-align:center;width:100%}.announcement-bar__item{right:0}body{padding-top:32px}.nav{top:32px!important}}
+</style>
 
   <!-- Structured Data: Breadcrumbs -->
   <script type="application/ld+json">
@@ -147,7 +154,7 @@
     ]
   }
   </script>
-<link rel="stylesheet" href="/assets/chat.css?v=2" media="print" id="chat-css-async">
+<link rel="stylesheet" href="/assets/chat.css?v=3" media="print" id="chat-css-async">
 <script>(function(){var l=document.getElementById("chat-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 </head>
 <body>
@@ -175,9 +182,9 @@
 <a href="/portfolio" class="nav__link">Portfolio</a>
 <a href="/markets/" class="nav__link">Markets</a>
 <a href="/track-record" class="nav__link">Track Record</a>
-<a href="/for-brokers" class="nav__link">Broker Network</a>
+<a href="/for-brokers" class="nav__link">Brokers</a>
 <a href="/available-space" class="nav__link nav__link--active" aria-current="page">Available Space</a>
-<a href="/tenant-resources" class="nav__link">Tenant Resources</a>
+<a href="/tenant-resources" class="nav__link">Tenants</a>
 <a href="/contact" class="nav__link">Contact</a>
 <a href="/tenant-application" class="nav__link nav__link--cta">Apply Now</a>
 </div>
@@ -760,6 +767,28 @@
     </div>
     </div>
     </section>
+<section class="section section--navy" aria-label="Next steps">
+<div class="container">
+<div class="grid-2 animate-on-scroll">
+<div style="text-align:center">
+<h2>Don&rsquo;t See the Right Fit?</h2>
+<p style="font-size:16px;color:rgba(255,255,255,.7);margin-bottom:32px;line-height:1.7">Tell us the size, use and timing you need &mdash; new suites open across the portfolio regularly.</p>
+<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+<a href="/contact" class="btn btn--gold">Tell Us What You Need</a>
+</div>
+</div>
+<div style="text-align:center">
+<h2>Ready to Lease?</h2>
+<p style="font-size:16px;color:rgba(255,255,255,.7);margin-bottom:32px;line-height:1.7">Start an application online. We respond within one business day.</p>
+<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+<a href="/tenant-application" class="btn btn--outline" style="border-color:rgba(201,169,110,.6)">Apply Now</a>
+<a href="/tenant-resources" class="btn btn--outline" style="border-color:rgba(201,169,110,.6)">How Leasing Works</a>
+</div>
+</div>
+</div>
+</div>
+</section>
+
   </main>
 
   <!-- Footer -->

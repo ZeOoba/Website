@@ -229,6 +229,110 @@ test('lease application accepts either radio answer once the terms box is ticked
   }
 });
 
+/* ---------- File uploads: honour each input's own accept attribute ---------- */
+// The validator used to check every upload against one PDF/Excel/Word MIME
+// allowlist, so the lease application's accept=".pdf,.jpg,.jpeg,.png" inputs
+// rejected a photographed driver's licence (found by the PR #91 reviewer,
+// 2026-09-23). The allowlist is now only the fallback for inputs with no accept.
+
+const MB = 1024 * 1024;
+
+// A chosen file, as the browser exposes it: value is the fakepath, files holds {name, type, size}.
+function choose(el, name, type, size = MB) {
+  el.value = `C:\\fakepath\\${name}`;
+  el.files = [{ name, type, size }];
+}
+
+function uploadFields(file, formId) {
+  const fields = formFields(file, formId).filter((f) => f.attrs.type === 'file');
+  assert.ok(fields.length > 0, `${file}#${formId} has no file inputs`);
+  return fields;
+}
+
+function applicationUploads() {
+  const fields = uploadFields('tenant-application.html', 'applicationForm');
+  for (const f of fields) assert.equal(f.attrs.accept, '.pdf,.jpg,.jpeg,.png', `${f.attrs.id} accept list changed; update this test`);
+  return fields;
+}
+
+test('lease application accepts every upload type its accept attribute allows', () => {
+  const cases = [
+    ['licence.jpg', 'image/jpeg'],
+    ['licence.jpeg', 'image/jpeg'],
+    ['licence.png', 'image/png'],
+    ['licence.pdf', 'application/pdf'],
+    ['SCAN.JPG', ''], // extension match is case-insensitive and needs no browser-reported MIME type
+  ];
+  for (const [name, type] of cases) {
+    const { form, els } = buildForm(applicationUploads());
+    for (const el of Object.values(els)) choose(el, name, type);
+    assert.equal(form.submit(), false, `${name} (${type || 'no MIME'}) was rejected`);
+    assert.equal(form.querySelectorAll('[aria-invalid]').length, 0);
+  }
+});
+
+test('lease application rejects an upload outside its accept list, naming the accepted formats', () => {
+  const { form, els } = buildForm(applicationUploads());
+  for (const el of Object.values(els)) choose(el, 'licence.pdf', 'application/pdf');
+  // A Word file passed the old global allowlist, but this input does not accept it.
+  const licence = els['upload-drivers-license'];
+  choose(licence, 'licence.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+
+  assert.equal(form.submit(), true, 'a .docx upload was not blocked');
+  assert.equal(licence.getAttribute('aria-invalid'), 'true');
+  assert.equal(errorFor(form, licence).textContent, 'Accepted formats: PDF, JPG, JPEG, PNG.');
+});
+
+test('accept tokens match by extension, exact MIME type, or MIME wildcard', () => {
+  const field = (accept) => [{ tag: 'input', attrs: { type: 'file', id: 'doc', name: 'doc', accept } }];
+  const check = (accept, name, type) => {
+    const { form, els } = buildForm(field(accept));
+    choose(els.doc, name, type);
+    return !form.submit();
+  };
+  // The broker upload's accept list (for-brokers.html), in case data-netlify returns to that form.
+  const broker = uploadFields('for-brokers.html', 'brokerForm')[0].attrs.accept;
+  assert.equal(check(broker, 'rent-roll.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'), true);
+  assert.equal(check(broker, 'om.docx', ''), true);
+  assert.equal(check(broker, 'photo.jpg', 'image/jpeg'), false);
+  assert.equal(check('image/png', 'a.png', 'image/png'), true);
+  assert.equal(check('image/png', 'a.jpg', 'image/jpeg'), false);
+  assert.equal(check('image/*', 'a.jpg', 'image/jpeg'), true);
+  assert.equal(check('image/*', 'a.pdf', 'application/pdf'), false);
+  assert.equal(check(' .PDF , .Png ', 'a.png', 'image/png'), true, 'tokens are trimmed and case-insensitive');
+  assert.equal(check('.pdf', 'pdf', ''), false, 'a bare name ending in the letters is not the extension');
+});
+
+test('an upload input without accept falls back to the PDF/Excel/Word allowlist', () => {
+  const field = [{ tag: 'input', attrs: { type: 'file', id: 'doc', name: 'doc' } }];
+  let { form, els } = buildForm(field);
+  choose(els.doc, 'om.pdf', 'application/pdf');
+  assert.equal(form.submit(), false);
+
+  ({ form, els } = buildForm(field));
+  choose(els.doc, 'photo.png', 'image/png');
+  assert.equal(form.submit(), true);
+  assert.equal(errorFor(form, els.doc).textContent, 'Accepted formats: PDF, Excel, Word.');
+});
+
+test('the 10 MB limit still applies to an accepted type', () => {
+  const { form, els } = buildForm(applicationUploads());
+  for (const el of Object.values(els)) choose(el, 'licence.jpg', 'image/jpeg');
+  choose(els['upload-articles'], 'articles.pdf', 'application/pdf', 11 * MB);
+  assert.equal(form.submit(), true);
+  assert.equal(errorFor(form, els['upload-articles']).textContent, 'File must be under 10 MB.');
+});
+
+test('a required upload with no file chosen is still blocked', () => {
+  const { form, els } = buildForm(applicationUploads());
+  for (const el of Object.values(els)) choose(el, 'licence.jpg', 'image/jpeg');
+  const articles = els['upload-articles'];
+  articles.value = '';
+  articles.files = [];
+  assert.equal(form.submit(), true);
+  assert.equal(errorFor(form, articles).textContent, 'This field is required.');
+});
+
 /* ---------- Cache-buster ---------- */
 
 test('every page loads script.js with the same cache-buster', () => {

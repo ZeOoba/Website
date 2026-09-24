@@ -889,7 +889,7 @@ info@oxfordra.net
 </div>
 </div>
 
-<script defer src="/script.js?v=14"></script>
+<script defer src="/script.js?v=15"></script>
 
 <!-- FAQ Accordion -->
 <script>
@@ -916,18 +916,23 @@ info@oxfordra.net
   });
 })();
 </script>
-<!-- Analytics (deferred to first interaction, page-hide, or 3s fallback to reduce main-thread blocking) -->
+<!-- Analytics: GA4 runs in a Partytown web worker (/assets/partytown/, @qwik.dev/partytown 0.14.4, MIT), so
+     gtag.js never parses or executes on the main thread. page_view still comes solely from
+     gtag('config'). If the service worker can't start, Partytown's fallbackTimeout (10s) runs both
+     scripts on the main thread instead. -->
+<script>partytown={lib:'/assets/partytown/',forward:['dataLayer.push','gtag']};</script>
+<script defer src="/assets/partytown/partytown.js?v=0.14.4"></script>
+<script type="text/partytown" src="https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC"></script>
+<script type="text/partytown">
+window.dataLayer=window.dataLayer||[];
+function gtag(){dataLayer.push(arguments)}
+gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
+</script>
 <script>
+/* LinkedIn Insight loader, unchanged by the GA4 move to Partytown (deferred to first
+   interaction, page-hide, or 3s). */
 (function(){
   function loadAnalytics(){
-    // GA4
-    var g=document.createElement('script');g.async=true;
-    g.src='https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC';
-    document.head.appendChild(g);
-    window.dataLayer=window.dataLayer||[];
-    function gtag(){dataLayer.push(arguments)}
-    gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
-    window.gtag=gtag;
     // LinkedIn
     window._linkedin_partner_id='XXXXXXX';
     window._linkedin_data_partner_ids=window._linkedin_data_partner_ids||[];

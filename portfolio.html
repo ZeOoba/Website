@@ -660,36 +660,18 @@ body{padding-top:36px}.nav{top:36px!important}
 </div>
 </div>
 
-<script defer src="/script.js?v=14"></script>
-<!-- Analytics (deferred to first interaction, page-hide, or 3s fallback to reduce main-thread blocking) -->
-<script>
-(function(){
-  function loadAnalytics(){
-    // GA4
-    var g=document.createElement('script');g.async=true;
-    g.src='https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC';
-    document.head.appendChild(g);
-    window.dataLayer=window.dataLayer||[];
-    function gtag(){dataLayer.push(arguments)}
-    gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
-    window.gtag=gtag;
-  }
-  var started=false,timer;
-  var EV=['pointerdown','keydown','touchstart','scroll'],OPT={passive:true};
-  function start(){
-    if(started)return;started=true;
-    for(var i=0;i<EV.length;i++){window.removeEventListener(EV[i],start,OPT)}
-    document.removeEventListener('visibilitychange',onHidden);
-    window.removeEventListener('pagehide',start);
-    clearTimeout(timer);
-    loadAnalytics();
-  }
-  function onHidden(){if(document.visibilityState==='hidden'){start()}}
-  for(var i=0;i<EV.length;i++){window.addEventListener(EV[i],start,OPT)}
-  document.addEventListener('visibilitychange',onHidden);
-  window.addEventListener('pagehide',start);
-  timer=setTimeout(start,3000);
-})();
+<script defer src="/script.js?v=15"></script>
+<!-- Analytics: GA4 runs in a Partytown web worker (/assets/partytown/, @qwik.dev/partytown 0.14.4, MIT), so
+     gtag.js never parses or executes on the main thread. page_view still comes solely from
+     gtag('config'). If the service worker can't start, Partytown's fallbackTimeout (10s) runs both
+     scripts on the main thread instead. -->
+<script>partytown={lib:'/assets/partytown/',forward:['dataLayer.push','gtag']};</script>
+<script defer src="/assets/partytown/partytown.js?v=0.14.4"></script>
+<script type="text/partytown" src="https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC"></script>
+<script type="text/partytown">
+window.dataLayer=window.dataLayer||[];
+function gtag(){dataLayer.push(arguments)}
+gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
 </script>
 <script defer src="/assets/chat.js?v=2"></script>
 </body>

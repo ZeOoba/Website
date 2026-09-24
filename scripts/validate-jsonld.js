@@ -10,7 +10,11 @@ const JSONLD_OPEN_SOURCE = String.raw`<script\b[^>]*\stype\s*=\s*["']?applicatio
 const jsonLdOpenTags = () => new RegExp(JSONLD_OPEN_SOURCE, 'gi');
 const jsonLdBlocks = () => new RegExp(JSONLD_OPEN_SOURCE + String.raw`([\s\S]*?)<\/script>`, 'gi');
 
-module.exports = { JSONLD_OPEN_SOURCE, jsonLdOpenTags, jsonLdBlocks };
+// A block inside an HTML comment is invisible to search engines, so it must not
+// count as present (or be parsed as if it shipped).
+const stripHtmlComments = (html) => html.replace(/<!--[\s\S]*?-->/g, '');
+
+module.exports = { JSONLD_OPEN_SOURCE, jsonLdOpenTags, jsonLdBlocks, stripHtmlComments };
 
 if (require.main === module) {
   const file = process.argv[2];
@@ -19,7 +23,7 @@ if (require.main === module) {
     process.exit(1);
   }
 
-  const html = fs.readFileSync(file, 'utf8');
+  const html = stripHtmlComments(fs.readFileSync(file, 'utf8'));
   const opened = [...html.matchAll(jsonLdOpenTags())].length;
   const blocks = [...html.matchAll(jsonLdBlocks())];
 

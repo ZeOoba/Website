@@ -38,7 +38,9 @@ function attrs(tag) {
   return map;
 }
 
+// A commented-out form is neither registered by Netlify nor shown to anyone.
 function forms(html) {
+  html = html.replace(/<!--[\s\S]*?-->/g, '');
   return [...html.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].map((m) => ({
     attrs: attrs(m[1]),
     body: m[2],
@@ -105,7 +107,7 @@ test('tenant-resources leasing-inquiry form has a honeypot and a wired success s
 });
 
 test('the leasing-inquiry submit handler binds to the form: right id, runs after the form is parsed', () => {
-  const html = readFileSync(path.join(ROOT, 'tenant-resources.html'), 'utf8');
+  const html = readFileSync(path.join(ROOT, 'tenant-resources.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
   const formMatch = [...html.matchAll(/<form\b([^>]*)>[\s\S]*?<\/form>/gi)].find((m) => attrs(m[1]).name === 'leasing-inquiry');
   assert.ok(formMatch, 'leasing-inquiry form not found');
   const formId = attrs(formMatch[1]).id;

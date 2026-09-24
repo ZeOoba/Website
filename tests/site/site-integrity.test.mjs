@@ -21,7 +21,7 @@ import { imageSize } from './lib/image-size.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (rel) => readFileSync(path.join(ROOT, rel), 'utf8');
-const { jsonLdBlocks } = createRequire(import.meta.url)('../../scripts/validate-jsonld.js');
+const { jsonLdBlocks, stripHtmlComments } = createRequire(import.meta.url)('../../scripts/validate-jsonld.js');
 
 function htmlFiles(rel = '') {
   const skip = new Set(['dist', 'node_modules', '.netlify', '.git', 'tests', 'evals', 'scripts', 'netlify', 'docs', '.claude', 'data']);
@@ -60,13 +60,17 @@ function markup(html) {
 }
 const lineOf = (html, index) => html.slice(0, index).split('\n').length;
 
+// Repo-relative path of a same-site URL. A bare host (`https://oxfordra.net`)
+// is the site root, not a path relative to the linking page.
 const localFile = (url, page) => {
+  const absolute = /^https:\/\/oxfordra\.net/.test(url);
   const clean = url.replace(/^https:\/\/oxfordra\.net/, '').split(/[?#]/)[0];
+  if (absolute && clean === '') return '';
   return clean.startsWith('/') ? clean.slice(1) : path.posix.join(path.posix.dirname(page), clean);
 };
 
 function jsonLd(html) {
-  return [...html.matchAll(jsonLdBlocks())].map((m) => JSON.parse(m[1]));
+  return [...stripHtmlComments(html).matchAll(jsonLdBlocks())].map((m) => JSON.parse(m[1]));
 }
 function* walkJson(node) {
   if (Array.isArray(node)) for (const n of node) yield* walkJson(n);
@@ -84,8 +88,10 @@ test('every ItemList has sequential positions and a numberOfItems (when declared
     for (const node of walkJson(jsonLd(read(page)))) {
       if (node['@type'] !== 'ItemList') continue;
       lists++;
+      // An empty list is a legitimate state (available-space when every suite is
+      // leased; build-listings.mjs accepts []), so only consistency is enforced.
       const items = node.itemListElement ?? [];
-      assert.ok(items.length > 0, `${page}: ItemList "${node.name}" has no itemListElement`);
+      assert.ok(Array.isArray(items), `${page}: ItemList "${node.name}" itemListElement is not an array`);
       if ('numberOfItems' in node) {
         assert.equal(node.numberOfItems, items.length, `${page}: ItemList "${node.name}" numberOfItems ${node.numberOfItems} ≠ ${items.length} elements`);
       }
@@ -158,8 +164,12 @@ test('every #fragment link points at an id that exists on its target page', () =
   const idCache = new Map();
   const idsOf = (page) => {
     if (!idCache.has(page)) {
+      // Browsers scroll to an element's id, or to <a name>; a form's or input's
+      // name is not a fragment target.
       const html = markup(read(page));
-      idCache.set(page, new Set([...html.matchAll(/<[\w-]+\b[^>]*?\s(?:id|name)\s*=\s*["']?([^"'\s>]+)/gi)].map((m) => m[1])));
+      const ids = [...html.matchAll(/<[\w-]+\b[^>]*?\sid\s*=\s*["']?([^"'\s>]+)/gi)].map((m) => m[1]);
+      const anchors = [...html.matchAll(/<a\b[^>]*?\sname\s*=\s*["']?([^"'\s>]+)/gi)].map((m) => m[1]);
+      idCache.set(page, new Set([...ids, ...anchors]));
     }
     return idCache.get(page);
   };
@@ -178,10 +188,12 @@ test('every #fragment link points at an id that exists on its target page', () =
       let target = page;
       if (base) {
         const f = localFile(base, page);
-        target = f === '' || f.endsWith('/') ? `${f}index.html` : f.endsWith('.html') ? f : `${f}.html`;
+        // Clean URLs have no extension; anything else (flyer.pdf#page=2) is served as-is.
+        target = f === '' || f.endsWith('/') ? `${f}index.html` : path.posix.extname(f) ? f : `${f}.html`;
       }
       checked++;
       if (!existsSync(path.join(ROOT, target))) broken.push(`${page}:${lineOf(html, a._index)} ${href} → ${target} does not exist`);
+      else if (!target.endsWith('.html')) continue; // a PDF's #page= is not an element id
       else if (!idsOf(target).has(fragment)) broken.push(`${page}:${lineOf(html, a._index)} ${href} → no id="${fragment}" in ${target}`);
     }
   }
@@ -191,7 +203,7 @@ test('every #fragment link points at an id that exists on its target page', () =
 
 test('og:image exists and its declared og:image:width/height match the real file', () => {
   for (const page of PAGES) {
-    const metas = tags(read(page), 'meta');
+    const metas = tags(markup(read(page)), 'meta');
     const prop = (p) => metas.find((m) => m.property === p || m.name === p)?.content;
     for (const key of ['og:image', 'twitter:image']) {
       const url = prop(key);
@@ -235,6 +247,27 @@ test('every srcset / imagesrcset candidate exists and its `w` descriptor is the 
   assert.deepEqual(problems, [], 'bad srcset candidates');
 });
 
+test('every same-site <img src>, <source src> and image preload href exists', () => {
+  const missing = [];
+  let checked = 0;
+  for (const page of PAGES) {
+    const html = markup(read(page));
+    const refs = [
+      ...tags(html, 'img').map((t) => [t, t.src]),
+      ...tags(html, 'source').map((t) => [t, t.src]),
+      ...tags(html, 'link').filter((t) => /\bpreload\b/.test(t.rel ?? '') && t.as === 'image').map((t) => [t, t.href]),
+    ];
+    for (const [tag, url] of refs) {
+      if (!url || /^data:/i.test(url) || (/^[a-z]+:/i.test(url) && !url.startsWith('https://oxfordra.net'))) continue;
+      checked++;
+      const file = localFile(url, page);
+      if (!existsSync(path.join(ROOT, file))) missing.push(`${page}:${lineOf(html, tag._index)} ${url}`);
+    }
+  }
+  assert.ok(checked > 0, 'found no image references at all; the scan is broken');
+  assert.deepEqual(missing, [], 'image references to files that do not exist');
+});
+
 // ── Document structure ──────────────────────────────────────────────────────
 
 test('a page with <main> has exactly one <h1>; no page has more than one', () => {
@@ -250,10 +283,12 @@ const CONTAINERS = ['section', 'main', 'article', 'nav', 'header', 'footer', 'as
 
 test('block containers (section, main, div, …) are balanced and properly nested', () => {
   const re = new RegExp(`<(/?)(${CONTAINERS.join('|')})\\b[^>]*>`, 'gi');
+  let seen = 0;
   for (const page of PAGES) {
     const html = markup(read(page));
     const stack = [];
     for (const m of html.matchAll(re)) {
+      seen++;
       const [, closing, raw] = m;
       const tag = raw.toLowerCase();
       if (!closing) { stack.push({ tag, line: lineOf(html, m.index) }); continue; }
@@ -263,51 +298,72 @@ test('block containers (section, main, div, …) are balanced and properly neste
     }
     assert.deepEqual(stack.map((s) => `<${s.tag}> line ${s.line}`), [], `${page} leaves containers unclosed`);
   }
+  assert.ok(seen > 0, 'found no block containers at all; the scan is broken');
 });
 
 // ── Mobile navigation ───────────────────────────────────────────────────────
 
-// Top-level @media blocks of a stylesheet, with their rules.
-function mediaRules(css) {
+// Style rules in cascade (source) order: each is { query, selectors, display },
+// query null for an unconditional rule. Only @media blocks are descended into;
+// other at-rule blocks (@font-face, @keyframes, …) are skipped.
+function cssRules(css) {
   const out = [];
   css = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  for (let i = css.indexOf('@media'); i !== -1; i = css.indexOf('@media', i + 1)) {
-    const open = css.indexOf('{', i);
+  const blockEnd = (open) => {
     let depth = 1, j = open + 1;
     while (depth && j < css.length) depth += css[j] === '{' ? 1 : css[j] === '}' ? -1 : 0, j++;
-    const query = css.slice(i + 6, open).replace(/\s+/g, '');
-    for (const [, selectors, decls] of css.slice(open + 1, j - 1).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      out.push({ query, selectors: selectors.split(',').map((s) => s.trim()), display: decls.match(/display\s*:\s*([\w-]+)/)?.[1] });
-    }
-    i = j;
+    return j;
+  };
+  const push = (query, selectors, decls) =>
+    out.push({ query, selectors: selectors.split(',').map((s) => s.trim()), display: decls.match(/display\s*:\s*([\w-]+)/)?.[1] });
+  let i = 0;
+  while (i < css.length) {
+    const open = css.indexOf('{', i);
+    if (open === -1) break;
+    const prelude = css.slice(i, open).replace(/^[\s;}]+/, '').replace(/^@(?:import|charset|namespace)[^;]*;\s*/g, '').trim();
+    const end = blockEnd(open);
+    if (prelude.startsWith('@media')) {
+      const query = prelude.slice(6).replace(/\s+/g, '');
+      for (const [, selectors, decls] of css.slice(open + 1, end - 1).matchAll(/([^{}]+)\{([^{}]*)\}/g)) push(query, selectors, decls);
+    } else if (!prelude.startsWith('@')) push(null, prelude, css.slice(open + 1, end - 1));
+    i = end;
   }
   return out;
+}
+
+// The page's CSS in document order: inline <style> blocks and linked
+// stylesheets, as the cascade sees them. <noscript> fallbacks are left out
+// because a scripting browser never applies them.
+function pageCss(raw, page) {
+  const doc = stripHtmlComments(raw).replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, '');
+  const seen = new Set();
+  const parts = [];
+  for (const m of doc.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>|<link\b[^>]*>/gi)) {
+    if (m[1] !== undefined) { parts.push(m[1]); continue; }
+    const l = attrs(m[0]);
+    if (!/\bstylesheet\b/.test(l.rel ?? '') || !l.href) continue;
+    const f = localFile(l.href, page);
+    if (seen.has(f) || !existsSync(path.join(ROOT, f))) continue;
+    seen.add(f);
+    parts.push(read(f));
+  }
+  return parts.join('\n');
 }
 
 // script.js binds the hamburger by these two hooks; a page that hides its nav
 // links must provide both, or small screens get no navigation at all.
 const TOGGLE_CLASS = 'nav__mobile-btn';
 const MOBILE_NAV_ID = 'mobileNav';
-// Pages that already ship this defect. Fixing one makes the test fail until its
-// entry is removed, so the list can only shrink. (application-received.html was
-// the last one; it gained its hamburger in the PR that added this test.)
-const KNOWN_NAV_GAPS = new Set([]);
 
 test('a page that hides its nav links at a breakpoint shows a wired hamburger at that breakpoint', () => {
   const script = read('script.js');
   assert.ok(script.includes(`".${TOGGLE_CLASS}"`) && script.includes(`"#${MOBILE_NAV_ID}"`), `script.js no longer binds .${TOGGLE_CLASS} / #${MOBILE_NAV_ID}; update this test`);
   let hiding = 0;
-  const stillBroken = new Set();
   for (const page of PAGES) {
     const raw = read(page);
     const html = markup(raw);
-    const sheets = tags(html, 'link')
-      .filter((l) => /\bstylesheet\b/.test(l.rel ?? '') || /\.css(\?|$)/.test(l.href ?? ''))
-      .map((l) => localFile(l.href, page))
-      .filter((f) => existsSync(path.join(ROOT, f)));
-    const css = [...raw.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).concat([...new Set(sheets)].map(read)).join('\n');
-    const rules = mediaRules(css);
-    const hides = rules.filter((r) => r.display === 'none' && r.selectors.some((s) => /(^|[\s>+~])\.[\w-]*nav[\w-]*links$/.test(s)));
+    const rules = cssRules(pageCss(raw, page));
+    const hides = rules.filter((r) => r.query && r.display === 'none' && r.selectors.some((s) => /(^|[\s>+~])\.[\w-]*nav[\w-]*links$/.test(s)));
     if (hides.length === 0) continue;
     hiding++;
 
@@ -320,13 +376,15 @@ test('a page that hides its nav links at a breakpoint shows a wired hamburger at
     else if (!/<a\b[^>]*\shref=/i.test(panel[2])) gaps.push(`#${MOBILE_NAV_ID} has no links`);
     if (!tags(html, 'script').some((s) => /(^|\/)script\.js(\?|$)/.test(s.src ?? ''))) gaps.push('script.js (the hamburger handler) is not loaded');
     for (const { query } of hides) {
-      const shown = rules.some((r) => r.query === query && r.display && r.display !== 'none' && r.selectors.some((s) => s.endsWith(`.${TOGGLE_CLASS}`)));
-      if (!shown) gaps.push(`@media${query} hides the nav links but never shows .${TOGGLE_CLASS}`);
+      // Last rule wins: at this breakpoint the hamburger's display is whatever
+      // the final applicable .nav__mobile-btn rule says, so a base
+      // `display:none` placed after the media block still hides it.
+      const applicable = rules.filter((r) => (r.query === null || r.query === query) && r.display && r.selectors.some((s) => s.endsWith(`.${TOGGLE_CLASS}`)));
+      const last = applicable.at(-1);
+      if (!last || last.display === 'none') gaps.push(`@media${query} hides the nav links but .${TOGGLE_CLASS} ends up display:${last?.display ?? 'unset'} there`);
     }
 
-    if (KNOWN_NAV_GAPS.has(page)) { if (gaps.length) stillBroken.add(page); }
-    else assert.deepEqual(gaps, [], `${page}: nav links hidden at a breakpoint without a working hamburger`);
+    assert.deepEqual(gaps, [], `${page}: nav links hidden at a breakpoint without a working hamburger`);
   }
   assert.ok(hiding >= 20, `only ${hiding} pages hide their nav links; the CSS scan is broken`);
-  assert.deepEqual([...KNOWN_NAV_GAPS].filter((p) => !stillBroken.has(p)), [], 'fixed pages still listed in KNOWN_NAV_GAPS; remove them');
 });

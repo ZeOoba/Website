@@ -2,6 +2,9 @@
 // dependency. Shared by seo.test.mjs (Organization logo size) and
 // site-integrity.test.mjs (og:image dimensions, srcset `w` descriptors).
 // Covers every raster format the site ships: PNG, JPEG, WebP and AVIF.
+// Returns STORED dimensions: JPEG EXIF orientation 5–8 and AVIF `irot` 90/270
+// would swap the displayed width. No shipped asset uses either (all 120 images
+// checked 2026-09-23); handle it here if one ever does.
 import { readFileSync } from 'node:fs';
 
 function png(buf) {
@@ -13,6 +16,7 @@ function jpeg(buf) {
   while (i + 9 < buf.length) {
     if (buf[i] !== 0xff) { i++; continue; }
     const marker = buf[i + 1];
+    if (marker === 0xff) { i++; continue; } // fill byte: any number may precede a marker
     // SOF0–SOF15 carry the frame size; C4 (DHT), C8 (JPG) and CC (DAC) share the range but do not.
     if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
       return { type: 'jpeg', height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
@@ -51,6 +55,8 @@ export function imageSize(file) {
   if (buf.toString('ascii', 1, 4) === 'PNG') return png(buf);
   if (buf[0] === 0xff && buf[1] === 0xd8) return jpeg(buf);
   if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return webp(buf);
-  if (buf.toString('ascii', 4, 8) === 'ftyp' && /avi[fs]/.test(buf.toString('ascii', 8, 12))) return avif(buf);
+  // AVIF may declare `mif1` as its major brand and `avif` only among the
+  // compatible brands, so search the whole ftyp box.
+  if (buf.toString('ascii', 4, 8) === 'ftyp' && /avi[fs]/.test(buf.toString('ascii', 8, Math.min(buf.readUInt32BE(0), buf.length)))) return avif(buf);
   throw new Error(`${file}: unrecognized image format`);
 }

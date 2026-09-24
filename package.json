@@ -12,6 +12,7 @@
     "test:site": "node --test tests/site/recaptcha-sitekey.test.mjs tests/site/csp-smoke.test.mjs tests/site/serve-dist-args.test.mjs tests/site/seo.test.mjs tests/site/seo-entity.test.mjs tests/site/analytics.test.mjs tests/site/netlify-forms.test.mjs tests/site/form-validator.test.mjs tests/site/site-integrity.test.mjs tests/site/mobile-nav.test.mjs",
     "test:functions": "node --test tests/site/functions-smoke.test.mjs",
     "test:shim": "node --test tests/site/netlify-shim-patch.test.mjs",
+    "test:mutation": "node tests/mutation/run.mjs",
     "verify": "npm run build && npm run verify:jsonld && npm run test:unit && npm run test:site && npm run test:shim && npm run test:functions",
     "test": "npm run verify",
     "eval:chat": "node scripts/eval-chat.mjs"

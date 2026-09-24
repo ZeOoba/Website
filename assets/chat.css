@@ -384,6 +384,14 @@
   }
 }
 
+/* The site's fixed mobile CTA bar (styles.css, <=768px, ~70px tall) would
+   otherwise sit under the launcher and hide its "Call" button. */
+@media (max-width: 768px) {
+  body:has(.mobile-cta-bar.is-visible) .ora-chat-trigger {
+    bottom: 86px;
+  }
+}
+
 /* ----- Reduced motion ----- */
 @media (prefers-reduced-motion: reduce) {
   #ora-chat-panel,

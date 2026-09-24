@@ -22,9 +22,9 @@ ORA is also actively evaluating expansion into growing major Mid-Atlantic and Mi
 - **Asset size:** sub-50,000 SF preferred
 - **Asset type:** Class B/C shallow-bay industrial, flex/industrial, light-industrial, occasionally industrial-adjacent retail
 - **Clear height:** 18'+ preferred
-- **Capital:** 100% proprietary family capital, all-cash to close
+- **Capital:** 100% proprietary family capital; able to close all-cash
 - **Speed:** 30–45 day close standard (fastest to date: 28 days), no financing contingency
-- **Leverage:** Conservative — all-cash to close. Do not state a numeric LTV or leverage percentage; describe it only as conservative.
+- **Leverage:** Conservative; able to close all-cash. Do not state a numeric LTV or leverage percentage; describe it only as conservative.
 - **Underwriting:** Basis below replacement cost; conservative debt-service coverage; demonstrable margin of safety
 
 ## Capital Structure & Partner Posture
@@ -32,10 +32,10 @@ ORA is **not** currently raising outside capital. We invest exclusively from fam
 
 ## Track Record
 - 500,000+ SF currently under management
-- 140+ tenants across the portfolio
+- 130+ tenants across the portfolio
 - Founded 2005 (advisory practice); shifted to direct ownership in 2008
 - Entered Columbus, OH in 2021 with the Sepich Portfolio acquisition (110K SF)
-- Surpassed 400K SF in 2022; expanded into Kansas City in 2024
+- Surpassed 300K SF in 2022; expanded into Kansas City in 2024
 
 ## How to Engage
 - **Brokers with off-market industrial/flex deals fitting our parameters:** submit OM and rent roll at oxfordra.net/for-brokers, or reach out to Gabriel directly.

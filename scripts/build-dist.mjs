@@ -84,6 +84,16 @@ async function exists(p) {
 }
 
 async function main() {
+  // An entry on both lists is ambiguous, and the publish branch below wins, so
+  // "excluded" would silently ship. Refuse before anything is copied, and clear
+  // any stale dist/ so a later `netlify deploy --dir dist` has nothing to send.
+  const overlap = [...SITE_FILES, ...SITE_DIRS].filter((name) => EXPECTED_EXCLUSIONS.includes(name));
+  if (overlap.length > 0) {
+    await fs.rm(DIST, { recursive: true, force: true });
+    console.error(`[build-dist] FAIL: listed as both published and excluded: ${overlap.join(', ')} — keep it in exactly one list in scripts/build-dist.mjs`);
+    process.exit(1);
+  }
+
   await fs.rm(DIST, { recursive: true, force: true });
   await fs.mkdir(DIST, { recursive: true });
 
@@ -96,10 +106,13 @@ async function main() {
     if (name === 'dist' || name.startsWith('.')) continue;
     const allowed = entry.isDirectory() ? SITE_DIRS.includes(name) : SITE_FILES.includes(name);
     if (allowed) {
-      // Unit tests that sit next to their module (e.g. assets/chat.test.js) never ship.
+      // Unit tests that sit next to their module (e.g. assets/chat.test.js)
+      // never ship, and neither do dot-files at any depth (editor/OS droppings,
+      // resources/.draft-notes): the root-level dot rule has to hold inside
+      // published directories too.
       await fs.cp(path.join(ROOT, name), path.join(DIST, name), {
         recursive: entry.isDirectory(),
-        filter: (src) => !/\.test\.[cm]?js$/.test(src),
+        filter: (src) => !/\.test\.[cm]?js$/.test(src) && !path.basename(src).startsWith('.'),
       });
       copied.push(entry.isDirectory() ? name + '/' : name);
     } else if (EXPECTED_EXCLUSIONS.includes(name)) {
@@ -124,13 +137,15 @@ async function main() {
     const entries = await fs.readdir(path.join(DIST, dir)).catch(() => []);
     if (entries.length === 0) failures.push(`dist/${dir} is empty`);
   }
-  for (const banned of BANNED) {
+  for (const banned of new Set([...BANNED, ...EXPECTED_EXCLUSIONS])) {
     if (await exists(path.join(DIST, banned))) failures.push(`internal path leaked into dist: ${banned}`);
   }
 
   console.log(`[build-dist] published: ${copied.sort().join(', ')}`);
   console.log(`[build-dist] excluded (never deployed): ${excluded.sort().join(', ')}`);
   if (failures.length > 0) {
+    // A failed build leaves nothing deployable behind.
+    await fs.rm(DIST, { recursive: true, force: true });
     console.error(`[build-dist] FAIL:\n  - ${failures.join('\n  - ')}`);
     process.exit(1);
   }

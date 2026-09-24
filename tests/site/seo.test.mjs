@@ -28,8 +28,10 @@ import { imageSize } from './lib/image-size.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (rel) => readFileSync(path.join(ROOT, rel), 'utf8');
 
-// sitemap.xml is the list of pages we ask search engines to index.
-const SITEMAP_PAGES = [...read('sitemap.xml').matchAll(/<loc>https:\/\/oxfordra\.net(\/[^<]*)<\/loc>/g)].map((m) => {
+// sitemap.xml is the list of pages we ask search engines to index. A
+// commented-out <url> is not in it, so parse without comments.
+const SITEMAP_XML = read('sitemap.xml').replace(/<!--[\s\S]*?(?:-->|$)/g, '');
+const SITEMAP_PAGES = [...SITEMAP_XML.matchAll(/<loc>https:\/\/oxfordra\.net(\/[^<]*)<\/loc>/g)].map((m) => {
   const p = m[1];
   const file = p === '/' ? 'index.html' : p.endsWith('/') ? `${p.slice(1)}index.html` : `${p.slice(1)}.html`;
   return { path: p, file };
@@ -176,7 +178,7 @@ test('QC-1 stat text on light cards uses --gold-accessible, not raw --gold', () 
 });
 
 test('QC-2 sitemap lastmod is never older than a guide\'s Article dateModified', () => {
-  const sitemap = read('sitemap.xml');
+  const sitemap = SITEMAP_XML;
   for (const guide of GUIDES) {
     const lastmod = sitemap.match(new RegExp(String.raw`<loc>https://oxfordra\.net${guide}</loc><lastmod>([\d-]+)</lastmod>`))?.[1];
     const article = read(`${guide.slice(1)}.html`).match(/"dateModified":\s*"([\d-]+)"/)?.[1];

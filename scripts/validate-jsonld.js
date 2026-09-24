@@ -5,14 +5,19 @@ const fs = require('fs');
 // One definition of "a JSON-LD script tag", shared with verify-jsonld.mjs so the
 // page census and the parser can never disagree. Attribute order and quote
 // style are free: `<script id="x" type="application/ld+json">` counts. The
-// leading \s keeps `data-type="application/ld+json"` from matching.
-const JSONLD_OPEN_SOURCE = String.raw`<script\b[^>]*\stype\s*=\s*["']?application\/ld\+json["']?[^>]*>`;
+// leading \s keeps `data-type="application/ld+json"` from matching, and the
+// value must end right after `json`, so `application/ld+json5` does not.
+const JSONLD_OPEN_SOURCE = String.raw`<script\b[^>]*\stype\s*=\s*(?:"application\/ld\+json"|'application\/ld\+json'|application\/ld\+json(?=[\s>/]))[^>]*>`;
 const jsonLdOpenTags = () => new RegExp(JSONLD_OPEN_SOURCE, 'gi');
 const jsonLdBlocks = () => new RegExp(JSONLD_OPEN_SOURCE + String.raw`([\s\S]*?)<\/script>`, 'gi');
 
 // A block inside an HTML comment is invisible to search engines, so it must not
-// count as present (or be parsed as if it shipped).
-const stripHtmlComments = (html) => html.replace(/<!--[\s\S]*?-->/g, '');
+// count as present (or be parsed as if it shipped). One left-to-right pass:
+// script/style contents are kept verbatim (a "<!--" inside a JSON string is
+// data, not a comment opener), and `<!-->` / `<!--->` close immediately, as the
+// HTML tokenizer treats them; an unclosed `<!--` hides the rest of the file.
+const stripHtmlComments = (html) =>
+  html.replace(/(<(script|style)\b[^>]*>[\s\S]*?<\/\2\s*>)|<!--(?:>|->|[\s\S]*?(?:-->|$))/gi, (m, rawText) => rawText ?? '');
 
 module.exports = { JSONLD_OPEN_SOURCE, jsonLdOpenTags, jsonLdBlocks, stripHtmlComments };
 

@@ -23,6 +23,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { imageSize } from './lib/image-size.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (rel) => readFileSync(path.join(ROOT, rel), 'utf8');
@@ -75,9 +76,9 @@ test('#1 every sitemap page has a forced 301 from its .html file path to the cle
 });
 
 function pngSize(rel) {
-  const buf = readFileSync(path.join(ROOT, rel));
-  assert.equal(buf.toString('ascii', 1, 4), 'PNG', `${rel} is not a PNG`);
-  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  const { type, width, height } = imageSize(path.join(ROOT, rel));
+  assert.equal(type, 'png', `${rel} is not a PNG`);
+  return { width, height };
 }
 
 test('#2 Organization logo is a non-white PNG of at least 112x112 on every page that declares it', () => {

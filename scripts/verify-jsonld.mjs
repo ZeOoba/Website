@@ -16,6 +16,7 @@
  */
 
 import { promises as fs } from 'node:fs';
+import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import url from 'node:url';
@@ -36,7 +37,10 @@ const REQUIRED_JSONLD_PAGES = [
   'available-space.html',
 ];
 
-const JSONLD_MARKER = /<script[^>]*type="application\/ld\+json"/i;
+// Same tag definition validate-jsonld.js parses with (attribute-order
+// independent), so a page is never counted here but skipped there.
+const { JSONLD_OPEN_SOURCE, stripHtmlComments } = createRequire(import.meta.url)('./validate-jsonld.js');
+const JSONLD_MARKER = new RegExp(JSONLD_OPEN_SOURCE, 'i');
 
 async function walkHtml(dir) {
   const out = [];
@@ -60,7 +64,7 @@ async function main() {
   const withJsonLd = [];
   for (const file of htmlFiles) {
     const html = await fs.readFile(file, 'utf8');
-    if (JSONLD_MARKER.test(html)) withJsonLd.push(file);
+    if (JSONLD_MARKER.test(stripHtmlComments(html))) withJsonLd.push(file);
   }
 
   const failures = [];

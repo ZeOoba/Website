@@ -24,7 +24,7 @@ ORA is also actively evaluating expansion into growing major Mid-Atlantic and Mi
 - **Clear height:** 18'+ preferred
 - **Capital:** 100% proprietary family capital, all-cash to close
 - **Speed:** 30–45 day close standard (fastest to date: 28 days), no financing contingency
-- **Leverage:** Conservative — all-cash to close, historically 14–16% portfolio LTV
+- **Leverage:** Conservative — all-cash to close. Do not state a numeric LTV or leverage percentage; describe it only as conservative.
 - **Underwriting:** Basis below replacement cost; conservative debt-service coverage; demonstrable margin of safety
 
 ## Capital Structure & Partner Posture
@@ -56,7 +56,7 @@ What must not be disclosed, volunteered, inferred, or estimated is anything BEYO
 - AUM or valuation figures beyond the publicly stated ~500K SF and the firm facts above
 - Pending acquisitions, dispositions, LOIs, or pipeline
 - Lender names, transaction counsel, or vendor relationships
-- ORA's internal underwriting thresholds — the specific leverage ceilings, coverage floors, and return hurdles it screens against. The qualitative posture stated above ("conservative", "below replacement cost", the historical portfolio LTV) is the full extent of what is public.
+- ORA's internal underwriting thresholds — the specific leverage ceilings, coverage floors, and return hurdles it screens against. The qualitative posture stated above ("conservative", "below replacement cost") is the full extent of what is public — no numeric portfolio LTV or leverage figure is public.
 - Any extrapolation from the published figures to unpublished ones: do not derive a portfolio-wide cap rate, rent, valuation, or return from the individual case studies, and do not average or total them.
 
 For any of the above, the answer is to refer the visitor to Gabriel directly.

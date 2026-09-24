@@ -24,14 +24,14 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.json">
-<link rel="preload" as="image" type="image/avif" href="/images/20-9050-red-branch-exterior.avif" imagesrcset="/images/20-9050-red-branch-exterior-480w.avif 480w, /images/20-9050-red-branch-exterior.avif 800w" imagesizes="100vw" fetchpriority="high">
+<link rel="preload" as="image" type="image/avif" href="/images/14-aerial-55-new-plant-court.avif" imagesrcset="/images/14-aerial-55-new-plant-court-480w.avif 480w, /images/14-aerial-55-new-plant-court.avif 800w" imagesizes="100vw" fetchpriority="high">
 <link rel="preload" as="font" type="font/woff2" href="/fonts/dm-sans-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/eb-garamond-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/eb-garamond-italic-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/ibm-plex-mono-latin.woff2" crossorigin>
-<link rel="preload" as="style" href="/styles.css?v=17">
-<link rel="stylesheet" href="/styles.css?v=17" media="print" id="styles-css-async">
-<noscript><link rel="stylesheet" href="/styles.css?v=17"></noscript>
+<link rel="preload" as="style" href="/styles.css?v=18">
+<link rel="stylesheet" href="/styles.css?v=18" media="print" id="styles-css-async">
+<noscript><link rel="stylesheet" href="/styles.css?v=18"></noscript>
 <script>(function(){var l=document.getElementById("styles-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 <link rel="dns-prefetch" href="https://www.googletagmanager.com">
 <link rel="dns-prefetch" href="https://snap.licdn.com">
@@ -127,7 +127,7 @@ h3{font-size:22px;margin-bottom:8px}
 .nav__inner{max-width:1280px;margin:0 auto;padding:0 40px;height:72px;display:flex;align-items:center;justify-content:space-between}
 .nav__logo img,.nav__logo svg{height:auto;width:auto;max-height:28px;display:block}
 .nav__links{display:flex;gap:0;align-items:center}
-.nav__link{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.8);padding:6px 14px;transition:color .3s,background .3s}
+.nav__link{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.8);padding:6px 11px;transition:color .3s,background .3s;white-space:nowrap}
 .nav__link:hover,.nav__link:focus{color:var(--gold);text-decoration:none}
 .nav__link--active{color:var(--gold)}
 .nav__link--cta{background:var(--gold);color:var(--navy);border-radius:6px;padding:8px 18px;font-size:.75rem;letter-spacing:.14em;font-weight:500;text-transform:uppercase;margin-left:8px}
@@ -139,7 +139,7 @@ h3{font-size:22px;margin-bottom:8px}
 .nav__mobile.is-open{display:block}
 .nav__mobile a{display:block;padding:12px 0;font-family:var(--font-body);font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:var(--white);border-bottom:1px solid rgba(255,255,255,.06);transition:color .3s}
 .nav__mobile a:hover{color:var(--gold);text-decoration:none}
-@media(max-width:960px){.nav__links{display:none}.nav__mobile-btn{display:block}.nav__inner{padding:0 24px}}
+@media(max-width:1279px){.nav__links{display:none}.nav__mobile-btn{display:block}.nav__inner{padding:0 24px}}
 .btn{display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-body);font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;padding:14px 32px;border-radius:6px;border:1px solid transparent;cursor:pointer;transition:all .3s;text-decoration:none}
 .btn:hover{text-decoration:none}
 .btn--gold{background:var(--gold);color:var(--navy);border-color:var(--gold)}
@@ -161,8 +161,15 @@ h3{font-size:22px;margin-bottom:8px}
 .owner-compare-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .owner-step2{display:none}
 .owner-step2.is-visible{display:block}
+
+/* Announcement bar: critical copy of styles.css rules (prevents the pre-stylesheet stacked-text flash) */
+.announcement-bar{position:fixed!important;top:0!important;left:0;right:0;z-index:1001;height:36px;background:var(--navy-dark,#141F33);border-bottom:1px solid rgba(201,169,110,.2);display:flex;align-items:center;justify-content:center;font-family:var(--font-body,"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;line-height:1;padding:0 16px;color:rgba(255,255,255,.85);overflow:hidden;white-space:nowrap}
+.announcement-bar__label{color:var(--gold,#C9A96E);white-space:nowrap;flex-shrink:0}.announcement-bar__sep{color:var(--gold,#C9A96E);margin:0 12px;opacity:.7;flex-shrink:0}
+.announcement-bar__rotator{position:relative;display:inline-block;height:14px;min-width:240px}.announcement-bar__item{position:absolute;top:0;left:0;white-space:nowrap;opacity:0;transition:opacity .5s ease}.announcement-bar__item.is-active{opacity:1}
+body{padding-top:36px}.nav{top:36px!important}
+@media(max-width:640px){.announcement-bar{font-size:10px;padding:0 12px;height:32px;letter-spacing:.1em}.announcement-bar__label,.announcement-bar__sep{display:none}.announcement-bar__rotator{min-width:0;text-align:center;width:100%}.announcement-bar__item{right:0}body{padding-top:32px}.nav{top:32px!important}}
 </style>
-<link rel="stylesheet" href="/assets/chat.css?v=2" media="print" id="chat-css-async">
+<link rel="stylesheet" href="/assets/chat.css?v=3" media="print" id="chat-css-async">
 <script>(function(){var l=document.getElementById("chat-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 </head>
 <body>
@@ -190,9 +197,9 @@ h3{font-size:22px;margin-bottom:8px}
 <a href="/portfolio" class="nav__link">Portfolio</a>
 <a href="/markets/" class="nav__link">Markets</a>
 <a href="/track-record" class="nav__link">Track Record</a>
-<a href="/for-brokers" class="nav__link">Broker Network</a>
+<a href="/for-brokers" class="nav__link">Brokers</a>
 <a href="/available-space" class="nav__link">Available Space</a>
-<a href="/tenant-resources" class="nav__link">Tenant Resources</a>
+<a href="/tenant-resources" class="nav__link">Tenants</a>
 <a href="/contact" class="nav__link">Contact</a>
 <a href="/tenant-application" class="nav__link nav__link--cta">Apply Now</a>
 </div>
@@ -220,9 +227,9 @@ h3{font-size:22px;margin-bottom:8px}
 <section class="subpage-hero" aria-label="Sell your building directly to Oxford">
 <div class="subpage-hero__bg">
 <picture>
-<source type="image/avif" srcset="/images/20-9050-red-branch-exterior-480w.avif 480w, /images/20-9050-red-branch-exterior.avif 800w" sizes="100vw">
-<source type="image/webp" srcset="/images/20-9050-red-branch-exterior-480w.webp 480w, /images/20-9050-red-branch-exterior.webp 800w" sizes="100vw">
-<img src="/images/20-9050-red-branch-exterior.jpg" alt="9050 Red Branch Road industrial property, Columbia MD" width="1600" height="1067" decoding="async" fetchpriority="high">
+<source type="image/avif" srcset="/images/14-aerial-55-new-plant-court-480w.avif 480w, /images/14-aerial-55-new-plant-court.avif 800w" sizes="100vw">
+<source type="image/webp" srcset="/images/14-aerial-55-new-plant-court-480w.webp 480w, /images/14-aerial-55-new-plant-court.webp 800w" sizes="100vw">
+<img src="/images/14-aerial-55-new-plant-court.jpg" alt="Aerial view of 55 New Plant Court, a 34,500 SF industrial/flex building in Owings Mills, MD" width="1600" height="1067" decoding="async" fetchpriority="high">
 </picture>
 </div>
 <div class="subpage-hero__overlay"></div>
@@ -300,8 +307,41 @@ h3{font-size:22px;margin-bottom:8px}
 </div>
 </section>
 
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="section" aria-label="How it works">
+<div class="container">
+<div class="section__header animate-on-scroll">
+<span class="section__label">Process</span>
+<h2>How It Works</h2>
+<p class="section__intro">Four Steps to a 30&ndash;45 Day Close</p>
+</div>
+<div class="grid-3 animate-on-scroll">
+<div style="padding:24px;background:var(--parchment);border-radius:var(--radius-card);">
+<span style="font-family:var(--font-display);font-size:32px;color:var(--gold-accessible);display:block;margin-bottom:8px;">1</span>
+<h3 style="font-size:18px;">Tell Us About Your Building</h3>
+<p style="font-size:14px;color:var(--slate);">Submit the form below with your address, approximate size, and contact information. Takes about two minutes.</p>
+</div>
+<div style="padding:24px;background:var(--parchment);border-radius:var(--radius-card);">
+<span style="font-family:var(--font-display);font-size:32px;color:var(--gold-accessible);display:block;margin-bottom:8px;">2</span>
+<h3 style="font-size:18px;">We Respond Directly</h3>
+<p style="font-size:14px;color:var(--slate);">Gabriel or Eric reviews your submission personally and typically responds within one business day.</p>
+</div>
+<div style="padding:24px;background:var(--parchment);border-radius:var(--radius-card);">
+<span style="font-family:var(--font-display);font-size:32px;color:var(--gold-accessible);display:block;margin-bottom:8px;">3</span>
+<h3 style="font-size:18px;">We Make an Offer</h3>
+<p style="font-size:14px;color:var(--slate);">After a call and a brief look at the property, we present cash terms &mdash; no financing contingency, no appraisal contingency.</p>
+</div>
+<div style="padding:24px;background:var(--parchment);border-radius:var(--radius-card);">
+<span style="font-family:var(--font-display);font-size:32px;color:var(--gold-accessible);display:block;margin-bottom:8px;">4</span>
+<h3 style="font-size:18px;">We Close</h3>
+<p style="font-size:14px;color:var(--slate);">All-cash closing in 30&ndash;45 days from an agreed price. No lender approval process to slow things down.</p>
+</div>
+</div>
+</div>
+</section>
+
 <!-- ═══ LEAD FORM ═══ -->
-<section id="owner-form" class="section" aria-label="Tell us about your building">
+<section id="owner-form" class="section section--parchment section--divided" aria-label="Tell us about your building">
 <div class="container">
 <div class="section__header animate-on-scroll">
 <span class="section__label">Get an Offer</span>
@@ -451,7 +491,7 @@ h3{font-size:22px;margin-bottom:8px}
 </section>
 
 <!-- ═══ PROOF OF FUNDS / WHO WE ARE ═══ -->
-<section class="section section--parchment section--divided" aria-label="Proof of funds">
+<section class="section" aria-label="Proof of funds">
 <div class="container">
 <div class="section__header animate-on-scroll">
 <span class="section__label">Who We Are</span>
@@ -474,46 +514,26 @@ h3{font-size:22px;margin-bottom:8px}
 <span style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--slate);">Buildings</span>
 </div>
 </div>
+<p style="margin-top:32px;font-size:16px;line-height:1.7;color:var(--charcoal);">Every one of those buildings closed with 100% family capital and no financing contingency. We are also disciplined: we've walked away from deals that didn't underwrite, and we've negotiated directly with lenders when situations got complicated. That same discipline is why, when we agree to a price, it holds.</p>
 <p style="margin-top:24px;font-size:14px;color:var(--slate);">Physical office at 9510 Persimmon Tree Road, Suite 200, Potomac, MD &mdash; not a virtual address.</p>
 </div>
 </div>
 </section>
 
-<!-- ═══ HOW IT WORKS ═══ -->
-<section class="section" aria-label="How it works">
+<!-- ═══ PHOTO STRIP ═══ -->
+<section class="section section--navy photo-strip-section" aria-label="Buildings Oxford owns">
 <div class="container">
-<div class="section__header animate-on-scroll">
-<span class="section__label">Process</span>
-<h2>How It Works</h2>
-<p class="section__intro">Four Steps to a 30&ndash;45 Day Close</p>
-</div>
-<div class="grid-3 animate-on-scroll">
-<div style="padding:24px;background:var(--parchment);border-radius:var(--radius-card);">
-<span style="font-family:var(--font-display);font-size:32px;color:var(--gold-accessible);display:block;margin-bottom:8px;">1</span>
-<h3 style="font-size:18px;">Tell Us About Your Building</h3>
-<p style="font-size:14px;color:var(--slate);">Submit the form above with your address, approximate size, and contact information. Takes about two minutes.</p>
-</div>
-<div style="padding:24px;background:var(--parchment);border-radius:var(--radius-card);">
-<span style="font-family:var(--font-display);font-size:32px;color:var(--gold-accessible);display:block;margin-bottom:8px;">2</span>
-<h3 style="font-size:18px;">We Respond Directly</h3>
-<p style="font-size:14px;color:var(--slate);">Gabriel or Eric reviews your submission personally and typically responds within one business day.</p>
-</div>
-<div style="padding:24px;background:var(--parchment);border-radius:var(--radius-card);">
-<span style="font-family:var(--font-display);font-size:32px;color:var(--gold-accessible);display:block;margin-bottom:8px;">3</span>
-<h3 style="font-size:18px;">We Make an Offer</h3>
-<p style="font-size:14px;color:var(--slate);">After a call and a brief look at the property, we present cash terms &mdash; no financing contingency, no appraisal contingency.</p>
-</div>
-<div style="padding:24px;background:var(--parchment);border-radius:var(--radius-card);">
-<span style="font-family:var(--font-display);font-size:32px;color:var(--gold-accessible);display:block;margin-bottom:8px;">4</span>
-<h3 style="font-size:18px;">We Close</h3>
-<p style="font-size:14px;color:var(--slate);">All-cash closing in 30&ndash;45 days from an agreed price. No lender approval process to slow things down.</p>
-</div>
-</div>
+<span class="section__label section__label--light">Owned &amp; Operated by Oxford</span>
+<ul class="photo-strip animate-on-scroll" role="list">
+<li><figure><picture><source type="image/avif" srcset="/images/21-2004-2008-zettler-exterior-480w.avif 480w, /images/21-2004-2008-zettler-exterior.avif 700w" sizes="(max-width:767px) 50vw, 33vw"><source type="image/webp" srcset="/images/21-2004-2008-zettler-exterior-480w.webp 480w, /images/21-2004-2008-zettler-exterior.webp 700w" sizes="(max-width:767px) 50vw, 33vw"><img src="/images/21-2004-2008-zettler-exterior.jpg" alt="2004-2008 Zettler Road, Columbus, OH" width="800" height="600" loading="lazy" decoding="async"></picture><figcaption><strong>2004&ndash;2008 Zettler Rd</strong>Columbus, OH &middot; 19,096 SF</figcaption></figure></li>
+<li><figure><picture><source type="image/avif" srcset="/images/09-3540-rear-exterior-1-480w.avif 480w, /images/09-3540-rear-exterior-1.avif 800w" sizes="(max-width:767px) 50vw, 33vw"><source type="image/webp" srcset="/images/09-3540-rear-exterior-1-480w.webp 480w, /images/09-3540-rear-exterior-1.webp 800w" sizes="(max-width:767px) 50vw, 33vw"><img src="/images/09-3540-rear-exterior-1.jpg" alt="Rear exterior of 3540 E Fifth Avenue, Columbus, OH" width="800" height="600" loading="lazy" decoding="async"></picture><figcaption><strong>3540 E Fifth Ave</strong>Columbus, OH &middot; 36,000 SF</figcaption></figure></li>
+<li><figure><picture><source type="image/avif" srcset="/images/22-406-420-morrison-exterior-480w.avif 480w, /images/22-406-420-morrison-exterior.avif 700w" sizes="(max-width:767px) 50vw, 33vw"><source type="image/webp" srcset="/images/22-406-420-morrison-exterior-480w.webp 480w, /images/22-406-420-morrison-exterior.webp 700w" sizes="(max-width:767px) 50vw, 33vw"><img src="/images/22-406-420-morrison-exterior.jpg" alt="406-420 Morrison Road, Columbus, OH" width="800" height="600" loading="lazy" decoding="async"></picture><figcaption><strong>406&ndash;420 Morrison Rd</strong>Columbus, OH &middot; 16,800 SF</figcaption></figure></li>
+</ul>
 </div>
 </section>
 
 <!-- ═══ REASONS OWNERS SELL ═══ -->
-<section class="section section--parchment section--divided" aria-label="Reasons owners sell">
+<section class="section section--parchment section--divided" aria-label="Reasons owners sell and what as-is means">
 <div class="container">
 <div class="section__header animate-on-scroll">
 <span class="section__label">We Understand</span>
@@ -546,6 +566,21 @@ h3{font-size:22px;margin-bottom:8px}
 <p style="font-size:14px;color:var(--slate);">Co-owners want different outcomes, and a clean, fast cash sale resolves it for everyone.</p>
 </div>
 </div>
+<div style="height:64px" aria-hidden="true"></div>
+<div class="section__header animate-on-scroll">
+<span class="section__label">No Surprises</span>
+<h2>What &ldquo;As-Is&rdquo; Actually Means</h2>
+</div>
+<div class="animate-on-scroll" style="max-width:760px;margin:0 auto;text-align:center;">
+<p style="font-family:var(--font-display);font-size:19px;line-height:1.6;color:var(--charcoal);margin-bottom:24px;">You fix nothing. Oxford buys vacancy, environmental complexity &mdash; including Phase II findings &mdash; and deferred maintenance as part of our underwriting, not as conditions you have to resolve before we'll talk.</p>
+<ul style="list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 32px;text-align:left;max-width:640px;margin-left:auto;margin-right:auto">
+<li style="font-size:15px;color:var(--navy);padding-left:16px;border-left:2px solid var(--gold);line-height:1.4">Vacant or partially vacant buildings</li>
+<li style="font-size:15px;color:var(--navy);padding-left:16px;border-left:2px solid var(--gold);line-height:1.4">Roof, HVAC, or structural deferred maintenance</li>
+<li style="font-size:15px;color:var(--navy);padding-left:16px;border-left:2px solid var(--gold);line-height:1.4">Recognized environmental conditions, including Phase II findings</li>
+<li style="font-size:15px;color:var(--navy);padding-left:16px;border-left:2px solid var(--gold);line-height:1.4">Below-market or expiring leases</li>
+<li style="font-size:15px;color:var(--navy);padding-left:16px;border-left:2px solid var(--gold);line-height:1.4">Title, entity, or ownership complexity</li>
+</ul>
+</div>
 </div>
 </section>
 
@@ -569,39 +604,6 @@ h3{font-size:22px;margin-bottom:8px}
 <tr><td>Showings</td><td>Multiple tours, open marketing, public listing</td><td class="owner-compare--oxford">Direct, confidential, no public listing</td></tr>
 </tbody>
 </table>
-</div>
-</div>
-</section>
-
-<!-- ═══ WHAT AS-IS MEANS ═══ -->
-<section class="section section--parchment section--divided" aria-label="What as-is means">
-<div class="container">
-<div class="section__header animate-on-scroll">
-<span class="section__label">No Surprises</span>
-<h2>What &ldquo;As-Is&rdquo; Actually Means</h2>
-</div>
-<div class="animate-on-scroll" style="max-width:760px;margin:0 auto;text-align:center;">
-<p style="font-family:var(--font-display);font-size:19px;line-height:1.6;color:var(--charcoal);margin-bottom:24px;">You fix nothing. Oxford buys vacancy, environmental complexity &mdash; including Phase II findings &mdash; and deferred maintenance as part of our underwriting, not as conditions you have to resolve before we'll talk.</p>
-<ul style="list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 32px;text-align:left;max-width:640px;margin-left:auto;margin-right:auto">
-<li style="font-size:15px;color:var(--navy);padding-left:16px;border-left:2px solid var(--gold);line-height:1.4">Vacant or partially vacant buildings</li>
-<li style="font-size:15px;color:var(--navy);padding-left:16px;border-left:2px solid var(--gold);line-height:1.4">Roof, HVAC, or structural deferred maintenance</li>
-<li style="font-size:15px;color:var(--navy);padding-left:16px;border-left:2px solid var(--gold);line-height:1.4">Recognized environmental conditions, including Phase II findings</li>
-<li style="font-size:15px;color:var(--navy);padding-left:16px;border-left:2px solid var(--gold);line-height:1.4">Below-market or expiring leases</li>
-<li style="font-size:15px;color:var(--navy);padding-left:16px;border-left:2px solid var(--gold);line-height:1.4">Title, entity, or ownership complexity</li>
-</ul>
-</div>
-</div>
-</section>
-
-<!-- ═══ TRACK RECORD ═══ -->
-<section class="section" aria-label="Track record">
-<div class="container">
-<div class="section__header animate-on-scroll">
-<span class="section__label">Track Record</span>
-<h2>We Buy for Keeps &mdash; and We Close What We Say We'll Close</h2>
-</div>
-<div class="animate-on-scroll" style="max-width:760px;margin:0 auto;text-align:center;">
-<p style="font-family:var(--font-display);font-size:19px;line-height:1.6;color:var(--charcoal);">Oxford has acquired and continues to hold approximately 500,000 SF across roughly 140 tenants and 26 buildings in Maryland, Ohio, and Missouri, all closed with 100% family capital and no financing contingency. We are also disciplined: we've walked away from deals that didn't underwrite, and we've negotiated directly with lenders when situations got complicated. That same discipline is why, when we agree to a price, it holds.</p>
 </div>
 </div>
 </section>
@@ -651,27 +653,27 @@ h3{font-size:22px;margin-bottom:8px}
 <h2>What Actually Drives Our Offer</h2>
 </div>
 <div class="grid-3 animate-on-scroll">
-<div style="padding:20px 24px;background:var(--parchment);border-radius:var(--radius-card);">
+<div style="padding:20px 24px;background:var(--white);border-radius:var(--radius-card);box-shadow:var(--shadow-card);">
 <h3 style="font-size:17px;">Clear Height &amp; Loading</h3>
 <p style="font-size:14px;color:var(--slate);">18'+ clear height and the mix of dock-high versus grade-level loading materially affect what tenant base &mdash; and what rent &mdash; a building can support.</p>
 </div>
-<div style="padding:20px 24px;background:var(--parchment);border-radius:var(--radius-card);">
+<div style="padding:20px 24px;background:var(--white);border-radius:var(--radius-card);box-shadow:var(--shadow-card);">
 <h3 style="font-size:17px;">Roof &amp; HVAC Condition</h3>
 <p style="font-size:14px;color:var(--slate);">We underwrite remaining useful life and near-term capital needs directly into our offer rather than asking you to remediate first.</p>
 </div>
-<div style="padding:20px 24px;background:var(--parchment);border-radius:var(--radius-card);">
+<div style="padding:20px 24px;background:var(--white);border-radius:var(--radius-card);box-shadow:var(--shadow-card);">
 <h3 style="font-size:17px;">Power Capacity</h3>
 <p style="font-size:14px;color:var(--slate);">Available electrical service determines which industrial and light-manufacturing users can occupy the building, directly affecting achievable rent.</p>
 </div>
-<div style="padding:20px 24px;background:var(--parchment);border-radius:var(--radius-card);">
+<div style="padding:20px 24px;background:var(--white);border-radius:var(--radius-card);box-shadow:var(--shadow-card);">
 <h3 style="font-size:17px;">Replacement-Cost Basis</h3>
 <p style="font-size:14px;color:var(--slate);">We compare your building's basis against true new-construction replacement cost in the market &mdash; a meaningful margin of safety is core to how we underwrite.</p>
 </div>
-<div style="padding:20px 24px;background:var(--parchment);border-radius:var(--radius-card);">
+<div style="padding:20px 24px;background:var(--white);border-radius:var(--radius-card);box-shadow:var(--shadow-card);">
 <h3 style="font-size:17px;">Cap-Rate Context</h3>
 <p style="font-size:14px;color:var(--slate);">We weigh in-place and stabilized cap rate against comparable shallow-bay trades in the submarket, not a generic national benchmark.</p>
 </div>
-<div style="padding:20px 24px;background:var(--parchment);border-radius:var(--radius-card);">
+<div style="padding:20px 24px;background:var(--white);border-radius:var(--radius-card);box-shadow:var(--shadow-card);">
 <h3 style="font-size:17px;">Occupancy &amp; Lease Term</h3>
 <p style="font-size:14px;color:var(--slate);">We size our offer against stabilized potential, not just current rent roll &mdash; vacancy and short-term leases reduce financeable value but not necessarily intrinsic value to us.</p>
 </div>

@@ -405,8 +405,12 @@ body{padding-top:36px}.nav{top:36px!important}
     btn.disabled = true;
     btn.textContent = 'Uploading…';
     window.ORA_BROKER_UPLOAD.submit(form).then(function(result){
-      form.style.display = 'none';
+      // Hide the fields, not the form: the success message and score card live inside it.
+      Array.prototype.forEach.call(form.children, function(el){
+        if(el !== success){ el.style.display = 'none'; }
+      });
       success.style.display = '';
+      success.scrollIntoView({ block: 'center' });
       if(result && result.submissionId){
         window.ORA_BROKER_UPLOAD.pollForScore(result.submissionId, result.statusToken, renderScoreCard, showUnavailable);
       } else {
@@ -701,7 +705,7 @@ info@oxfordra.net
 </div>
 </div>
 
-<script defer src="/script.js?v=12"></script>
+<script defer src="/script.js?v=13"></script>
 
 <!-- FAQ Accordion -->
 <script>

@@ -66,7 +66,28 @@ async function checkAndRecordDailyCap({ storeFactory = getStore } = {}) {
   return { allowed: true };
 }
 
+// Single-use intake tokens. verifyIntakeToken proves the HMAC and the expiry
+// but nothing stopped the same token being finalized again for its whole TTL —
+// each replay wrote a ledger row and emailed both principals off one reCAPTCHA
+// solve. Keyed on the token's SharePoint path (unique per upload session).
+const CONSUMED_TTL_MS = 24 * 60 * 60 * 1000; // outlives any intake token TTL by a wide margin
+async function consumeIntakeToken(key, { storeFactory = getStore } = {}) {
+  const store = storeFactory('broker-intake-consumed');
+  const existing = await store.get(key, { type: 'json' });
+  if (existing && (!existing.expiresAt || existing.expiresAt > Date.now())) return { first: false };
+  await store.setJSON(key, { consumedAt: Date.now(), expiresAt: Date.now() + CONSUMED_TTL_MS });
+  return { first: true };
+}
+
+// Undo a consume when the request failed AFTER the burn (email send threw):
+// the broker's retry must be able to finish, or the document sits in
+// SharePoint with a ledger row and no notification, permanently.
+async function releaseIntakeToken(key, { storeFactory = getStore } = {}) {
+  const store = storeFactory('broker-intake-consumed');
+  await store.delete(key);
+}
+
 export {
   writeScoreResult, readScoreResult, hasBeenScored, markScored,
-  checkAndRecordRateLimit, checkAndRecordDailyCap,
+  checkAndRecordRateLimit, checkAndRecordDailyCap, consumeIntakeToken, releaseIntakeToken,
 };

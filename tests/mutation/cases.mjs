@@ -38,6 +38,23 @@ const moveLeasingHandlerAboveForm = (comment = '') => (s) => {
 };
 
 export const CASES = [
+  // --- seo.test.mjs WP-n: 2026-09-25 website-perfection audit -------------------
+  { id: 'W1', what: 'Indianapolis reappears as a broker-form market option', edits: [['for-brokers.html', sub('<option value="Other">Other</option>', '<option value="Indianapolis">Indianapolis</option><option value="Other">Other</option>')]], run: 'seo', expect: 'Indianapolis' },
+  { id: 'W2', what: 'a LinkedIn origin sneaks back into the CSP', edits: [['_headers', sub("https://unpkg.com https://netlify-rum.netlify.app;", "https://unpkg.com https://snap.licdn.com https://netlify-rum.netlify.app;")]], run: 'seo', expect: 'LinkedIn' },
+  { id: 'W3', what: "CSP loses object-src 'none'", edits: [['_headers', sub("; object-src 'none'", '')]], run: 'seo', expect: 'injection-hardening' },
+  { id: 'W3b', what: 'X-XSS-Protection flips back to the legacy auditor', edits: [['_headers', sub('X-XSS-Protection: 0', 'X-XSS-Protection: 1; mode=block')]], run: 'seo', expect: 'injection-hardening' },
+  { id: 'W4', what: 'the logo "|" glyph returns as SVG text on one page', edits: [['about.html', sub('<rect x="257" y="10" width="2" height="38" opacity="0.5"/>', '<text x="252" y="42" font-size="40" opacity="0.5">|</text>')]], run: 'seo', expect: 'nav logo' },
+  { id: 'W5', what: '#mobileNav demoted to a <div> (both tags, so containers stay balanced)', edits: [['contact.html', (s) => { const i = s.indexOf('<nav class="nav__mobile" id="mobileNav"'); if (i < 0) throw new Error('anchor not found: mobileNav'); const j = s.indexOf('</nav>', i); return s.slice(0, i) + '<div' + s.slice(i + 4, j) + '</div>' + s.slice(j + 6); }]], run: 'seo', expect: 'mobile navigation panel' },
+  { id: 'W6', what: 'a track-record expander loses its aria-controls', edits: [['track-record.html', sub(' aria-controls="track-details-3"', '')]], run: 'seo', expect: 'aria-controls' },
+  { id: 'W7', what: 'slider :focus-visible rule removed from styles.css', edits: [['styles.css', sub('.basis-engine__slider:focus-visible{outline:2px solid var(--gold);outline-offset:4px}', '')]], run: 'seo', expect: 'range slider' },
+  { id: 'W8', what: 'privacy loses its inline skip-link focus rule', edits: [['privacy.html', sub('.skip-link:focus{top:0!important}', '')]], run: 'seo', expect: 'skip link' },
+  { id: 'W9', what: 'a title grows past 60 characters', edits: [['contact.html', sub('<title>Contact: Submit a Deal or Inquiry | Oxford Realty Advisors</title>', '<title>Contact: Submit a Deal, Inquiry or Question | Oxford Realty Advisors</title>')]], run: 'seo', expect: '60 characters' },
+  { id: 'W10', what: 'llms.txt drops the Kansas City market', edits: [['llms.txt', (s) => s.split('Kansas City').join('KC')]], run: 'seo', expect: 'llms.txt' },
+  { id: 'W11', what: 'meta.md reintroduces the 2008 ownership distinction', edits: [['scripts/meta.md', sub('Founded 2005;', 'Founded 2005 (advisory practice); shifted to direct ownership in 2008;')]], run: 'seo', expect: 'founding claim' },
+  { id: 'W12', what: 'an image nothing references lands in images/', edits: [['images/zz-orphan.png', () => 'not really a png']], run: 'seo', expect: 'images/' },
+  { id: 'W13', what: 'script.js submit handler loses its defaultPrevented guard', edits: [['script.js', sub('function(i){if(i.defaultPrevented)return;', 'function(i){')]], run: 'seo', expect: 'generic validator respects' },
+  { id: 'WP1', what: 'legitimate: a second rect in the logo is fine', edits: [['about.html', sub('<rect x="257" y="10" width="2" height="38" opacity="0.5"/>', '<rect x="257" y="10" width="2" height="38" opacity="0.5"/><rect x="0" y="0" width="0" height="0"/>')]], run: 'seo', expect: 'PASS' },
+
   // --- netlify-forms.test.mjs --------------------------------------------------
   { id: 'F1', what: 'leasing handler looks up a form id that does not exist', edits: [['tenant-resources.html', sub("getElementById('leasingForm')", "getElementById('leasingFormX')")]], run: 'forms', expect: 'binds to the form' },
   { id: 'F2', what: 'leasing handler moved above the form it binds', edits: [['tenant-resources.html', moveLeasingHandlerAboveForm()]], run: 'forms', expect: 'binds to the form' },
@@ -101,7 +118,7 @@ export const CASES = [
   { id: 'N7', what: 'base hide made !important', edits: [['about.html', sub(BTN_BASE, BTN_BASE.replace('display:none', 'display:none!important'))]], run: 'integ', expect: 'hamburger' },
   { id: 'N8', what: 'script.js loaded from /js/script.js', edits: [['about.html', (s) => { const t = s.replace(/src="\/script\.js\?v=(\d+)"/, 'src="/js/script.js?v=$1"'); if (t === s) throw new Error('anchor not found: script.js?v='); return t; }]], run: 'integ', expect: 'hamburger' },
   { id: 'N9', what: 'hamburger moved inside .nav__links', edits: [['about.html', moveHamburgerIntoLinks]], run: 'integ', expect: 'hamburger' },
-  { id: 'N10', what: 'every panel link href="#"', edits: [['about.html', (s) => s.replace(/(<div class="nav__mobile" id="mobileNav"[^>]*>)([\s\S]*?)(<\/div>)/, (m, o, body, c) => o + body.replace(/href="[^"]*"/g, 'href="#"') + c)]], run: 'integ', expect: 'hamburger' },
+  { id: 'N10', what: 'every panel link href="#"', edits: [['about.html', (s) => s.replace(/(<nav class="nav__mobile" id="mobileNav"[^>]*>)([\s\S]*?)(<\/nav>)/, (m, o, body, c) => o + body.replace(/href="[^"]*"/g, 'href="#"') + c)]], run: 'integ', expect: 'hamburger' },
   { id: 'N11', what: 'range-syntax hide (1024px<=width<=1279px)', edits: [['about.html', sub('</style>', '@media (1024px<=width<=1279px){.nav__mobile-btn{display:none}}</style>')]], run: 'integ', expect: 'hamburger' },
   { id: 'N12', what: 'hide via .nav__mobile-btn:not(.x)', edits: [['about.html', sub('</style>', '@media (max-width:1279px){.nav__mobile-btn:not(.x){display:none}}</style>')]], run: 'integ', expect: 'hamburger' },
   { id: 'N13', what: 'hide nested in @supports', edits: [['about.html', sub('</style>', '@supports (display:grid){@media (max-width:1279px){.nav__mobile-btn{display:none}}}</style>')]], run: 'integ', expect: 'hamburger' },

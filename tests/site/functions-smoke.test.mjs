@@ -114,6 +114,21 @@ test('CORS preflight returns 204 through the Netlify runtime', async () => {
   assert.equal(r.headers.get('access-control-allow-methods'), 'POST, OPTIONS');
 });
 
+// chat-lead answered every origin with '*' after the edge chat function had
+// already dropped it (chat.ts CORS block): the widget's fetch is same-origin,
+// so the wildcard only let third-party pages script leads into Netlify Forms
+// and the notification chain (2026-09-25 audit).
+test('CORS never reflects a wildcard: a foreign Origin gets the canonical origin back', async () => {
+  const r = await invokeFunction(FUNCTION, { method: 'OPTIONS', headers: { origin: 'https://evil.example' } });
+  assert.equal(r.status, 204);
+  assert.notEqual(r.headers.get('access-control-allow-origin'), '*');
+  assert.equal(r.headers.get('access-control-allow-origin'), 'https://oxfordra.net');
+});
+
+// The per-IP rate limit is module-level state; `netlify functions:serve`
+// reloads the module per invocation, so it is pinned in-process by
+// tests/functions/chat-lead.test.js rather than over HTTP here.
+
 test('GET is rejected with 405', async () => {
   const r = await invokeFunction(FUNCTION, { method: 'GET' });
   assert.equal(r.status, 405);

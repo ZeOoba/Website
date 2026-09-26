@@ -144,6 +144,24 @@ test('logs a pipeline-failures row — not just console — when Google reports 
   assert.ok(loggedFailure.includes('invalid-input-secret'));
 }));
 
+// The other config-class path: verifyRecaptcha THROWS when RECAPTCHA_SECRET_KEY
+// is unset. The handler mapped that to errorCodes ['threw'], which matched
+// neither CONFIG_ERROR_CODES nor the http- prefix, so every broker got a 403
+// and nothing reached pipeline-failures (2026-09-25 audit).
+test('logs a pipeline-failures row when verifyRecaptcha itself throws (e.g. RECAPTCHA_SECRET_KEY unset)', () => withEnv({ ...ENV, RECAPTCHA_SECRET_KEY: '' }, async () => {
+  const event = { httpMethod: 'POST', body: JSON.stringify({ fileName: 'om.pdf', fileSize: 1000, company: 'Acme', recaptchaToken: 'good-token' }) };
+  let loggedFailure = null;
+  const fetchImpl = async (url, opts = {}) => {
+    if (url === 'https://oxfordra.net/') { loggedFailure = String(opts.body || ''); return { ok: true, status: 200 }; }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await handler(event, { fetchImpl });
+  assert.equal(res.statusCode, 403);
+  assert.ok(loggedFailure, 'a thrown recaptcha verification must be logged to pipeline-failures');
+  assert.ok(loggedFailure.includes('recaptcha_config_error'));
+  assert.ok(loggedFailure.includes('threw'));
+}));
+
 test('mints a session and a verifiable intake token for a valid request, logging intake first', () => withEnv(ENV, async () => {
   const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.9' }, body: JSON.stringify({ name: 'Bob', company: 'Acme', email: 'b@acme.com', market: 'Columbus', message: 'hi', fileName: 'om.pdf', fileSize: 30_000_000, contentType: 'application/pdf', recaptchaToken: 'good-token' }) };
   let loggedIntake = null;

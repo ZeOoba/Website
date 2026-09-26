@@ -351,8 +351,15 @@
         var parts = size.split('-');
         var min = parseInt(parts[0], 10);
         var max = parts[1] ? parseInt(parts[1], 10) : Infinity;
-        var pMax = totalSF(p);
-        if (pMax < min || p.units[0].sf > max) return false;
+        // A property matches when ANY single unit falls in the range. The old
+        // check compared the SUM of all units to the minimum and only the first
+        // unit to the maximum, so three 4,000 SF suites showed under "10,000+ SF".
+        var inRange = p.units.some(function (u) {
+          var lo = u.sf;
+          var hi = u.sfMax || u.sf;
+          return hi >= min && lo <= max;
+        });
+        if (!inRange) return false;
       }
       return true;
     });

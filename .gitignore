@@ -7,6 +7,11 @@ dist/
 .netlify/
 deno.lock
 
+# Local secrets (functions read env from Netlify; nothing here should ever be tracked)
+.env
+.env.*
+!.env.example
+
 # Claude Code local tooling state (machine-local, never committed)
 .claude/launch.json
 

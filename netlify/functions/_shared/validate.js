@@ -63,6 +63,10 @@ function base64urlDecode(str) {
 }
 
 function verifyNetlifyWebhookSignature(rawBody, signatureHeader, secret) {
+  // An unset/empty secret must fail closed here, not throw out of createHmac:
+  // the callers log an invalid_signature pipeline-failures row only when this
+  // returns false, so a thrown TypeError made a missing secret silent.
+  if (typeof secret !== 'string' || !secret) return false;
   if (typeof signatureHeader !== 'string') return false;
   const parts = signatureHeader.split('.');
   if (parts.length !== 3) return false;

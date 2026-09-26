@@ -20,9 +20,19 @@
         recaptchaToken: fields.recaptchaToken,
       }),
     });
-    var json = await res.json();
+    var json = await readJson(res);
     if (!res.ok || !json.uploadUrl) throw new Error(json.error || 'session_failed');
     return json;
+  }
+
+  // Netlify answers a function timeout/crash with a plain-text 502/504 body.
+  // res.json() on that throws a SyntaxError whose parser message the form then
+  // showed to the broker; read as text and fall back to {} so the clean
+  // '<step>_failed' code wins.
+  async function readJson(res) {
+    var text = '';
+    try { text = await res.text(); } catch (e) { return {}; }
+    try { return text ? JSON.parse(text) : {}; } catch (e) { return {}; }
   }
 
   async function uploadInChunks(uploadUrl, file, onProgress) {
@@ -50,7 +60,7 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ intakeToken: intakeToken, name: fields.name, company: fields.company, email: fields.email, phone: fields.phone, market: fields.market, message: fields.message }),
     });
-    var json = await res.json();
+    var json = await readJson(res);
     if (!res.ok) throw new Error(json.error || 'finalize_failed');
     return json;
   }
@@ -85,7 +95,7 @@
     function poll() {
       if (Date.now() - start > MAX_WAIT_MS) { onUnavailable(); return; }
       fetch('/api/broker-score-status?submissionId=' + encodeURIComponent(submissionId) + '&statusToken=' + encodeURIComponent(statusToken))
-        .then(function (res) { return res.json(); })
+        .then(function (res) { return readJson(res); })
         .then(function (json) {
           if (json.status === 'ready') { onReady(json); }
           else if (json.status === 'unavailable') { onUnavailable(); }

@@ -1,7 +1,20 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath, getFileContent } = require('../../../netlify/functions/_shared/graph-files.js');
+const { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath, getFileContent, sanitizeSegment } = require('../../../netlify/functions/_shared/graph-files.js');
+
+// The 120-char cap used to truncate blindly, so a long upload name lost its
+// ".pdf" and broker-scoring-run.mjs later read the stored path's extension as
+// unsupported — the broker silently got no score (2026-09-25 audit).
+test('sanitizeSegment keeps the file extension when it truncates a long name', () => {
+  const long = `${'a'.repeat(150)}.pdf`;
+  const out = sanitizeSegment(long);
+  assert.ok(out.length <= 120, `still ${out.length} chars`);
+  assert.ok(out.endsWith('.pdf'), `extension lost: ${out.slice(-10)}`);
+  assert.equal(sanitizeSegment('om.pdf'), 'om.pdf');
+  assert.equal(sanitizeSegment('a/b:c*d?e"f<g>h|i.xlsx'), 'a-b-c-d-e-f-g-h-i.xlsx');
+  assert.equal(sanitizeSegment(''), 'untitled');
+});
 
 function withDriveId(fn) {
   const prev = process.env.GRAPH_DRIVE_ID;

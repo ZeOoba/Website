@@ -107,8 +107,8 @@ class El {
 class Form extends El {
   constructor() { super('form', { 'data-netlify': 'true' }); this.handlers = []; }
   addEventListener(type, fn) { if (type === 'submit') this.handlers.push(fn); }
-  submit() {
-    const ev = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+  submit({ alreadyPrevented = false } = {}) {
+    const ev = { defaultPrevented: alreadyPrevented, preventDefault() { this.defaultPrevented = true; } };
     for (const h of this.handlers) h(ev);
     return ev.defaultPrevented;
   }
@@ -192,6 +192,28 @@ test('owner form still blocks an empty required text field', () => {
   assert.equal(els['owner-address'].getAttribute('aria-invalid'), 'true');
   assert.equal(errorFor(form, els['owner-address']).textContent, 'This field is required.');
   assert.equal(errorFor(form, els['owner-address']).parentNode, els['owner-address'].parentNode, 'text-field errors stay beside the input');
+});
+
+/* ---------- Two handlers on one form (tenant-application.html) ---------- */
+
+// application-script.js registers a parse-time submit listener that calls
+// preventDefault() when its own step validation fails (file budgets, the
+// signature-mismatch confirm). script.js's validator runs AFTER it and used to
+// disable the submit button and relabel it "Sending…" regardless, wedging a
+// form that never left the page (2026-09-25 audit, P1).
+test('a submit an earlier handler already prevented leaves the submit button untouched', () => {
+  const { form, els } = buildForm(applicationChoiceFields());
+  els['working-with-broker=Yes'].checked = true;
+  els['agree-terms'].checked = true;
+  const button = form.querySelector('[type="submit"]');
+  assert.equal(form.submit(), false, 'precondition: a clean submit passes the validator');
+  assert.equal(button.disabled, true, 'precondition: a passing submit disables the button while sending');
+  button.disabled = false;
+  button.textContent = 'Submit Application';
+
+  assert.equal(form.submit({ alreadyPrevented: true }), true);
+  assert.notEqual(button.disabled, true, 'validator disabled the submit button on a submit another handler had already stopped');
+  assert.notEqual(button.textContent, 'Sending…', 'validator relabelled the button on a submit that never left the page');
 });
 
 /* ---------- Lease application (tenant-application.html) ---------- */

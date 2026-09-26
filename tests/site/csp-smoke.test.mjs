@@ -37,7 +37,7 @@ import { startServer } from '../../scripts/serve-dist.mjs';
 // third-party surface, which is where allowlist gaps actually come from.
 const PAGES = [
   { path: '/index.html', why: 'GTM + chat widget' },
-  { path: '/for-brokers.html', why: 'reCAPTCHA + LinkedIn pixel' },
+  { path: '/for-brokers.html', why: 'reCAPTCHA + broker upload' },
   { path: '/available-space.html', why: 'unpkg Leaflet + OpenStreetMap tiles' },
   { path: '/tenant-application.html', why: 'reCAPTCHA + upload script' },
 ];
@@ -50,7 +50,6 @@ const BEACON_HOSTS = [
   'region1.google-analytics.com',
   'analytics.google.com',
   'stats.g.doubleclick.net',
-  'px.ads.linkedin.com',
 ];
 
 // How long to let third-party scripts run after load before sampling violations.

@@ -10,7 +10,10 @@ const MAX_BYTES = 60 * 1024 * 1024;
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 // Google siteverify error-codes that mean OUR config is broken, not that a
 // user failed/skipped the challenge — see the reCAPTCHA block below.
-const CONFIG_ERROR_CODES = new Set(['invalid-input-secret', 'missing-input-secret', 'bad-request']);
+// 'threw' is the handler's own code for verifyRecaptcha throwing (RECAPTCHA_SECRET_KEY
+// unset is the common cause) — config-class by definition, so it must reach
+// pipeline-failures like Google's own secret errors do.
+const CONFIG_ERROR_CODES = new Set(['invalid-input-secret', 'missing-input-secret', 'bad-request', 'threw']);
 
 // ---------- Interim per-IP rate limit ----------
 // This endpoint mints a Graph upload session (a real SharePoint write target)

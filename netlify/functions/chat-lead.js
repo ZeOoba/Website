@@ -14,27 +14,78 @@
 
 const NETLIFY_FORM_NAME = 'chat-lead';
 
-function corsHeaders() {
+// ---------- CORS ----------
+// The widget (assets/chat.js) calls this as a RELATIVE path, so every
+// legitimate request is same-origin and CORS never gates it. The previous
+// 'access-control-allow-origin: *' therefore bought nothing and let any
+// third-party page script leads into Netlify Forms and the notification
+// webhook chain against a visitor's browser. Mirror the edge chat function
+// (netlify/edge-functions/chat.ts): reflect the caller's Origin only when it
+// is one of ours (canonical + Netlify's own deploy URLs), else the canonical.
+const CANONICAL_ORIGIN = 'https://oxfordra.net';
+const STATIC_ALLOWED = ['https://oxfordra.net', 'https://www.oxfordra.net'];
+
+function originOf(value) {
+  if (!value) return null;
+  try { return new URL(value).origin; } catch { return null; }
+}
+
+let allowedOrigins = null;
+function allowSet() {
+  if (allowedOrigins) return allowedOrigins;
+  const set = new Set(STATIC_ALLOWED);
+  for (const key of ['URL', 'DEPLOY_URL', 'DEPLOY_PRIME_URL']) {
+    const o = originOf(process.env[key]);
+    if (o) set.add(o);
+  }
+  allowedOrigins = set;
+  return set;
+}
+
+function corsHeaders(event) {
+  const origin = event && event.headers ? event.headers.origin || event.headers.Origin : null;
   return {
-    'access-control-allow-origin': '*',
+    'access-control-allow-origin': origin && allowSet().has(origin) ? origin : CANONICAL_ORIGIN,
     'access-control-allow-methods': 'POST, OPTIONS',
     'access-control-allow-headers': 'content-type',
+    vary: 'Origin',
   };
 }
 
-function ok(extra) {
-  return {
-    statusCode: 200,
-    headers: { 'content-type': 'application/json', ...corsHeaders() },
-    body: JSON.stringify({ ok: true, ...(extra || {}) }),
-  };
+// ---------- Rate limit (in-memory, per container) ----------
+// Same shape as broker-upload-session.js: a sliding window per client IP. The
+// ceiling is per container, not global, which is the right order of magnitude
+// for what this protects — Netlify Forms quota and two webhook invocations per
+// row — without a Blobs dependency on a function that has none today.
+const RATE_WINDOW_MS = 10 * 60 * 1000;
+const RATE_MAX_PER_IP = 5;
+const rateBuckets = new Map();
+function rateLimit(ip) {
+  const now = Date.now();
+  const bucket = (rateBuckets.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
+  if (bucket.length >= RATE_MAX_PER_IP) {
+    return { ok: false, retryAfter: Math.max(1, Math.ceil((RATE_WINDOW_MS - (now - bucket[0])) / 1000)) };
+  }
+  bucket.push(now);
+  rateBuckets.set(ip, bucket);
+  if (rateBuckets.size > 5000) rateBuckets.clear(); // bound memory on a long-lived container
+  return { ok: true };
 }
 
-function bad(reason) {
+function clientIp(event) {
+  const h = event.headers || {};
+  const direct = h['x-nf-client-connection-ip'];
+  if (direct) return direct;
+  const forwarded = h['x-forwarded-for'];
+  if (forwarded) return String(forwarded).split(',')[0].trim();
+  return 'unknown';
+}
+
+function respond(event, statusCode, body, extraHeaders) {
   return {
-    statusCode: 400,
-    headers: { 'content-type': 'application/json', ...corsHeaders() },
-    body: JSON.stringify({ ok: false, error: reason }),
+    statusCode,
+    headers: { 'content-type': 'application/json', ...corsHeaders(event), ...(extraHeaders || {}) },
+    body: JSON.stringify(body),
   };
 }
 
@@ -42,11 +93,19 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const ROLES = new Set(['Broker', 'Prospective Tenant', 'Capital Partner', 'Vendor', 'Other']);
 
 exports.handler = async (event) => {
+  const ok = (extra) => respond(event, 200, { ok: true, ...(extra || {}) });
+  const bad = (reason) => respond(event, 400, { ok: false, error: reason });
+
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: corsHeaders(), body: '' };
+    return { statusCode: 204, headers: corsHeaders(event), body: '' };
   }
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'method not allowed' };
+  }
+
+  const limit = rateLimit(clientIp(event));
+  if (!limit.ok) {
+    return respond(event, 429, { ok: false, error: 'rate_limited' }, { 'retry-after': String(limit.retryAfter) });
   }
 
   let body;
@@ -80,7 +139,8 @@ exports.handler = async (event) => {
     .join('\n---\n');
 
   // Submit to Netlify Forms. URL-encoded POST to the same site root with form-name field.
-  const siteUrl = process.env.URL || `https://${event.headers.host}`;
+  // Literal fallback like every other function: never trust the Host header.
+  const siteUrl = process.env.URL || CANONICAL_ORIGIN;
   const params = new URLSearchParams();
   params.append('form-name', NETLIFY_FORM_NAME);
   params.append('name', name);

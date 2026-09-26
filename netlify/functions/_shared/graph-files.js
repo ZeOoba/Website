@@ -9,8 +9,17 @@ function requireEnv(name) {
   return v;
 }
 
+// 120 chars is the cap we impose on a single path segment. Truncate the STEM,
+// never the extension: broker-scoring-run.mjs derives the file type from the
+// stored path, so a blind slice that cut ".pdf" off a long name silently
+// produced unsupported_file_type and the broker got no score.
+const MAX_SEGMENT = 120;
 function sanitizeSegment(segment) {
-  return String(segment).replace(/[\\/:*?"<>|]/g, '-').slice(0, 120).trim() || 'untitled';
+  const clean = String(segment).replace(/[\\/:*?"<>|]/g, '-').trim();
+  if (clean.length <= MAX_SEGMENT) return clean || 'untitled';
+  const dot = clean.lastIndexOf('.');
+  const ext = dot > 0 && clean.length - dot <= 10 ? clean.slice(dot) : '';
+  return (clean.slice(0, MAX_SEGMENT - ext.length).trim() + ext) || 'untitled';
 }
 
 function encodeGraphPath(p) {
@@ -97,4 +106,4 @@ async function getFileContent(itemPath, opts = {}) {
   return Buffer.from(arrayBuffer);
 }
 
-module.exports = { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath, getFileContent };
+module.exports = { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath, getFileContent, sanitizeSegment };

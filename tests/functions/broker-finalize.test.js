@@ -93,6 +93,82 @@ test('rejects when the stored item size does not match the token-bound size', ()
   assert.equal(res.statusCode, 409);
 }));
 
+// A verified intake token was replayable for its whole 15-minute TTL: each
+// replay wrote another ledger row and sent another pair of emails to Gabriel and
+// Eric off a single reCAPTCHA solve (2026-09-25 audit). The token is now
+// consumed once the upload is validated; a second finalize is a 409.
+test('a replayed intake token is rejected with 409 and sends nothing a second time', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-25_Acme_re01/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  let mails = 0;
+  let ledgerRows = 0;
+  const fetchImpl = async (url) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) { mails += 1; return { ok: true, status: 202 }; }
+    if (url === 'https://oxfordra.net/') { ledgerRows += 1; return { ok: true, status: 200 }; }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const consumed = new Set();
+  const consumeIntakeTokenImpl = async (key) => { const first = !consumed.has(key); consumed.add(key); return { first }; };
+  const deps = { fetchImpl, consumeIntakeTokenImpl, checkAndRecordRateLimitImpl: async () => ({ allowed: false }), checkAndRecordDailyCapImpl: async () => ({ allowed: true }) };
+
+  const first = await callFinalize(event, deps);
+  assert.equal(first.statusCode, 200);
+  assert.equal(mails, 1);
+  assert.equal(ledgerRows, 1);
+
+  const replay = await callFinalize(event, deps);
+  assert.equal(replay.statusCode, 409);
+  assert.equal(JSON.parse(replay.body).error, 'intake_token_replayed');
+  assert.equal(mails, 1, 'replay must not send another email');
+  assert.equal(ledgerRows, 1, 'replay must not write another ledger row');
+}));
+
+test('an email failure after the token is consumed releases it, so the broker retry succeeds and sends one email', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-25_Acme_re03/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  let mailAttempts = 0;
+  const fetchImpl = async (url) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) { mailAttempts += 1; return mailAttempts === 1 ? { ok: false, status: 503, text: async () => 'throttled' } : { ok: true, status: 202 }; }
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const consumed = new Set();
+  const deps = {
+    fetchImpl,
+    consumeIntakeTokenImpl: async (key) => { const first = !consumed.has(key); consumed.add(key); return { first }; },
+    releaseIntakeTokenImpl: async (key) => { consumed.delete(key); },
+    checkAndRecordRateLimitImpl: async () => ({ allowed: false }),
+    checkAndRecordDailyCapImpl: async () => ({ allowed: true }),
+  };
+  const first = await callFinalize(event, deps);
+  assert.equal(first.statusCode, 502);
+  assert.equal(JSON.parse(first.body).error, 'email_failed');
+
+  const retry = await callFinalize(event, deps);
+  assert.equal(retry.statusCode, 200, 'retry after a transient email failure must not be treated as a replay');
+  assert.equal(mailAttempts, 2);
+}));
+
+test('a consume-store outage fails open with a logged pipeline-failures row rather than blocking the broker', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-25_Acme_re02/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const failureRows = [];
+  const fetchImpl = async (url, opts = {}) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') { if (String(opts.body || '').includes('pipeline-failures')) failureRows.push(String(opts.body)); return { ok: true, status: 200 }; }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await callFinalize(event, { fetchImpl, consumeIntakeTokenImpl: async () => { throw new Error('blobs down'); }, checkAndRecordRateLimitImpl: async () => ({ allowed: false }), checkAndRecordDailyCapImpl: async () => ({ allowed: true }) });
+  assert.equal(res.statusCode, 200);
+  assert.ok(failureRows.some((r) => r.includes('intake_consume_unavailable')), 'the outage must be visible in pipeline-failures');
+}));
+
 // Fake overrides for the rate-limit/daily-cap backstop (broker-score-store.js)
 // so tests don't hit real Netlify Blobs (unavailable outside the Netlify
 // runtime — would throw MissingBlobsEnvironmentError).

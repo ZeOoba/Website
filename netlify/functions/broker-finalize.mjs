@@ -11,7 +11,7 @@ import { getItemByPath } from './_shared/graph-files.js';
 import { sendMail } from './_shared/graph-mail.js';
 import { renderBrokerEmail } from './_shared/email-template.js';
 import { forwardToNetlifyForm } from './_shared/netlify-forms.js';
-import { checkAndRecordRateLimit, checkAndRecordDailyCap } from './_shared/broker-score-store.mjs';
+import { checkAndRecordRateLimit, checkAndRecordDailyCap, consumeIntakeToken, releaseIntakeToken } from './_shared/broker-score-store.mjs';
 
 // Short-lived HMAC binding {submissionId, itemPath} for the internal
 // broker-finalize -> broker-score-background handoff. The background
@@ -51,6 +51,8 @@ export async function handleBrokerFinalize(req, {
   fetchImpl = fetch,
   checkAndRecordRateLimitImpl = checkAndRecordRateLimit,
   checkAndRecordDailyCapImpl = checkAndRecordDailyCap,
+  consumeIntakeTokenImpl = consumeIntakeToken,
+  releaseIntakeTokenImpl = releaseIntakeToken,
 } = {}) {
   if (req.method !== 'POST') return fail(405, 'method_not_allowed');
 
@@ -82,6 +84,19 @@ export async function handleBrokerFinalize(req, {
     return fail(409, 'size_mismatch');
   }
 
+  // Replay guard: the token is valid, the upload exists and matches — burn it
+  // now, before anything with a side effect (ledger row, two emails, scoring).
+  // Consumed AFTER the lookup so a transient lookup failure leaves the broker's
+  // retry intact. Fails OPEN on a store outage (logged to pipeline-failures)
+  // because blocking every broker is worse than a window of replayability.
+  try {
+    const { first } = await consumeIntakeTokenImpl(claims.path, {});
+    if (!first) return fail(409, 'intake_token_replayed');
+  } catch (err) {
+    console.error('[broker-finalize] consumeIntakeToken failed', String(err));
+    await logFailure(fetchImpl, { errorCode: 'intake_consume_unavailable', detail: String(err) });
+  }
+
   const fields = {
     name: sanitizeField(body.name, 150),
     company: sanitizeField(body.company, 150),
@@ -100,6 +115,10 @@ export async function handleBrokerFinalize(req, {
   } catch (err) {
     console.error('[broker-finalize] email failed', String(err));
     await logFailure(fetchImpl, { errorCode: 'email_failed', detail: String(err) });
+    // The token was burned above; give it back so the broker's retry (same
+    // intakeToken, see broker-upload.js) can complete instead of hitting 409.
+    try { await releaseIntakeTokenImpl(claims.path, {}); }
+    catch (relErr) { console.error('[broker-finalize] releaseIntakeToken failed', String(relErr)); }
     return fail(502, 'email_failed');
   }
 

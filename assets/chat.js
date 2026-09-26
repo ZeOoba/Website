@@ -75,17 +75,28 @@
   window.__oraChatLoaded = true;
 
   // ---- State ----
+  // Web Storage throws a SecurityError when a browser blocks it (Safari "Block
+  // all cookies", some private modes, embedded webviews). An unguarded read here
+  // ran at module top level, so the throw aborted the IIFE and the "Ask ORA"
+  // trigger never rendered. Storage is a convenience: degrade to per-page state.
+  function storageGet(key) {
+    try { return sessionStorage.getItem(key); } catch (e) { return null; }
+  }
+  function storageSet(key, value) {
+    try { sessionStorage.setItem(key, value); } catch (e) { /* blocked storage: keep in memory only */ }
+  }
+
   var SESSION_KEY = 'ora_chat_session_v1';
   var sessionId =
-    sessionStorage.getItem(SESSION_KEY) ||
+    storageGet(SESSION_KEY) ||
     (Math.random().toString(36).slice(2, 10) + Date.now().toString(36));
-  sessionStorage.setItem(SESSION_KEY, sessionId);
+  storageSet(SESSION_KEY, sessionId);
 
   var HISTORY_KEY = 'ora_chat_history_v1';
   /** @type {{role:'user'|'assistant',content:string}[]} */
   var history = [];
   try {
-    var raw = sessionStorage.getItem(HISTORY_KEY);
+    var raw = storageGet(HISTORY_KEY);
     if (raw) history = JSON.parse(raw);
   } catch (e) { history = []; }
 

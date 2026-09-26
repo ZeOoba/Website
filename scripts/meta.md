@@ -33,7 +33,7 @@ ORA is **not** currently raising outside capital. We invest exclusively from fam
 ## Track Record
 - 500,000+ SF currently under management
 - 130+ tenants across the portfolio
-- Founded 2005 (advisory practice); shifted to direct ownership in 2008
+- Founded 2005; principal investor and operator in industrial real estate since founding (the site states "since 2005" throughout — Gabriel's ratified claim, 2026-09-25)
 - Entered Columbus, OH in 2021 with the Sepich Portfolio acquisition (110K SF)
 - Surpassed 300K SF in 2022; expanded into Kansas City in 2024
 

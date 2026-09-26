@@ -250,3 +250,131 @@ test('QC-9 dark-ground .btn--outline gold overrides never beat :hover (gold text
     }
   }
 });
+
+// ── 2026-09-25 website-perfection audit (tagged WP-n) ───────────────────────
+// Each pins one finding from the full-site audit so it cannot come back.
+
+test('WP-1 no page names a market the firm does not own in (Indianapolis left in the broker form after PR #56)', () => {
+  for (const file of htmlFiles()) {
+    assert.ok(!/Indianapolis/i.test(read(file)), `${file} still mentions Indianapolis`);
+  }
+  for (const file of ['llms.txt', 'scripts/meta.md', 'manifest.json']) {
+    assert.ok(!/Indianapolis/i.test(read(file)), `${file} still mentions Indianapolis`);
+  }
+});
+
+test('WP-2 the placeholder LinkedIn Insight Tag is gone from every page and its two origins are out of the CSP', () => {
+  for (const file of htmlFiles()) {
+    const html = read(file);
+    assert.ok(!/_linkedin_partner_id|snap\.licdn\.com/.test(html), `${file} still loads the LinkedIn Insight Tag (partner id was the placeholder XXXXXXX)`);
+  }
+  const headers = read('_headers');
+  assert.ok(!/licdn\.com|linkedin\.com/.test(headers), '_headers still allows a LinkedIn origin nothing on the site uses');
+});
+
+test('WP-3 CSP carries the injection-hardening directives and the deprecated XSS auditor is off', () => {
+  const headers = read('_headers');
+  const csp = headers.match(/Content-Security-Policy:\s*([^\r\n]*)/)?.[1] ?? '';
+  for (const directive of ["object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'"]) {
+    assert.ok(csp.includes(directive), `CSP is missing "${directive}"`);
+  }
+  assert.ok(!/'unsafe-eval'/.test(csp), "CSP must never carry 'unsafe-eval'");
+  assert.match(headers, /X-XSS-Protection:\s*0\b/, 'X-XSS-Protection must be 0 (the legacy auditor introduced side-channel leaks; CSP is the control)');
+  // /index.html is force-301'd to / by _redirects, so a header block for it can never apply.
+  assert.ok(!/^\/index\.html\s*$/m.test(headers), '_headers has an unreachable /index.html block (the path is 301!-redirected to /)');
+});
+
+test('WP-4 the nav logo has no "|" glyph in its SVG text (Lighthouse label-content-name-mismatch against the aria-label)', () => {
+  for (const file of htmlFiles()) {
+    const html = read(file);
+    for (const [logo] of html.matchAll(/<a[^>]*class="nav__logo"[\s\S]*?<\/a>/g)) {
+      const texts = [...logo.matchAll(/<text\b[^>]*>([\s\S]*?)<\/text>/g)].map((m) => m[1].trim());
+      assert.ok(!texts.includes('|'), `${file}: nav logo renders a "|" <text> node that breaks the accessible-name match`);
+    }
+  }
+});
+
+test('WP-5 the mobile navigation panel is a <nav> landmark (aria-label on a generic <div> is ignored by AT)', () => {
+  for (const file of htmlFiles()) {
+    const html = read(file);
+    const opener = html.match(/<(\w+)[^>]*\bid="mobileNav"[^>]*>/);
+    if (!opener) continue;
+    assert.equal(opener[1].toLowerCase(), 'nav', `${file}: #mobileNav is a <${opener[1]}>, not <nav>`);
+    assert.match(opener[0], /aria-label="/, `${file}: #mobileNav <nav> needs an aria-label to distinguish it from the primary nav`);
+  }
+});
+
+test('WP-6 every track-record expander names the panel it controls with aria-controls, and the id exists', () => {
+  const html = read('track-record.html');
+  const summaries = [...html.matchAll(/<div class="track-card__summary"[^>]*>/g)].map((m) => m[0]);
+  assert.ok(summaries.length >= 5, 'expected the five track-card expanders');
+  for (const tag of summaries) {
+    const id = tag.match(/aria-controls="([^"]+)"/)?.[1];
+    assert.ok(id, `expander lacks aria-controls: ${tag}`);
+    assert.ok(new RegExp(`<div class="track-card__details"[^>]*\\bid="${id}"`).test(html), `aria-controls="${id}" points at no .track-card__details`);
+  }
+});
+
+test('WP-7 the range slider keeps a visible :focus-visible ring (its outline:0 beat the global rule)', () => {
+  const css = read('styles.css');
+  assert.match(css, /\.basis-engine__slider:focus-visible\{[^}]*outline:2px solid var\(--gold\)/, 'styles.css needs a .basis-engine__slider:focus-visible rule');
+});
+
+test('WP-8 every page can reveal its skip link before styles.css arrives', () => {
+  for (const file of htmlFiles()) {
+    const html = read(file);
+    if (!/class="skip-link"/.test(html)) continue;
+    const head = html.slice(0, html.indexOf('<body') > 0 ? html.indexOf('<body') : html.length);
+    assert.match(head, /\.skip-link:focus\{top:0/, `${file}: no inline .skip-link:focus rule in <head>; the link stays hidden until the async stylesheet loads`);
+  }
+});
+
+test('WP-9 titles stay ≤ 60 characters and end with "| Oxford Realty Advisors" (home may lead with the brand)', () => {
+  for (const { file } of SITEMAP_PAGES) {
+    const title = decode(read(file).match(/<title>([^<]*)<\/title>/)?.[1] ?? '');
+    assert.ok(title.length <= 60, `${file} title is ${title.length} chars: "${title}"`);
+    if (file === 'index.html') assert.match(title, /^Oxford Realty Advisors \| /, `${file} title: "${title}"`);
+    else assert.match(title, / \| Oxford Realty Advisors$/, `${file} title: "${title}"`);
+    const og = decode(meta(read(file), 'property', 'og:title') ?? '');
+    assert.equal(og, title, `${file}: og:title differs from <title>`);
+  }
+});
+
+test('WP-10 llms.txt names the three markets and the tenant count the pages claim', () => {
+  const llms = read('llms.txt');
+  for (const claim of ['Maryland', 'Columbus', 'Kansas City', '130+ tenants', '500,000+ SF', '30-45 days']) {
+    assert.ok(llms.includes(claim), `llms.txt is missing "${claim}"`);
+  }
+});
+
+test('WP-11 the chat facts file agrees with the pages on the founding claim (2005 everywhere; Gabriel 2026-09-25)', () => {
+  const md = read('scripts/meta.md');
+  assert.match(md, /Founded 2005/, 'meta.md must state Founded 2005');
+  assert.ok(!/2008/.test(md), 'meta.md still carries the 2008 direct-ownership distinction the pages do not make');
+});
+
+test('WP-12 every file in images/ is referenced by something that ships', () => {
+  const refs = [];
+  const walk = (rel) => {
+    for (const e of readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      // tests/ is excluded: a test or mutation case naming a file must not count as a reference.
+      if (e.isDirectory()) { if (!['dist', 'node_modules', '.netlify', '.git', 'images', 'fonts', 'docs', '.claude', 'evals', 'tests'].includes(e.name)) walk(r); }
+      else if (/\.(html|css|js|mjs|json|md|txt|xml)$/.test(e.name) && e.name !== 'README.md') refs.push(read(r));
+    }
+  };
+  walk('');
+  const corpus = refs.join('\n');
+  const unused = readdirSync(path.join(ROOT, 'images')).filter((name) => !corpus.includes(name));
+  assert.deepEqual(unused, [], `images/ files nothing references: ${unused.join(', ')}`);
+});
+
+test('WP-13 the tenant-application form loads script.js and application-script.js in an order the generic validator respects', () => {
+  // application-script.js (parse-time submit listener) vetoes first; script.js's
+  // deferred DOMContentLoaded validator must bail on a prevented event instead of
+  // disabling the submit button and relabelling it "Sending…" on a form that
+  // never left the page. Behaviour is pinned in form-validator.test.mjs; this
+  // pins the source-level guard so a re-minify cannot drop it.
+  const js = read('script.js');
+  assert.match(js, /addEventListener\("submit",function\((\w+)\)\{if\(\1\.defaultPrevented\)return;/, 'script.js submit handler must return early on a defaultPrevented event');
+});

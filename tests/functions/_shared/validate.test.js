@@ -79,6 +79,19 @@ test('signIntakeToken/verifyIntakeToken round-trip and reject tampering', () => 
   assert.equal(verifyIntakeToken(token + 'x', secret), null);
 });
 
+// An unset NETLIFY_WEBHOOK_SECRET used to reach crypto.createHmac(undefined) and
+// throw a TypeError out of the verifier — a 500 that skipped the callers'
+// "log an invalid_signature row" path, so a rotated/missing secret was silent
+// (2026-09-25 audit). verifyIntakeToken already fails closed here; match it.
+test('verifyNetlifyWebhookSignature fails closed (false, no throw) when the secret is unset or empty', () => {
+  const header = { alg: 'HS256' };
+  const payload = { iss: 'netlify', sha256: crypto.createHash('sha256').update('{}').digest('hex') };
+  const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const jws = `${b64url(header)}.${b64url(payload)}.${b64url({})}`;
+  assert.equal(verifyNetlifyWebhookSignature('{}', jws, undefined), false);
+  assert.equal(verifyNetlifyWebhookSignature('{}', jws, ''), false);
+});
+
 test('verifyIntakeToken rejects an expired token', () => {
   const secret = 'intake-secret';
   const token = signIntakeToken({ path: 'p', size: 1, exp: Date.now() - 1000 }, secret);

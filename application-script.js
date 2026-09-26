@@ -67,26 +67,9 @@
   var ref = document.getElementById('referrer-url');
   if(ref) ref.value = document.referrer || '(direct)';
 
-  /* ---------- Property dropdown — populate from listings.js if available ---------- */
-  (function populateListings(){
-    var select = document.querySelector('.js-listing-select');
-    if(!select) return;
-    var listings = (window.ORA_LISTINGS || window.listings || []);
-    if(!Array.isArray(listings) || listings.length === 0) return;
-    var frag = document.createDocumentFragment();
-    listings.forEach(function(l){
-      var label = l.address || l.name || l.title;
-      if(!label) return;
-      if(l.suite) label += ' — Suite ' + l.suite;
-      var opt = document.createElement('option');
-      opt.value = label; opt.textContent = label;
-      frag.appendChild(opt);
-    });
-    // Insert before the "Other" option
-    var otherOpt = select.querySelector('option[value="Not sure / Other"]');
-    if(otherOpt) select.insertBefore(frag, otherOpt);
-    else select.appendChild(frag);
-  })();
+  /* Property dropdown is static markup. A populator that read a global listings
+     array lived here, but nothing on the site ever defined one (listings.js keeps
+     its array private and is not loaded on this page), so it was dead code. */
 
   // Show "specify" field when "Other" is selected
   var buildingSel = document.getElementById('building-unit');

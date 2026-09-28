@@ -1,5 +1,10 @@
 'use strict';
 
+// Returns true on a successful forward, false otherwise — never throws, so
+// every existing fire-and-forget caller (that doesn't check the return
+// value) keeps working exactly as before. Callers that need to know (e.g.
+// broker-finalize.mjs's ledger write) can now react instead of the failure
+// vanishing into a console.error only Netlify's ephemeral function logs see.
 async function forwardToNetlifyForm(siteUrl, formName, fields, { fetchImpl = fetch } = {}) {
   const params = new URLSearchParams();
   params.append('form-name', formName);
@@ -14,9 +19,12 @@ async function forwardToNetlifyForm(siteUrl, formName, fields, { fetchImpl = fet
     });
     if (!res.ok) {
       console.error(`[netlify-forms] forward to "${formName}" failed`, res.status);
+      return false;
     }
+    return true;
   } catch (e) {
     console.error(`[netlify-forms] forward to "${formName}" threw`, String(e));
+    return false;
   }
 }
 

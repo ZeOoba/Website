@@ -458,3 +458,44 @@ test('WP-23 contact.html names an acquisitions contact (Gabriel Goldberg, VP Acq
   assert.match(html, /Gabriel Goldberg, VP Acquisitions/);
   assert.match(html, /href="mailto:ggoldberg@oxfordra\.net"/);
 });
+
+// ── 2026-09-28 gated checklist lead magnet (Phase 4b of the fix plan) ───────
+// The sale-ready checklist PDF sits behind a name+email form on the checklist
+// guide. It is a SOFT gate by design: the form's success state reveals the link;
+// nothing else links the file, and robots.txt asks crawlers to stay out.
+
+const CHECKLIST_PDF = 'Oxford-Sale-Ready-Checklist.pdf';
+const CHECKLIST_GUIDE = 'resources/industrial-building-sale-document-checklist.html';
+
+test('WP-24 the checklist PDF is a real two-page PDF that ships, and crawlers are asked to stay out', () => {
+  const bytes = readFileSync(path.join(ROOT, CHECKLIST_PDF));
+  assert.equal(bytes.subarray(0, 5).toString('latin1'), '%PDF-', 'not a PDF');
+  assert.ok(bytes.length > 20_000, `suspiciously small (${bytes.length} bytes): the render probably failed`);
+  assert.ok(read('scripts/build-dist.mjs').includes(`'${CHECKLIST_PDF}'`), 'build-dist.mjs does not publish the checklist PDF');
+  assert.match(read('robots.txt'), new RegExp(`^Disallow: /${CHECKLIST_PDF.replace(/\./g, '\\.')}$`, 'm'), 'robots.txt must disallow the gated file');
+  assert.ok(!read('sitemap.xml').includes(CHECKLIST_PDF), 'the gated file must not be in the sitemap');
+});
+
+test('WP-25 only the checklist form\'s success state links the PDF (the gate is not bypassed by a stray link)', () => {
+  for (const file of htmlFiles()) {
+    const html = read(file);
+    if (file === CHECKLIST_GUIDE || !html.includes(CHECKLIST_PDF)) continue;
+    assert.fail(`${file} links the gated checklist PDF outside the email form`);
+  }
+  const guide = read(CHECKLIST_GUIDE);
+  const success = guide.match(/<div class="form-success" id="checklistSuccess"[^>]*>([\s\S]*?)<\/div>/);
+  assert.ok(success && success[0].includes('style="display:none;"'), 'the success block must be hidden until the form succeeds');
+  assert.ok(success[1].includes(CHECKLIST_PDF), 'the success block must carry the download link');
+  assert.equal(guide.split(CHECKLIST_PDF).length - 1, 1, 'the PDF must be linked exactly once, inside the success block');
+});
+
+test('WP-26 the checklist form is honeypot-guarded, points at the privacy policy, and fires checklist_requested after the success state shows', () => {
+  const guide = read(CHECKLIST_GUIDE);
+  const form = guide.match(/<form\b[^>]*name="checklist-download"[\s\S]*?<\/form>/)?.[0] ?? '';
+  assert.match(form, /netlify-honeypot="bot-field"/);
+  assert.match(form, /name="bot-field"/);
+  assert.match(form, /href="\/privacy"/, 'consent line must link the Privacy Policy');
+  const handler = guide.match(/document\.addEventListener\('submit'[\s\S]*?\}\)\.catch/)?.[0] ?? '';
+  assert.match(handler, /gtag\('event',\s*'checklist_requested'/);
+  assert.ok(handler.indexOf("success.style.display = ''") < handler.indexOf('checklist_requested'), 'the lead event fires before the success state is shown');
+});

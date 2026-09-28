@@ -70,6 +70,7 @@ const EXPECTED_NETLIFY_FORMS = [
   'chat-lead-form.html#chat-lead',
   'contact.html#contact',
   'pipeline-failures-form.html#pipeline-failures',
+  'resources/industrial-building-sale-document-checklist.html#checklist-download',
   'sell-your-building.html#owner-submission-intake',
   'tenant-application.html#commercial-lease-application',
   'tenant-resources.html#leasing-inquiry',

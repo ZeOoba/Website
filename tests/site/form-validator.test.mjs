@@ -8,7 +8,7 @@
 // production only because Netlify strips data-netlify from served HTML; nothing
 // may depend on that stripping.
 //
-// script.js is hand-minified with no exports, so this test lifts the validator's
+// script.js has no exports, so this test lifts the validator's
 // setup function out of the source and runs it against a minimal DOM stub whose
 // forms are built from the real page markup.
 import { test } from 'node:test';
@@ -129,9 +129,11 @@ function buildForm(fields) {
     createElement: (tag) => new El(tag),
     getElementById: (id) => form.descendants().find((d) => d.id === id) ?? null,
   };
-  const setup = SCRIPT.match(/function a\(\)\{var e=i\('form\[data-netlify="true"\]'\)[\s\S]*?(?=function r\(\)\{var e=i\("\.hero__stat-value)/);
-  assert.ok(setup, 'validator setup function not found in script.js; update this test if the minified code moved');
-  new Function('i', 'document', `${setup[0]}; return a;`)(() => [form], document)();
+  // From `function initFormValidation` up to the next top-level function, so the lift
+  // survives reformatting; it needs only qsa() and document.
+  const setup = SCRIPT.match(/function initFormValidation\(\)[\s\S]*?(?=\n {2}(?:\/\/[^\n]*\n {2})?function initStatCounters\(\))/);
+  assert.ok(setup, 'validator setup function not found in script.js; update this test if initFormValidation moved');
+  new Function('qsa', 'document', `${setup[0]}; return initFormValidation;`)(() => [form], document)();
   assert.equal(form.hasAttribute('novalidate'), true, 'validator did not attach');
   return { form, els };
 }

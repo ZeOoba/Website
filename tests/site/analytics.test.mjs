@@ -109,8 +109,11 @@ test('#1 the Partytown runtime ships: lib files are under a published dir, and t
 
 test('#2 script.js takes no dead geometry read at DOMContentLoaded (forced reflow)', () => {
   const js = read('script.js');
-  assert.ok(!/c\?c\.offsetHeight:400/.test(js), 'script.js reads hero offsetHeight again; nothing consumes it and it forces a layout');
-  assert.ok(!/requestIdleCallback\(u\)/.test(js), 'script.js schedules its scrollspy measure with a bare requestIdleCallback that can fire before first paint; use _idle()');
+  assert.ok(!/\bhero\.offsetHeight\b/.test(js), 'script.js reads hero offsetHeight again; nothing consumes it and it forces a layout');
+  // The only requestIdleCallback call is the one inside runWhenIdle(), which waits for
+  // the load event first; any other one can fire before first paint.
+  assert.equal((js.match(/\brequestIdleCallback\(/g) || []).length, 1, 'script.js schedules work with a bare requestIdleCallback that can fire before first paint; use runWhenIdle()');
+  assert.match(js, /runWhenIdle\(measureSections\)/, 'the scrollspy measure must go through runWhenIdle()');
 });
 
 // ── 2026-09-28 conversion-event pass (Phase 2 of the fix plan) ──────────────

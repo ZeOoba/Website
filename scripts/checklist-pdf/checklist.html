@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Getting Your Building Sale-Ready: The Document Checklist | Oxford Realty Advisors</title>
+<meta name="author" content="Oxford Realty Advisors, LLC">
+<meta name="description" content="A printable checklist of the documents a buyer will request when you sell an industrial or flex building.">
+<!--
+  Source for /Oxford-Sale-Ready-Checklist.pdf, the lead-magnet download behind the email
+  form on /resources/industrial-building-sale-document-checklist. Rebuild with:
+    node scripts/checklist-pdf/build-checklist-pdf.mjs
+  The list mirrors that guide's five sections; keep the two in step. Carries no firm
+  figures on purpose (nothing here needs to trace to the Master Workbook). Fonts are the
+  static TTF instances from scripts/overview-pdf/fonts (Chromium embeds variable woff2 as Type3).
+-->
+<style>
+@font-face{font-family:"DM Sans";src:url(../overview-pdf/fonts/DMSans-Regular.ttf) format("truetype");font-weight:100 499;font-style:normal}
+@font-face{font-family:"DM Sans";src:url(../overview-pdf/fonts/DMSans-SemiBold.ttf) format("truetype");font-weight:500 900;font-style:normal}
+@font-face{font-family:"EB Garamond";src:url(../overview-pdf/fonts/EBGaramond-Medium.ttf) format("truetype");font-weight:100 900;font-style:normal}
+@font-face{font-family:"EB Garamond";src:url(../overview-pdf/fonts/EBGaramond-Italic.ttf) format("truetype");font-weight:100 900;font-style:italic}
+@font-face{font-family:"IBM Plex Mono";src:url(../overview-pdf/fonts/IBMPlexMono-Regular.ttf) format("truetype");font-weight:100 900;font-style:normal}
+
+:root{
+  --navy:#1B2A4A; --gold:#C9A96E; --gold-deep:#806339;
+  --parchment:#F5F3EF; --charcoal:#2D2D2D; --slate:#596B7D; --rule:#E8E4DE;
+  --display:"EB Garamond",Georgia,serif; --body:"DM Sans",Arial,sans-serif; --mono:"IBM Plex Mono",monospace;
+}
+@page{size:8.5in 11in;margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#fff}
+body{font-family:var(--body);color:var(--charcoal);font-size:9.4pt;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:8.5in;height:11in;position:relative;overflow:hidden;page-break-after:always;break-after:page}
+.page:last-child{page-break-after:auto;break-after:auto}
+.band{background:var(--navy);color:#fff;height:.62in;padding:0 .6in;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--gold)}
+.band .section{font-family:var(--mono);font-size:7.5pt;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.band .firm{font-family:var(--display);font-size:11.5pt;font-weight:500;letter-spacing:.02em}
+.body{padding:.34in .6in 0}
+.foot{position:absolute;left:.6in;right:.6in;bottom:.38in;border-top:1px solid var(--rule);padding-top:7pt;display:flex;justify-content:space-between;font-family:var(--mono);font-size:6.8pt;color:var(--slate);letter-spacing:.02em}
+.eyebrow{font-family:var(--mono);font-size:7.4pt;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-deep);margin-bottom:5pt}
+h1{font-family:var(--display);font-weight:500;color:var(--navy);font-size:25pt;line-height:1.1;margin-bottom:8pt}
+h2{font-family:var(--display);font-weight:500;color:var(--navy);font-size:14.5pt;line-height:1.2;margin:13pt 0 3pt;display:flex;align-items:baseline;gap:8pt}
+h2 .n{font-family:var(--mono);font-size:8pt;color:var(--gold-deep);letter-spacing:.08em}
+.rule-gold{width:.55in;height:2px;background:var(--gold);margin:2pt 0 10pt}
+.lede{font-size:9.8pt;line-height:1.55;margin-bottom:6pt}
+.why-line{font-size:8.9pt;color:var(--slate);margin-bottom:2pt}
+ul.check{list-style:none;margin:0}
+ul.check li{display:flex;gap:9pt;align-items:flex-start;padding:5pt 0;border-bottom:1px solid var(--rule);font-size:9.1pt;line-height:1.4}
+ul.check li:first-child{border-top:1px solid var(--rule)}
+.box{flex:0 0 auto;width:9.5pt;height:9.5pt;border:1.3px solid var(--navy);border-radius:1.5px;margin-top:1.6pt}
+ul.check b{color:var(--navy);font-weight:600}
+.callout{background:var(--parchment);border-left:3px solid var(--gold);padding:8pt 12pt;margin-top:10pt}
+.callout .h{font-family:var(--mono);font-size:7pt;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-deep);margin-bottom:3pt}
+.callout p{font-size:8.8pt;line-height:1.5}
+.cta{background:var(--navy);color:#fff;margin-top:14pt;padding:12pt 16pt;display:flex;justify-content:space-between;align-items:center}
+.cta .h{font-family:var(--display);font-size:14pt;font-weight:500}
+.cta .s{font-size:8.4pt;color:#C2CAD6;margin-top:2pt;max-width:3.9in}
+.cta .c{font-family:var(--mono);font-size:8pt;color:var(--gold);text-align:right;line-height:1.7}
+.note{font-size:7.2pt;color:var(--slate);line-height:1.45;margin-top:10pt}
+</style>
+</head>
+<body>
+
+<section class="page">
+  <div class="band"><span class="section">Owner Checklist</span><span class="firm">Oxford Realty Advisors</span></div>
+  <div class="body">
+    <div class="eyebrow">Getting Ready to Sell</div>
+    <h1>Getting Your Building Sale-Ready: The Document Checklist</h1>
+    <div class="rule-gold"></div>
+    <p class="lede">A buyer of an industrial or flex building will run a structured review of its leases, finances, legal status and physical condition. The smoother that review goes, the faster you close and the less room there is to renegotiate. This is what a buyer will typically ask for. You do not need every item polished to sell; the more you can hand over early, the stronger your position.</p>
+
+    <h2><span class="n">01</span>Leases and tenancy</h2>
+    <p class="why-line">The heart of the file for any occupied building, because it drives the income the building is valued on.</p>
+    <ul class="check">
+      <li><span class="box"></span><span><b>All leases and amendments</b> &mdash; signed copies of every current lease, plus every amendment, side letter and renewal.</span></li>
+      <li><span class="box"></span><span><b>Current rent roll</b> &mdash; every tenant: suite, square footage, current rent, escalations, start and end dates, renewal options, security deposit held.</span></li>
+      <li><span class="box"></span><span><b>Tenant estoppel certificates</b> &mdash; short confirmations each tenant signs verifying its rent, term and deposit, and that no one is in default.</span></li>
+      <li><span class="box"></span><span><b>Security deposit accounting</b> and a record of any pending lease disputes or defaults.</span></li>
+    </ul>
+    <div class="callout"><div class="h">The number-one deal killer</div><p>A rent roll that disagrees with the signed tenant estoppels is one of the most common causes of price retrades and collapsed deals. Reconcile your rent roll against the actual leases before you go to market.</p></div>
+
+    <h2><span class="n">02</span>Financial records</h2>
+    <ul class="check">
+      <li><span class="box"></span><span><b>Operating statements</b> for the last two to three years &mdash; income and expenses for the property.</span></li>
+      <li><span class="box"></span><span><b>Current year&rsquo;s budget</b> and, if you reconcile CAM with tenants, your CAM reconciliations.</span></li>
+      <li><span class="box"></span><span><b>Property tax bills</b> and any pending assessment appeals.</span></li>
+      <li><span class="box"></span><span><b>Utility bills</b> and a schedule of <b>service contracts</b> (landscaping, snow, fire/life-safety and similar).</span></li>
+      <li><span class="box"></span><span><b>Capital expenditure history</b> &mdash; major work on the roof, HVAC, paving or structure, with dates and costs.</span></li>
+    </ul>
+
+    <h2><span class="n">03</span>Title, survey and legal</h2>
+    <ul class="check">
+      <li><span class="box"></span><span><b>Deed</b> and your existing owner&rsquo;s <b>title insurance policy</b>, if you have one.</span></li>
+      <li><span class="box"></span><span><b>Survey</b> &mdash; an existing ALTA or boundary survey saves the buyer time and money.</span></li>
+      <li><span class="box"></span><span><b>Recorded easements, covenants or agreements</b> affecting the property.</span></li>
+      <li><span class="box"></span><span><b>Existing loan documents</b>, if there is debt to be paid off or potentially assumed.</span></li>
+    </ul>
+  </div>
+  <div class="foot"><span>Oxford Realty Advisors &nbsp;|&nbsp; oxfordra.net &nbsp;|&nbsp; 301.512.6125</span><span>Page 1 of 2</span></div>
+</section>
+
+<section class="page">
+  <div class="band"><span class="section">Owner Checklist</span><span class="firm">Oxford Realty Advisors</span></div>
+  <div class="body">
+    <h2 style="margin-top:0"><span class="n">04</span>Environmental and physical</h2>
+    <p class="why-line">Industrial sites carry environmental history more often than other property types, so expect these. They are routine, not alarming.</p>
+    <ul class="check">
+      <li><span class="box"></span><span><b>Phase I Environmental Site Assessment</b> &mdash; and a Phase II if one was ever done. If you have a recent Phase I, provide it; if not, the buyer will order one.</span></li>
+      <li><span class="box"></span><span><b>Property Condition Assessment</b> or any recent engineering or inspection reports.</span></li>
+      <li><span class="box"></span><span><b>As-built drawings, floor plans and site plans.</b></span></li>
+      <li><span class="box"></span><span><b>Certificate of occupancy</b> and records of any open permits or code violations.</span></li>
+      <li><span class="box"></span><span><b>Zoning</b> information confirming the building&rsquo;s use is permitted.</span></li>
+    </ul>
+
+    <h2><span class="n">05</span>Entity and authority</h2>
+    <p class="why-line">The buyer&rsquo;s attorney and the title company will need to confirm who actually has the authority to sell.</p>
+    <ul class="check">
+      <li><span class="box"></span><span><b>Organizational documents</b> for the owning entity &mdash; articles of organization, operating agreement or partnership agreement.</span></li>
+      <li><span class="box"></span><span><b>Evidence of good standing</b> and any <b>resolutions or consents</b> authorizing the sale.</span></li>
+      <li><span class="box"></span><span>If the property was inherited or is held in an estate or trust, the documents establishing <b>authority to sell</b>.</span></li>
+    </ul>
+
+    <h2>Why this protects your price, not just your timeline</h2>
+    <p class="lede">Being organized shortens due diligence: every week a property sits under contract is a week something can go wrong. It also builds buyer confidence, and confident buyers pay full price. Missing records, unreconciled rent rolls and surprises found late are what buyers use to justify a lower number or a mid-deal renegotiation.</p>
+    <div class="callout"><div class="h">A simple test</div><p>If a buyer asked for your rent roll, your last two years of operating statements and a copy of your leases tomorrow, could you produce them by the end of the week? If not, that gap is the first thing worth closing, before you talk price with anyone.</p></div>
+
+    <div class="cta">
+      <div><div class="h">Want a direct conversation about your building?</div><div class="s">Oxford Realty Advisors buys shallow-bay industrial and flex buildings for its own account, all-cash with no financing contingency.</div></div>
+      <div class="c">oxfordra.net/sell-your-building<br>301.512.6125<br>info@oxfordra.net</div>
+    </div>
+    <p class="note"><b>General information only.</b> Provided by Oxford Realty Advisors for general informational and educational purposes; not investment, financial, legal or tax advice, and not an offer to buy or sell any property. Every building, ownership structure and tax situation is different. Consult your own attorney, accountant and tax advisor before making any decision about selling.</p>
+  </div>
+  <div class="foot"><span>Oxford Realty Advisors &nbsp;|&nbsp; oxfordra.net &nbsp;|&nbsp; 301.512.6125</span><span>Page 2 of 2</span></div>
+</section>
+
+</body>
+</html>

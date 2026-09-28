@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /Oxford-Sale-Ready-Checklist.pdf
 
 Sitemap: https://oxfordra.net/sitemap.xml

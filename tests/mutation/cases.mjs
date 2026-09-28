@@ -136,6 +136,11 @@ export const CASES = [
   { id: 'R9', what: 'rendered: links parked off-screen, hamburger hidden', edits: [['dist/about.html', sub('</style>', '.nav__links{display:flex!important;position:absolute;left:-9999px}.nav__mobile-btn{display:none!important}</style>')]], run: 'nav', expect: 'reachable' },
   { id: 'R10', what: 'rendered: menu opens transparent', edits: [['dist/about.html', sub('</style>', '.nav__mobile.is-open{opacity:0}</style>')]], run: 'nav', expect: 'reachable' },
 
+  // --- upload budgets (rendered, tests/site/upload-budget.test.mjs) -----------------
+  { id: 'UB1', what: 'rendered: application-script.js stops flagging an over-cap file (only script.js\'s 10 MB check is left)', edits: [['dist/application-script.js', sub("input.setCustomValidity('File exceeds the per-field limit.');", '')]], run: 'budget', expect: 'over its 1.5 MB cap' },
+  { id: 'UB2', what: "rendered: driver's-licence cap raised past script.js's 10 MB cap", edits: [['dist/application-script.js', sub("'upload-drivers-license': 1.5 * 1024 * 1024", "'upload-drivers-license': 100 * 1024 * 1024")]], run: 'budget', expect: 'over its 1.5 MB cap' },
+  { id: 'UB3', what: 'rendered: the submit handler no longer runs validateStep', edits: [['dist/application-script.js', sub('if(!validateStep(TOTAL_STEPS)){ e.preventDefault(); return; }', '')]], run: 'budget', expect: 'over its 1.5 MB cap' },
+
   // --- build-dist.mjs ---------------------------------------------------------------
   { id: 'B1', what: 'Overview PDF in both SITE_FILES and EXPECTED_EXCLUSIONS', edits: [['scripts/build-dist.mjs', sub("const EXPECTED_EXCLUSIONS = ['application-script.file-size.test.js',", "const EXPECTED_EXCLUSIONS = ['Oxford-Realty-Advisors-Overview.pdf', 'application-script.file-size.test.js',")]], run: 'buildFailsClean', expect: 'PASS' },
   { id: 'BP1', what: 'a dot-file in resources/ does not ship', edits: [['resources/.draft-notes', () => 'private']], run: 'buildNoDotfile', expect: 'PASS' },

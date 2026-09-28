@@ -35,19 +35,37 @@
     try { return text ? JSON.parse(text) : {}; } catch (e) { return {}; }
   }
 
+  var MAX_CHUNK_ATTEMPTS = 3;
+  var RETRY_BASE_MS = 500;
+
+  // Only failures that can clear on their own are retried; a 401/403/404 means
+  // the upload session itself is dead and another PUT cannot help.
+  function isTransient(status) { return status === 408 || status === 429 || status >= 500; }
+
+  function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+
   async function uploadInChunks(uploadUrl, file, onProgress) {
     var total = file.size;
     var start = 0;
     while (start < total) {
       var end = Math.min(start + CHUNK_BYTES, total);
-      var chunk = file.slice(start, end);
-      var res = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Length': String(end - start), 'Content-Range': 'bytes ' + start + '-' + (end - 1) + '/' + total },
-        body: chunk,
-      });
-      if (!(res.status === 202 || res.status === 200 || res.status === 201)) {
-        throw new Error('chunk_upload_failed:' + res.status);
+      var attempt = 0;
+      while (true) {
+        attempt++;
+        var res = null;
+        var networkError = false;
+        try {
+          res = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: { 'Content-Length': String(end - start), 'Content-Range': 'bytes ' + start + '-' + (end - 1) + '/' + total },
+            body: file.slice(start, end),
+          });
+        } catch (e) { networkError = true; }
+        if (res && (res.status === 202 || res.status === 200 || res.status === 201)) break;
+        if ((!networkError && !isTransient(res.status)) || attempt >= MAX_CHUNK_ATTEMPTS) {
+          throw new Error('chunk_upload_failed:' + (networkError ? 'network' : res.status));
+        }
+        await sleep(RETRY_BASE_MS * Math.pow(3, attempt - 1));
       }
       start = end;
       if (onProgress) onProgress(start / total);

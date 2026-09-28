@@ -308,3 +308,31 @@ test('never calls checkAndRecordDailyCapImpl when the per-IP rate limit already 
   assert.equal(body.ok, true);
   assert.equal(dailyCapCallCount, 0, 'a rate-limited IP must never consume a slot of the shared daily cap');
 }));
+
+// The ledger write used to be fire-and-forget with no trace at all: a Netlify
+// Forms hiccup dropped the row silently. It must now land in pipeline-failures,
+// but stay non-blocking — the broker still succeeds and Gabriel/Eric still get
+// the email, because losing the ledger row is far less costly than losing the deal.
+test('a failed ledger write is logged to pipeline-failures but does not block the email or the broker response', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-28_Acme_lw01/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const failureRows = [];
+  let mails = 0;
+  const fetchImpl = async (url, opts = {}) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) { mails += 1; return { ok: true, status: 202 }; }
+    if (url === 'https://oxfordra.net/') {
+      const body = String(opts.body || '');
+      if (body.includes('form-name=pipeline-failures')) { failureRows.push(body); return { ok: true, status: 200 }; }
+      if (body.includes('form-name=broker-network-ledger')) return { ok: false, status: 500 };
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await callFinalize(event, { fetchImpl, consumeIntakeTokenImpl: async () => ({ first: true }), checkAndRecordRateLimitImpl: async () => ({ allowed: false }), checkAndRecordDailyCapImpl: async () => ({ allowed: true }) });
+  assert.equal(res.statusCode, 200, 'a ledger failure must not fail the broker submission');
+  assert.equal(mails, 1, 'the email must still go out');
+  assert.equal(failureRows.length, 1, 'exactly one pipeline-failures row for the failed ledger write');
+  assert.ok(failureRows[0].includes('error-code=ledger_write_failed'), 'the row must carry the ledger_write_failed code');
+  assert.ok(failureRows[0].includes('source-function=broker-finalize'));
+}));

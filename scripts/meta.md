@@ -3,19 +3,18 @@
 This file is concatenated into the chat assistant's knowledge base at build time. It contains canonical firm-level facts that may not be repeated on every public web page.
 
 ## Identity
-Oxford Realty Advisors (ORA) is a private family office that owns and operates approximately 500,000 square feet of shallow-bay Class B/C industrial and flex real estate. ORA invests proprietary family capital — there is no outside fund, no LP base, and no committee. Holding philosophy is generational; ORA does not flip assets.
+Oxford Realty Advisors (ORA) is a private family office that owns and operates approximately 513,000 square feet of shallow-bay Class B/C industrial and flex real estate. ORA invests proprietary family capital — there is no outside fund, no LP base, and no committee. Holding philosophy is generational; ORA does not flip assets.
 
 ## Leadership
 - **Eric Goldberg** — Founder and Principal. Active investor with two decades of operating experience.
 - **Gabriel Goldberg** — VP Acquisitions and co-Principal. Leads sourcing and underwriting.
 
 ## Markets
-ORA acquires and operates in three core markets:
+ORA's core markets are:
 - Maryland (Mid-Atlantic anchor — Baltimore/Columbia/Easton/Salisbury)
 - Columbus, Ohio
-- Kansas City, Missouri (including Raytown submarket)
 
-ORA is also actively evaluating expansion into growing major Mid-Atlantic and Midwest markets — no current holdings outside the three core markets above. ORA does not actively pursue West Coast, Sun Belt-only, or coastal-California markets.
+ORA also holds a single property in Kansas City, Missouri (Raytown submarket), entered in 2024 — a portfolio holding, not a core market with dedicated sourcing/underwriting presence. ORA is also actively evaluating expansion into growing major Mid-Atlantic and Midwest markets. ORA does not actively pursue West Coast, Sun Belt-only, or coastal-California markets.
 
 ## Target Deal Parameters
 - **Check size:** $1M–$10M equity per deal
@@ -31,8 +30,8 @@ ORA is also actively evaluating expansion into growing major Mid-Atlantic and Mi
 ORA is **not** currently raising outside capital. We invest exclusively from family balance sheet. Institutional partners interested in being on the radar for future opportunities may reach out, but there is no fund or syndicate offering at this time.
 
 ## Track Record
-- 500,000+ SF currently under management
-- 130+ tenants across the portfolio
+- 513,000+ SF currently under management
+- 138+ tenants across the portfolio
 - Founded 2005; principal investor and operator in industrial real estate since founding (the site states "since 2005" throughout — Gabriel's ratified claim, 2026-09-25)
 - Entered Columbus, OH in 2021 with the Sepich Portfolio acquisition (110K SF)
 - Surpassed 300K SF in 2022; expanded into Kansas City in 2024
@@ -53,7 +52,7 @@ ORA is **not** currently raising outside capital. We invest exclusively from fam
 What must not be disclosed, volunteered, inferred, or estimated is anything BEYOND the knowledge base:
 - Tenant names, lease terms, or rent levels for any asset not described on a knowledge-base page
 - Deal pricing, NOI, cap rates, or returns for any property not covered by a published case study
-- AUM or valuation figures beyond the publicly stated ~500K SF and the firm facts above
+- AUM or valuation figures beyond the publicly stated ~513K SF and the firm facts above
 - Pending acquisitions, dispositions, LOIs, or pipeline
 - Lender names, transaction counsel, or vendor relationships
 - ORA's internal underwriting thresholds — the specific leverage ceilings, coverage floors, and return hurdles it screens against. The qualitative posture stated above ("conservative", "below replacement cost") is the full extent of what is public — no numeric portfolio LTV or leverage figure is public.

@@ -340,9 +340,9 @@ test('WP-9 titles stay ≤ 60 characters and end with "| Oxford Realty Advisors"
   }
 });
 
-test('WP-10 llms.txt names the three markets and the tenant count the pages claim', () => {
+test('WP-10 llms.txt names the markets and the tenant count the pages claim', () => {
   const llms = read('llms.txt');
-  for (const claim of ['Maryland', 'Columbus', 'Kansas City', '130+ tenants', '500,000+ SF', '30-45 days']) {
+  for (const claim of ['Maryland', 'Columbus', 'Kansas City', '138+ tenants', '513,000+ SF', '30-45 days']) {
     assert.ok(llms.includes(claim), `llms.txt is missing "${claim}"`);
   }
 });
@@ -379,7 +379,7 @@ test('WP-13 the tenant-application form loads script.js and application-script.j
   assert.match(js, /addEventListener\("submit",function\((\w+)\)\{if\(\1\.defaultPrevented\)return;/, 'script.js submit handler must return early on a defaultPrevented event');
 });
 
-test('WP-14 CSP connect-src allows the exact Netlify RUM collector host, and only there, with no wildcard', () => {
+test('WP-17 CSP connect-src allows the exact Netlify RUM collector host, and only there, with no wildcard', () => {
   // Netlify injects /.netlify/scripts/rum at deploy time (the local dist/ build
   // never carries it, so csp-smoke cannot see it). That script POSTs Core Web
   // Vitals with a CORS fetch to the collector below. Without the allowance the
@@ -397,4 +397,43 @@ test('WP-14 CSP connect-src allows the exact Netlify RUM collector host, and onl
     if (name !== 'connect-src') assert.ok(!sources.includes(RUM_HOST), `${RUM_HOST} is a fetch target only; it does not belong in ${name}`);
   }
   assert.ok(!/nsvcs\.net/.test(csp.replaceAll(RUM_HOST, '')), 'CSP must name the exact collector host, never a wildcard or a sibling *.nsvcs.net origin');
+});
+
+// ── 2026-09-28 data-accuracy & positioning pass (Phase 1 of the fix plan) ───
+// Figures sourced from the Master Workbook DSOR (Notion 3706ecd8), most recent
+// ingest 2026-09-06: 138 tenants, 513,158 SF roster (512,258 SF leasable), 14
+// properties. Kansas City is downgraded from a co-equal "core market" to a
+// portfolio-only holding sitewide (Gabriel, 2026-09-28) — it may still be
+// mentioned as a place Oxford owns/leases, just never inside a "core markets"
+// count or list.
+
+test('WP-14 Kansas City is never listed among Oxford\'s "core markets" (Gabriel, 2026-09-28: KC is portfolio-only)', () => {
+  for (const file of htmlFiles()) {
+    const html = read(file);
+    assert.ok(!/Three Core Markets/i.test(html), `${file} still claims "Three Core Markets"`);
+    assert.ok(!/core markets are[^.]*Kansas City/i.test(html), `${file} lists Kansas City inside a "core markets are..." sentence`);
+    assert.ok(!/core markets \([^)]*Kansas City[^)]*\)/i.test(html), `${file} lists Kansas City inside a "core markets (...)" parenthetical`);
+  }
+  for (const file of ['llms.txt', 'scripts/meta.md']) {
+    const text = read(file);
+    assert.ok(!/three core markets/i.test(text), `${file} still claims three core markets`);
+  }
+});
+
+test('WP-15 firm stats reflect the 2026-09-06 Master Workbook ingest (513,000+ SF / 138+ tenants / 2 core markets)', () => {
+  const idx = read('index.html');
+  assert.ok(idx.includes('data-target="513000"'), 'index.html hero SF stat is not pinned to 513000');
+  assert.ok(idx.includes('data-target="138"'), 'index.html hero tenant stat is not pinned to 138');
+  assert.ok(idx.includes('data-target="2"'), 'index.html hero core-markets stat is not pinned to 2');
+  for (const file of htmlFiles()) {
+    const html = read(file);
+    assert.ok(!/130\+\s*(<[^>]*>\s*)*Tenants/i.test(html), `${file} still claims 130+ tenants`);
+    assert.ok(!/500,000\+/.test(html), `${file} still claims 500,000+ SF`);
+  }
+});
+
+test('WP-16 the broker/owner deal-submission response promise is unified to 1 business day, not 48 hours', () => {
+  for (const file of htmlFiles()) {
+    assert.ok(!/within 48 hours/i.test(read(file)), `${file} still promises a response "within 48 hours"`);
+  }
 });

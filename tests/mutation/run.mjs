@@ -36,7 +36,12 @@ const COPY = path.join(TMP, 'site');
 
 // --- copy -----------------------------------------------------------------------
 const SKIP = /^[\\/]?(node_modules|\.git|\.claude|dist)([\\/]|$)/;
-cpSync(ROOT, COPY, { recursive: true, filter: (s) => !SKIP.test(s.slice(ROOT.length)) });
+// Node 20 on Windows hands the filter extended-length paths (\\?\C:\...); Node 24
+// does not. Slicing at ROOT.length then cut in the wrong place, so node_modules was
+// copied and the link below failed with EEXIST. Strip the prefix, then take the
+// path relative to ROOT.
+const rel = (s) => path.relative(ROOT, s.replace(/^\\\\\?\\/, ''));
+cpSync(ROOT, COPY, { recursive: true, filter: (s) => !SKIP.test(rel(s)) });
 
 // node_modules: link it rather than copy it. With MUTATION_PLAYWRIGHT_CORE the
 // copy gets a real node_modules of per-package links plus a `playwright` shim,

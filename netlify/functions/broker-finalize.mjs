@@ -106,8 +106,11 @@ export async function handleBrokerFinalize(req, {
     message: sanitizeField(body.message, 2000),
   };
 
+  // The id is minted BEFORE the contact row so this row and the later score row share a join key
+  // (2026-09-30 audit: the contact row used to carry none, so the two could not be tied together).
+  const submissionId = generateSubmissionId();
   const siteUrl = process.env.URL || 'https://oxfordra.net';
-  await forwardToNetlifyForm(siteUrl, 'broker-network-ledger', { ...fields, 'document-path': claims.path }, { fetchImpl });
+  await forwardToNetlifyForm(siteUrl, 'broker-network-ledger', { ...fields, 'submission-id': submissionId, 'document-path': claims.path }, { fetchImpl });
 
   try {
     const { subject, html } = renderBrokerEmail({ fields, links: { document: item.webUrl } });
@@ -122,7 +125,6 @@ export async function handleBrokerFinalize(req, {
     return fail(502, 'email_failed');
   }
 
-  const submissionId = generateSubmissionId();
   const statusToken = signIntakeToken(
     { type: 'status', submissionId, exp: Date.now() + STATUS_TOKEN_TTL_MS },
     process.env.INTAKE_TOKEN_SECRET

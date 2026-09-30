@@ -308,3 +308,24 @@ test('never calls checkAndRecordDailyCapImpl when the per-IP rate limit already 
   assert.equal(body.ok, true);
   assert.equal(dailyCapCallCount, 0, 'a rate-limited IP must never consume a slot of the shared daily cap');
 }));
+
+// 2026-09-30 audit (oxfordra.net item 5): the contact row was written before the submission id
+// existed, so the contact row and the later score row shared no field and could not be joined.
+test('the contact ledger row carries the same submission-id that is returned to the broker', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-30_Acme_jo01/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  let ledgerBody = null;
+  const fetchImpl = async (url, opts = {}) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url.includes('/.netlify/functions/broker-score-background')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') { ledgerBody = new URLSearchParams(opts.body); return { ok: true, status: 200 }; }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await callFinalize(event, { fetchImpl, ...allowAll });
+  const body = JSON.parse(res.body);
+  assert.equal(res.statusCode, 200);
+  assert.ok(ledgerBody, 'the ledger row must have been posted');
+  assert.equal(ledgerBody.get('submission-id'), body.submissionId);
+}));

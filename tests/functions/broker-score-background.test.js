@@ -240,3 +240,33 @@ test('handler returns 401, not 400, for an invalid-shape submissionId with no au
   const res = await callHandler({ submissionId: 'not-a-valid-submission-id', itemPath: VALID_PATH });
   assert.equal(res.status, 401);
 }));
+
+// 2026-09-30 audit (oxfordra.net item 5): Netlify Forms silently drops any field a registered form
+// does not declare, so every key a function posts to broker-network-ledger must be declared.
+test('every field runScoring posts to broker-network-ledger is declared in broker-ledger-form.html', async () => {
+  const fs = require('node:fs');
+  const html = fs.readFileSync(path.join(__dirname, '..', '..', 'broker-ledger-form.html'), 'utf8');
+  const declared = new Set([...html.matchAll(/<(?:input|textarea|select)\b[^>]*\bname="([^"]+)"/g)].map((m) => m[1]));
+  const posted = [];
+  const deps = makeDeps({ forwardToNetlifyFormImpl: async (siteUrl, formName, fields) => { if (formName === 'broker-network-ledger') posted.push(fields); } });
+  await runScoring({ submissionId: 'sub-ledger', itemPath: 'Broker Submissions/x/om.pdf', fields: { company: 'Acme' } }, deps);
+  assert.equal(posted.length, 1);
+  const undeclared = Object.keys(posted[0]).filter((k) => !declared.has(k));
+  assert.deepEqual(undeclared, [], `undeclared ledger fields would be dropped by Netlify Forms: ${undeclared.join(', ')}`);
+  assert.equal(posted[0]['submission-id'], 'sub-ledger');
+  assert.equal(posted[0]['score-coverage'], 100);
+});
+
+test('runScoring still logs the ledger row, with an empty score, when the score is withheld', async () => {
+  const posted = [];
+  const writes = [];
+  const deps = makeDeps({
+    extractDealTermsImpl: async () => ({ askingPrice: null, buildingSizeSF: 30_000, assetClass: null, buildingGrade: null, clearHeightFt: 20, city: null, state: null, matchedRctMarket: null, yearBuilt: null, valueAddSignals: [], notes: null }),
+    writeScoreResultImpl: async (id, r) => writes.push(r),
+    forwardToNetlifyFormImpl: async (siteUrl, formName, fields) => { if (formName === 'broker-network-ledger') posted.push(fields); },
+  });
+  await runScoring({ submissionId: 'sub-thin', itemPath: 'Broker Submissions/x/om.pdf', fields: { company: 'Thin' } }, deps);
+  assert.equal(writes[0].insufficientData, true);
+  assert.equal(posted[0]['score-total'], '');
+  assert.equal(posted[0]['score-coverage'], 35);
+});

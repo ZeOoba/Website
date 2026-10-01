@@ -22,7 +22,7 @@ const LABELS = {
   'landlord-3-name': 'Landlord 3', 'landlord-3-address': 'Landlord 3 Address', 'landlord-3-phone': 'Landlord 3 Phone',
   'typed-signature': 'Signed By', 'signature-date': 'Signature Date',
   name: 'Name', company: 'Company', email: 'Email', phone: 'Phone', market: 'Market', message: 'Message',
-  'submission-score': 'Score', 'gate-property-type': 'Property Type Gate', 'gate-market': 'Market Gate',
+  'submission-score': 'Score', 'scorecard-coverage': 'Scorecard Coverage', 'gate-property-type': 'Property Type Gate', 'gate-market': 'Market Gate',
 };
 
 const DOC_LABELS = {
@@ -81,15 +81,20 @@ function renderBrokerEmail({ fields, links }) {
 function renderScoreFollowupEmail({ fields, score }) {
   const company = (fields && fields.company) || 'Unknown Company';
   const gateNote = score.gateFailed ? ' (capped — outside core criteria)' : '';
+  const coverage = score.coveragePct == null ? null : `${score.coveragePct}%`;
+  const withheld = !!score.insufficientData;
   const headerRows = renderRows({
     company,
-    'submission-score': `${score.finalScore}/100${gateNote}`,
+    'submission-score': withheld ? `Withheld — insufficient data (only ${coverage} of the scorecard could be read)` : `${score.finalScore}/100${gateNote}`,
+    ...(coverage ? { 'scorecard-coverage': coverage } : {}),
     'gate-property-type': score.gates.propertyType,
     'gate-market': score.gates.market,
   });
-  const breakdownRows = (score.categories || []).map((c) => `<tr><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:13px;color:#596B7D;">${escapeHtml(c.label)}</td><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:13px;color:#2D2D2D;">${c.excluded ? 'N/A' : `${c.earned}/${c.possible}`}</td><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:12px;color:#596B7D;">${escapeHtml(c.note)}</td></tr>`).join('');
+  const breakdownRows = (score.categories || []).map((c) => `<tr><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:13px;color:#596B7D;">${escapeHtml(c.label)}</td><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:13px;color:#2D2D2D;">${c.excluded ? 'N/A' : `${c.earned}/${c.possible}`}</td><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:12px;color:#596B7D;">${escapeHtml(c.internalNote || c.note)}</td></tr>`).join('');
   return {
-    subject: `Deal Score Ready — ${company} · ${score.finalScore}/100`,
+    subject: withheld
+      ? `Deal Score Withheld — ${company} · ${coverage} coverage`
+      : `Deal Score Ready — ${company} · ${score.finalScore}/100`,
     html: renderShell({ heading: `Automated Score — ${company}`, rows: headerRows + breakdownRows, links: '' }),
   };
 }

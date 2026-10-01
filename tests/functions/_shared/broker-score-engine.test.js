@@ -195,3 +195,134 @@ test('scoreDeal: a rent-roll-only submission with no price/type/location re-norm
   const dealSizeCat = result.categories.find((c) => c.key === 'dealSize');
   assert.equal(dealSizeCat.excluded, true);
 });
+
+// 2026-09-30 audit (oxfordra.net items 3 and 4).
+test('scoreDeal: the broker-facing basis note never discloses the replacement-cost floor in dollars', () => {
+  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const over = scoreDeal({
+    askingPrice: 4_000_000, buildingSizeSF: 10_000, assetClass: 'industrial', buildingGrade: 'B',
+    clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
+    valueAddSignals: ['vacancy'], notes: null,
+  }, rctBenchmark);
+  const basis = over.categories.find((c) => c.key === 'basis');
+  assert.equal(basis.earned, 0);
+  assert.doesNotMatch(basis.note, /\$\d|\/SF/, 'public note must carry no dollar figures or $/SF');
+  assert.match(basis.internalNote, /floor of \$\d/, 'the internal note keeps the figure for Gabriel and Eric');
+  for (const price of [1_500_000, 2_400_000]) {
+    const r = scoreDeal({
+      askingPrice: price, buildingSizeSF: 10_000, assetClass: 'industrial', buildingGrade: 'B',
+      clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
+      valueAddSignals: ['vacancy'], notes: null,
+    }, rctBenchmark);
+    const b = r.categories.find((c) => c.key === 'basis');
+    assert.doesNotMatch(b.note, /\$\d|\/SF/);
+  }
+});
+
+test('scoreDeal: a complete extraction reports full coverage and a numeric score', () => {
+  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const r = scoreDeal({
+    askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'industrial', buildingGrade: 'B',
+    clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
+    valueAddSignals: ['vacancy', 'deferred_maintenance'], notes: null,
+  }, rctBenchmark);
+  assert.equal(r.coveragePct, 100);
+  assert.equal(r.insufficientData, false);
+  assert.equal(typeof r.finalScore, 'number');
+});
+
+test('scoreDeal: a near-empty extraction withholds the score instead of printing 100/100', () => {
+  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const r = scoreDeal({
+    askingPrice: null, buildingSizeSF: 30_000, assetClass: null, buildingGrade: null,
+    clearHeightFt: 20, city: null, state: null, matchedRctMarket: null, yearBuilt: null,
+    valueAddSignals: [], notes: 'Rent roll only, no asking price stated.',
+  }, rctBenchmark);
+  assert.equal(r.coveragePct, 35);
+  assert.equal(r.insufficientData, true);
+  assert.equal(r.finalScore, null);
+});
+
+test('scoreDeal: a fully empty extraction is insufficient data, not a verified zero', () => {
+  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const r = scoreDeal({
+    askingPrice: null, buildingSizeSF: null, assetClass: null, buildingGrade: null,
+    clearHeightFt: null, city: null, state: null, matchedRctMarket: null, yearBuilt: null,
+    valueAddSignals: [], notes: null,
+  }, rctBenchmark);
+  assert.equal(r.coveragePct, 0);
+  assert.equal(r.insufficientData, true);
+  assert.equal(r.finalScore, null);
+});
+
+test('scoreDeal: a verified gate failure keeps its capped numeric score even on thin data', () => {
+  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const r = scoreDeal({
+    askingPrice: null, buildingSizeSF: 40_000, assetClass: 'multifamily', buildingGrade: null,
+    clearHeightFt: null, city: null, state: null, matchedRctMarket: null, yearBuilt: null,
+    valueAddSignals: [], notes: null,
+  }, rctBenchmark);
+  assert.equal(r.gateFailed, true);
+  assert.equal(r.insufficientData, false);
+  assert.equal(typeof r.finalScore, 'number');
+  assert.ok(r.finalScore <= 30);
+});
+
+// Pins the coverage boundary: dealSize (25) + buildingSize (20) + clearHeight (15) = exactly 60, which
+// must be scored; dealSize + buildingSize = 45 must be withheld. A flipped comparison would pass the
+// other tests (independent review, 2026-09-30).
+test('scoreDeal: exactly 60% coverage is scored, 45% is withheld', () => {
+  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const base = { assetClass: 'industrial', buildingGrade: 'B', city: null, state: null, matchedRctMarket: null, yearBuilt: null, valueAddSignals: [], notes: null };
+  const at60 = scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: 40_000, clearHeightFt: 20 }, rctBenchmark);
+  assert.equal(at60.coveragePct, 60);
+  assert.equal(at60.insufficientData, false);
+  assert.equal(typeof at60.finalScore, 'number');
+  const at45 = scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: 40_000, clearHeightFt: null }, rctBenchmark);
+  assert.equal(at45.coveragePct, 45);
+  assert.equal(at45.insufficientData, true);
+  assert.equal(at45.finalScore, null);
+});
+
+// Independent review 2026-10-01 (F1): the no-dollars test only exercised the above-floor outcome, so
+// the floor could be put back in the other two broker notes without any test failing. Derive prices
+// from the floor so each of the three outcomes is actually hit.
+test('scoreDeal: the broker-facing basis note carries no dollar figures in ANY of the three outcomes', () => {
+  const { scoreDeal } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+  const rctLow = rctBenchmark.marketToRctLowPerSF.Columbus;
+  const floorPerSF = rctLow * (1 - vintageFloorPct(1990, rctBenchmark.vintageFloor));
+  const sf = 10_000;
+  const askFor = (perSF) => Math.round((perSF * sf) / 1.02);
+  const basisFor = (perSF) => scoreDeal({
+    askingPrice: askFor(perSF), buildingSizeSF: sf, assetClass: 'industrial', buildingGrade: 'B',
+    clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
+    valueAddSignals: ['vacancy'], notes: null,
+  }, rctBenchmark).categories.find((c) => c.key === 'basis');
+
+  const full = basisFor(floorPerSF * 0.8);
+  const partial = basisFor(floorPerSF * 0.92);
+  const over = basisFor(floorPerSF * 1.1);
+  assert.equal(full.earned, 25, 'price 20% under the floor must earn full credit');
+  assert.ok(partial.earned > 0 && partial.earned < 25, `price 8% under the floor must earn partial credit, got ${partial.earned}`);
+  assert.equal(over.earned, 0, 'price 10% over the floor must earn nothing');
+  for (const [name, cat] of [['full', full], ['partial', partial], ['over', over]]) {
+    // No digits at all: a bare number such as the floor without a $ or /SF must not slip through either
+    // (independent review 2026-10-01: a bare-number leak passed the earlier $-only pattern).
+    assert.doesNotMatch(cat.note, /\d/, `${name}: public note must carry no figures at all`);
+    assert.match(cat.internalNote, /\$\d/, `${name}: the internal note keeps the figures for Gabriel and Eric`);
+  }
+});
+
+// Independent review 2026-10-01 (F2): the threshold was only pinned at 45 and 60, so any value from 46
+// to 60 passed. 55% (dealSize 25 + clearHeight 15 + complexity 15) must be withheld.
+test('scoreDeal: 55% coverage is withheld, so the threshold cannot drift below 60 unnoticed', () => {
+  const { scoreDeal } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+  const r = scoreDeal({
+    askingPrice: 2_000_000, buildingSizeSF: null, assetClass: 'industrial', buildingGrade: 'B',
+    clearHeightFt: 20, city: null, state: null, matchedRctMarket: null, yearBuilt: null,
+    valueAddSignals: ['vacancy', 'deferred_maintenance'], notes: null,
+  }, rctBenchmark);
+  assert.equal(r.coveragePct, 55);
+  assert.equal(r.insufficientData, true);
+  assert.equal(r.finalScore, null);
+});

@@ -49,7 +49,7 @@ test('evaluatePropertyTypeGate is NOT_VERIFIED when asset class is not stated', 
   assert.equal(evaluatePropertyTypeGate(undefined), 'NOT_VERIFIED');
 });
 
-test('evaluateMarketGate PASSes when the LLM matched one of the four RCT markets', () => {
+test('evaluateMarketGate PASSes when the LLM matched one of the RCT benchmark markets', () => {
   assert.equal(evaluateMarketGate('Columbus', 'Columbus', 'OH'), 'PASS');
 });
 
@@ -325,4 +325,112 @@ test('scoreDeal: 55% coverage is withheld, so the threshold cannot drift below 6
   assert.equal(r.coveragePct, 55);
   assert.equal(r.insufficientData, true);
   assert.equal(r.finalScore, null);
+});
+
+// Market gate extension (2026-10-01). The broker benchmark only knew 4 markets while the acquisition
+// engine's ratified RCT v3.1 table has 10 (Gabriel, replacement-cost.v3.1), so an OM in Cincinnati,
+// Madison, Grand Rapids, Richmond, Des Moines or Louisville was capped at 30 and labelled "Outside Core
+// Box" although the site says Oxford evaluates other Midwest and Mid-Atlantic markets.
+test('rct-benchmark.json carries every LOW $/SF figure of the ratified RCT v3.1 table (10 markets)', () => {
+  // Source: oxford-command-center config/replacement-cost.v3.json, rctVersion replacement-cost.v3.1.
+  // Site keys: 'Maryland' is the engine's 'Mid-Atlantic'; the others drop the state suffix.
+  const expected = {
+    Maryland: 232.97, Columbus: 229.65, 'Kansas City': 227.90, Indianapolis: 253.83,
+    Cincinnati: 251.46, Madison: 229.08, 'Grand Rapids': 253.11, Richmond: 232.97,
+    'Des Moines': 231.66, Louisville: 237.07,
+  };
+  assert.deepEqual(rctBenchmark.marketToRctLowPerSF, expected);
+});
+
+test('the extractor enum is derived from the benchmark keys, so the two can never drift apart', () => {
+  const { EXTRACTION_TOOL } = require('../../../netlify/functions/_shared/broker-llm-extract.js');
+  const en = EXTRACTION_TOOL.input_schema.properties.matchedRctMarket.enum;
+  assert.deepEqual(en.filter((x) => x !== null).sort(), Object.keys(rctBenchmark.marketToRctLowPerSF).sort());
+  assert.ok(en.includes(null), 'null must stay valid for an unmatched market');
+  const desc = EXTRACTION_TOOL.input_schema.properties.matchedRctMarket.description;
+  for (const m of Object.keys(rctBenchmark.marketToRctLowPerSF)) assert.ok(desc.includes(m), `description must name ${m}`);
+  assert.doesNotMatch(desc, /\bfour\b/i, 'the description must not hard-code a market count');
+});
+
+test('every benchmark market passes the gate and gets a basis score instead of the 30 cap', () => {
+  const { scoreDeal } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+  for (const [market, low] of Object.entries(rctBenchmark.marketToRctLowPerSF)) {
+    // The floor is (1 - vintage pct) of the market's replacement cost LOW; price at half of it so the
+    // basis category earns full credit in every market whatever its figure is.
+    const floorPerSF = low * (1 - vintageFloorPct(1990, rctBenchmark.vintageFloor));
+    const sf = 10_000;
+    const r = scoreDeal({
+      askingPrice: Math.round((0.5 * floorPerSF * sf) / 1.02), buildingSizeSF: sf, assetClass: 'industrial', buildingGrade: 'B',
+      clearHeightFt: 20, city: market, state: 'XX', matchedRctMarket: market, yearBuilt: 1990,
+      valueAddSignals: ['vacancy'], notes: null,
+    }, rctBenchmark);
+    assert.equal(r.gates.market, 'PASS', `${market}: market gate`);
+    assert.equal(r.gateFailed, false, `${market}: must not be capped`);
+    const basis = r.categories.find((c) => c.key === 'basis');
+    assert.equal(basis.excluded, false, `${market}: basis must be computed`);
+    assert.equal(basis.earned, 25, `${market}: a price at half the floor earns full basis credit`);
+  }
+});
+
+test('a proxy benchmark market is flagged in the internal note only, never in the public note', () => {
+  const { scoreDeal } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+  assert.ok(Array.isArray(rctBenchmark.proxyMarkets) && rctBenchmark.proxyMarkets.length > 0);
+  const deal = (market) => scoreDeal({
+    askingPrice: 1_500_000, buildingSizeSF: 10_000, assetClass: 'industrial', buildingGrade: 'B',
+    clearHeightFt: 20, city: market, state: 'XX', matchedRctMarket: market, yearBuilt: 1990,
+    valueAddSignals: ['vacancy'], notes: null,
+  }, rctBenchmark).categories.find((c) => c.key === 'basis');
+  for (const m of rctBenchmark.proxyMarkets) {
+    assert.match(deal(m).internalNote, /proxy/i, `${m}: internal note must say the benchmark is a proxy`);
+    assert.doesNotMatch(deal(m).note, /proxy/i, `${m}: public note must not`);
+  }
+  assert.doesNotMatch(deal('Columbus').internalNote, /proxy/i, 'a directly sourced market is not flagged');
+});
+
+// Independent review 2026-10-01, F1: the proxy test only exercised the above-floor branch, so a leak of
+// "proxy" into the public note, or drift of the proxy list, in the other two outcomes passed. Sweep all
+// three outcomes for every market and pin the proxy list to the engine's ratified flags.
+test('proxy markets are pinned to the engine list and never leak into a public note in ANY outcome', () => {
+  const { scoreDeal } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+  assert.deepEqual([...rctBenchmark.proxyMarkets].sort(), ['Des Moines', 'Grand Rapids', 'Madison', 'Richmond']);
+  for (const [market, low] of Object.entries(rctBenchmark.marketToRctLowPerSF)) {
+    const floorPerSF = low * (1 - vintageFloorPct(1990, rctBenchmark.vintageFloor));
+    const sf = 10_000;
+    for (const mult of [0.8, 0.92, 1.1]) {
+      const basis = scoreDeal({
+        askingPrice: Math.round((mult * floorPerSF * sf) / 1.02), buildingSizeSF: sf, assetClass: 'industrial', buildingGrade: 'B',
+        clearHeightFt: 20, city: market, state: 'XX', matchedRctMarket: market, yearBuilt: 1990,
+        valueAddSignals: ['vacancy'], notes: null,
+      }, rctBenchmark).categories.find((c) => c.key === 'basis');
+      assert.doesNotMatch(basis.note, /proxy|\d/i, `${market} x${mult}: public note must carry neither "proxy" nor a digit`);
+      const isProxy = rctBenchmark.proxyMarkets.includes(market);
+      assert.equal(/proxy/i.test(basis.internalNote), isProxy, `${market} x${mult}: internal note proxy flag must be ${isProxy}`);
+    }
+  }
+});
+
+// Independent review 2026-10-01, F2 (pre-existing hole): evaluateMarketGate passed ANY non-empty string,
+// so an LLM answer outside the enum (for example "Phoenix") got a gate PASS and an uncapped score. The
+// engine now treats a market that is not a benchmark key as unmatched.
+test('a matchedRctMarket that is not a benchmark market is treated as unmatched, so the gate still fails and caps', () => {
+  const { scoreDeal } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+  const base = {
+    askingPrice: 1_000_000, buildingSizeSF: 20_000, assetClass: 'industrial', buildingGrade: 'B',
+    clearHeightFt: 20, yearBuilt: 1990, valueAddSignals: ['vacancy', 'deferred_maintenance'], notes: null,
+  };
+  const phoenix = scoreDeal({ ...base, city: 'Phoenix', state: 'AZ', matchedRctMarket: 'Phoenix' }, rctBenchmark);
+  assert.equal(phoenix.gates.market, 'FAIL');
+  assert.equal(phoenix.gateFailed, true);
+  assert.ok(phoenix.finalScore <= 30, `expected the 30 cap, got ${phoenix.finalScore}`);
+  assert.equal(phoenix.categories.find((c) => c.key === 'basis').excluded, true, 'no benchmark, so basis is excluded');
+  const noLocation = scoreDeal({ ...base, city: null, state: null, matchedRctMarket: 'Phoenix' }, rctBenchmark);
+  assert.equal(noLocation.gates.market, 'NOT_VERIFIED');
+  assert.equal(noLocation.gateFailed, false);
+  const hit = scoreDeal({ ...base, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus' }, rctBenchmark);
+  assert.equal(hit.gates.market, 'PASS');
+  const inherited = scoreDeal({ ...base, city: 'X', state: 'Y', matchedRctMarket: 'constructor' }, rctBenchmark);
+  assert.equal(inherited.gates.market, 'FAIL', 'prototype keys must not count as markets');
+  // scoreBasis must also see the guarded value, else an inherited function leaks in and the score goes NaN.
+  assert.equal(inherited.categories.find((c) => c.key === 'basis').excluded, true);
+  assert.ok(Number.isFinite(inherited.finalScore));
 });

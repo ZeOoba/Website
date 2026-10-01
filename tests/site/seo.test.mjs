@@ -376,7 +376,7 @@ test('WP-13 the tenant-application form loads script.js and application-script.j
   // never left the page. Behaviour is pinned in form-validator.test.mjs; this
   // pins the source-level guard so a re-minify cannot drop it.
   const js = read('script.js');
-  assert.match(js, /addEventListener\("submit",function\((\w+)\)\{if\(\1\.defaultPrevented\)return;/, 'script.js submit handler must return early on a defaultPrevented event');
+  assert.match(js, /addEventListener\(\s*"submit"\s*,\s*function\s*\(\s*(\w+)\s*\)\s*\{\s*if\s*\(\s*\1\.defaultPrevented\s*\)\s*\{?\s*return/, 'script.js submit handler must return early on a defaultPrevented event');
 });
 
 test('WP-17 CSP connect-src allows the exact Netlify RUM collector host, and only there, with no wildcard', () => {

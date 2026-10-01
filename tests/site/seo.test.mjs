@@ -437,3 +437,44 @@ test('WP-16 the broker/owner deal-submission response promise is unified to 1 bu
     assert.ok(!/within 48 hours/i.test(read(file)), `${file} still promises a response "within 48 hours"`);
   }
 });
+
+// ── 2026-09-28 copy & lead-gen pass (Phase 4a of the fix plan) ──────────────
+
+test('WP-20 the leasing application and its confirmation page do not show the acquisitions rotator to a tenant', () => {
+  for (const file of ['tenant-application.html', 'application-received.html']) {
+    const html = read(file);
+    assert.ok(!/What We(?:'|&rsquo;)re Buying Now|Actively seeking \$1M/i.test(html), `${file} still shows the acquisitions announcement bar to a prospective tenant`);
+    assert.match(html, /class="announcement-bar__label">Now Leasing</, `${file}: announcement bar should read "Now Leasing"`);
+  }
+});
+
+test('WP-21 the lease application labels rent and deposit as the applicant\'s proposal and states the response time up front', () => {
+  const html = read('tenant-application.html');
+  assert.match(html, /for="monthly-rent">Proposed Monthly Rent/);
+  assert.match(html, /for="security-deposit">Proposed Security Deposit/);
+  assert.match(html, /respond within 2 business days of submission/, 'response time must be stated before the applicant submits');
+  assert.equal((html.match(/N\/A for any items that do not apply|please put N\/A/gi) || []).length, 1, 'the N/A instruction is stated once, not restated');
+  assert.match(read('application-received.html'), /If we(?:'|&rsquo;)re unable to move forward, we(?:'|&rsquo;)ll email you either way/, 'confirmation page must cover the not-approved path');
+});
+
+test('WP-22 the four owner guides close with four different calls to action, and the 1031 guide carries a worked example', () => {
+  const closers = new Map();
+  for (const f of ['selling-industrial-building-without-a-broker', 'how-industrial-buildings-are-valued', '1031-exchange-industrial-property-guide', 'industrial-building-sale-document-checklist']) {
+    const html = read(`resources/${f}.html`);
+    const p = html.match(/<p style="[^"]*max-width:600px">(Oxford Realty Advisors buys[^<]*)<\/p>/)?.[1];
+    assert.ok(p, `${f}: closing CTA paragraph not found`);
+    closers.set(f, p);
+  }
+  assert.equal(new Set(closers.values()).size, closers.size, 'two guides share a verbatim closing CTA');
+  const g = read('resources/1031-exchange-industrial-property-guide.html');
+  assert.match(g, /<h3>A worked example<\/h3>/);
+  for (const n of ['$2,000,000', '$700,000', '$1,300,000', '$1,500,000', '$2,300,000', '$1,000,000', '$200,000', '$1,100,000']) {
+    assert.ok(g.includes(n), `1031 worked example is missing ${n}`);
+  }
+});
+
+test('WP-23 contact.html names an acquisitions contact (Gabriel Goldberg, VP Acquisitions)', () => {
+  const html = read('contact.html');
+  assert.match(html, /Gabriel Goldberg, VP Acquisitions/);
+  assert.match(html, /href="mailto:ggoldberg@oxfordra\.net"/);
+});

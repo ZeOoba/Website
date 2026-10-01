@@ -73,15 +73,35 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
   const floorPct = vintageFloorPct(yearBuilt, rctBenchmark.vintageFloor);
   const floorPerSF = rctLow * (1 - floorPct);
   const impliedPricePerSF = (askingPrice * 1.02) / buildingSizeSF;
+  // `note` is what the BROKER sees (broker-score-status returns it). It must never carry the floor or
+  // the implied basis in dollars (2026-09-30 audit). `internalNote` keeps the figures for the
+  // Gabriel/Eric email and the ledger only.
+  // RESIDUAL, accepted and documented: this removes the direct print, not the inference. The broker
+  // also sees `earned` for this category and the total score, and both are functions of the floor, so
+  // repeated submissions can still narrow it (an independent review recovered it to about +/-0.3% from
+  // a single submission landing in the 85-100% band). The per-IP rate limit and daily cap slow that; they
+  // do not stop it. Closing it fully means not showing the broker the basis row or score at all.
   if (impliedPricePerSF > floorPerSF) {
-    return { possible, earned: 0, note: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF exceeds the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF for ${matchedRctMarket} — does not clear ORA's replacement-cost discipline.` };
+    return {
+      possible, earned: 0,
+      note: 'Implied basis is above the replacement-cost floor for this market and vintage — does not clear ORA\'s replacement-cost discipline.',
+      internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF exceeds the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF for ${matchedRctMarket} — does not clear ORA's replacement-cost discipline.`,
+    };
   }
   const comfortableFloor = floorPerSF * 0.85;
   if (impliedPricePerSF <= comfortableFloor) {
-    return { possible, earned: possible, note: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF clears the RCT v03 floor with meaningful margin.` };
+    return {
+      possible, earned: possible,
+      note: 'Implied basis clears the replacement-cost floor with meaningful margin.',
+      internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF clears the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF with meaningful margin.`,
+    };
   }
   const t = (floorPerSF - impliedPricePerSF) / (floorPerSF - comfortableFloor);
-  return { possible, earned: Math.round(t * possible), note: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF clears the RCT v03 floor but not comfortably.` };
+  return {
+    possible, earned: Math.round(t * possible),
+    note: 'Implied basis clears the replacement-cost floor but not comfortably.',
+    internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF clears the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF but not comfortably.`,
+  };
 }
 
 function scoreComplexity(valueAddSignals) {
@@ -94,6 +114,9 @@ function scoreComplexity(valueAddSignals) {
   if (realSignals.length === 1) return { possible, earned: Math.round(possible * 0.5), note: `One value-add signal present: ${realSignals[0]}.` };
   return { possible, earned: 0, note: 'Fully stabilized, turnkey asset — limited value-add angle for ORA\'s underwriting edge.' };
 }
+
+// Minimum share of the 100 scoring points that must have been extractable before a score is shown.
+const MIN_COVERAGE_PCT = 60;
 
 function scoreDeal(extracted, rctBenchmark) {
   const propertyTypeGate = evaluatePropertyTypeGate(extracted.assetClass);
@@ -109,18 +132,30 @@ function scoreDeal(extracted, rctBenchmark) {
   ];
 
   const included = rawCategories.filter((c) => !c.excluded);
+  const totalPossible = rawCategories.reduce((s, c) => s + c.possible, 0);
   const includedPossible = included.reduce((s, c) => s + c.possible, 0);
   const rawSum = included.reduce((s, c) => s + c.earned, 0);
   const rawWeightedScore = includedPossible > 0 ? Math.round((rawSum / includedPossible) * 100) : 0;
-  const finalScore = gateFailed ? Math.min(rawWeightedScore, 30) : rawWeightedScore;
+  const coveragePct = Math.round((includedPossible / totalPossible) * 100);
+  // The score renormalizes over only the categories that extracted, so a near-empty OM could print 0 or
+  // 100 with nothing to show how little was read (2026-09-30 audit). Below the coverage floor the score is
+  // withheld. A gate FAIL is exempt: "outside the core box" does not depend on coverage. Note what a FAIL
+  // means here: a non-industrial asset class, or an extracted city/state that is not one of the markets in
+  // the RCT benchmark. It does NOT mean the OM was fully read, so a thin OM where only a city outside those
+  // markets was extracted still shows the broker a capped score at low coverage. Kept deliberately
+  // (owner decision 2026-10-01, independent review F1): a city outside the benchmark markets is outside the box.
+  const insufficientData = !gateFailed && coveragePct < MIN_COVERAGE_PCT;
+  const finalScore = insufficientData ? null : (gateFailed ? Math.min(rawWeightedScore, 30) : rawWeightedScore);
 
   return {
     finalScore,
+    coveragePct,
+    insufficientData,
     gates: { propertyType: propertyTypeGate, market: marketGate },
     gateFailed,
     categories: rawCategories.map((c) => ({
       key: c.key, label: c.label, possible: c.possible, excluded: !!c.excluded,
-      earned: c.excluded ? null : c.earned, note: c.note,
+      earned: c.excluded ? null : c.earned, note: c.note, internalNote: c.internalNote || c.note,
     })),
   };
 }

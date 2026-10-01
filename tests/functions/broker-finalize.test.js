@@ -309,6 +309,27 @@ test('never calls checkAndRecordDailyCapImpl when the per-IP rate limit already 
   assert.equal(dailyCapCallCount, 0, 'a rate-limited IP must never consume a slot of the shared daily cap');
 }));
 
+// 2026-09-30 audit (oxfordra.net item 5): the contact row was written before the submission id
+// existed, so the contact row and the later score row shared no field and could not be joined.
+test('the contact ledger row carries the same submission-id that is returned to the broker', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-30_Acme_jo01/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  let ledgerBody = null;
+  const fetchImpl = async (url, opts = {}) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url.includes('/.netlify/functions/broker-score-background')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') { ledgerBody = new URLSearchParams(opts.body); return { ok: true, status: 200 }; }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await callFinalize(event, { fetchImpl, ...allowAll });
+  const body = JSON.parse(res.body);
+  assert.equal(res.statusCode, 200);
+  assert.ok(ledgerBody, 'the ledger row must have been posted');
+  assert.equal(ledgerBody.get('submission-id'), body.submissionId);
+}));
+
 // The ledger write used to be fire-and-forget with no trace at all: a Netlify
 // Forms hiccup dropped the row silently. It must now land in pipeline-failures,
 // but stay non-blocking — the broker still succeeds and Gabriel/Eric still get
@@ -335,4 +356,42 @@ test('a failed ledger write is logged to pipeline-failures but does not block th
   assert.equal(failureRows.length, 1, 'exactly one pipeline-failures row for the failed ledger write');
   assert.ok(failureRows[0].includes('error-code=ledger_write_failed'), 'the row must carry the ledger_write_failed code');
   assert.ok(failureRows[0].includes('source-function=broker-finalize'));
+}));
+
+// Independent review 2026-10-01 (F3): the id is minted before the contact write, but the pipeline-failures
+// rows logged after that point still recorded an empty submission-id, so they could not be joined.
+test('failure rows logged after the id exists carry that submission-id (ledger write failure and email failure)', () => withEnv(ENV, async () => {
+  const run = async (failWhat) => {
+    const token = signIntakeToken({ type: 'upload', path: `Broker Submissions/2026-10-01_Acme_${failWhat}/om.pdf`, size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+    const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+    const failureRows = [];
+    let ledgerId = null;
+    const fetchImpl = async (url, opts = {}) => {
+      if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+      if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+      if (url.includes('sendMail')) return failWhat === 'email' ? { ok: false, status: 503 } : { ok: true, status: 202 };
+      if (url.includes('/.netlify/functions/broker-score-background')) return { ok: true, status: 202 };
+      if (url === 'https://oxfordra.net/') {
+        const body = new URLSearchParams(String(opts.body || ''));
+        if (body.get('form-name') === 'pipeline-failures') { failureRows.push(body); return { ok: true, status: 200 }; }
+        if (body.get('form-name') === 'broker-network-ledger') { ledgerId = body.get('submission-id'); return failWhat === 'ledger' ? { ok: false, status: 500 } : { ok: true, status: 200 }; }
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+    const res = await callFinalize(event, { fetchImpl, ...allowAll });
+    return { res, failureRows, ledgerId };
+  };
+
+  const ledger = await run('ledger');
+  assert.equal(ledger.res.statusCode, 200);
+  const lrow = ledger.failureRows.find((r) => r.get('error-code') === 'ledger_write_failed');
+  assert.ok(lrow, 'a ledger_write_failed row must be logged');
+  assert.ok(ledger.ledgerId, 'the contact row must carry an id');
+  assert.equal(lrow.get('submission-id'), ledger.ledgerId);
+
+  const email = await run('email');
+  assert.equal(email.res.statusCode, 502);
+  const erow = email.failureRows.find((r) => r.get('error-code') === 'email_failed');
+  assert.ok(erow, 'an email_failed row must be logged');
+  assert.equal(erow.get('submission-id'), email.ledgerId);
 }));

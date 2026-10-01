@@ -33,9 +33,10 @@ function json(status, body) {
 const ok = (body) => json(200, body);
 const fail = (status, error) => json(status, { ok: false, error });
 
-function logFailure(fetchImpl, { errorCode, detail }) {
+// submissionId is only known once the id is minted (after the upload checks), so earlier failures log ''.
+function logFailure(fetchImpl, { errorCode, detail, submissionId = '' }) {
   const siteUrl = process.env.URL || 'https://oxfordra.net';
-  return forwardToNetlifyForm(siteUrl, 'pipeline-failures', { 'source-function': 'broker-finalize', 'error-code': errorCode, 'submission-id': '', detail: detail || '', 'occurred-at': new Date().toISOString() }, { fetchImpl });
+  return forwardToNetlifyForm(siteUrl, 'pipeline-failures', { 'source-function': 'broker-finalize', 'error-code': errorCode, 'submission-id': submissionId, detail: detail || '', 'occurred-at': new Date().toISOString() }, { fetchImpl });
 }
 
 // V2 hands us a Headers object rather than V1's plain lower-cased object.
@@ -116,7 +117,7 @@ export async function handleBrokerFinalize(req, {
   // had no durable trace at all.
   const ledgerOk = await forwardToNetlifyForm(siteUrl, 'broker-network-ledger', { ...fields, 'submission-id': submissionId, 'document-path': claims.path }, { fetchImpl });
   if (!ledgerOk) {
-    await logFailure(fetchImpl, { errorCode: 'ledger_write_failed', detail: claims.path });
+    await logFailure(fetchImpl, { errorCode: 'ledger_write_failed', detail: claims.path, submissionId });
   }
 
   try {
@@ -124,7 +125,7 @@ export async function handleBrokerFinalize(req, {
     await sendMail({ subject, html, to: ['ggoldberg@oxfordra.net', 'egoldberg@oxfordra.net'] }, { fetchImpl });
   } catch (err) {
     console.error('[broker-finalize] email failed', String(err));
-    await logFailure(fetchImpl, { errorCode: 'email_failed', detail: String(err) });
+    await logFailure(fetchImpl, { errorCode: 'email_failed', detail: String(err), submissionId });
     // The token was burned above; give it back so the broker's retry (same
     // intakeToken, see broker-upload.js) can complete instead of hitting 409.
     try { await releaseIntakeTokenImpl(claims.path, {}); }

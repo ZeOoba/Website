@@ -76,3 +76,11 @@ test('renderScoreFollowupEmail says the score was withheld when data is insuffic
   assert.doesNotMatch(subject, /null|100\/100/);
   assert.doesNotMatch(html, /null\/100/);
 });
+
+// Independent review 2026-10-01 (F7): the new coverage row had no label, so the raw key was shown.
+test('renderScoreFollowupEmail labels the coverage row instead of showing the raw key', () => {
+  const score = { finalScore: 70, coveragePct: 85, insufficientData: false, gates: { propertyType: 'PASS', market: 'PASS' }, gateFailed: false, categories: [] };
+  const { html } = renderScoreFollowupEmail({ fields: { company: 'Acme Co' }, score });
+  assert.match(html, /Scorecard Coverage/);
+  assert.doesNotMatch(html, /scorecard-coverage/);
+});

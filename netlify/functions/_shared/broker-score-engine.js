@@ -139,7 +139,11 @@ function scoreDeal(extracted, rctBenchmark) {
   const coveragePct = Math.round((includedPossible / totalPossible) * 100);
   // The score renormalizes over only the categories that extracted, so a near-empty OM could print 0 or
   // 100 with nothing to show how little was read (2026-09-30 audit). Below the coverage floor the score is
-  // withheld. A VERIFIED gate failure is exempt: "outside the core box" does not depend on coverage.
+  // withheld. A gate FAIL is exempt: "outside the core box" does not depend on coverage. Note what a FAIL
+  // means here: a non-industrial asset class, or an extracted city/state that is not one of the markets in
+  // the RCT benchmark. It does NOT mean the OM was fully read, so a thin OM where only a city outside those
+  // markets was extracted still shows the broker a capped score at low coverage. Kept deliberately
+  // (owner decision 2026-10-01, independent review F1): a city outside the benchmark markets is outside the box.
   const insufficientData = !gateFailed && coveragePct < MIN_COVERAGE_PCT;
   const finalScore = insufficientData ? null : (gateFailed ? Math.min(rawWeightedScore, 30) : rawWeightedScore);
 

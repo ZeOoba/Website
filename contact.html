@@ -222,6 +222,10 @@ body{padding-top:36px}.nav{top:36px!important}
 <h3>Email</h3>
 <p><a href="mailto:info@oxfordra.net">info@oxfordra.net</a></p>
 </div>
+<div class="contact-info__item">
+<h3>Acquisitions</h3>
+<p>Gabriel Goldberg, VP Acquisitions<br><a href="mailto:ggoldberg@oxfordra.net">ggoldberg@oxfordra.net</a></p>
+</div>
 </div>
 <nav class="contact-routes" aria-label="Faster routes">
 <h3>Faster Routes</h3>
@@ -233,7 +237,7 @@ body{padding-top:36px}.nav{top:36px!important}
 </div>
 <!-- Contact Form -->
 <div class="animate-on-scroll">
-<form method="POST" name="contact" id="contactForm" data-netlify="true" netlify-honeypot="bot-field">
+<form method="POST" name="contact" id="contactForm" data-netlify="true" netlify-honeypot="bot-field" data-netlify-recaptcha="true">
 <input type="hidden" name="form-name" value="contact">
 <p class="hidden" aria-hidden="true"><label>Don't fill this out: <input name="bot-field" tabindex="-1" autocomplete="off" aria-hidden="true"></label></p>
 <div class="form-row">
@@ -265,9 +269,55 @@ body{padding-top:36px}.nav{top:36px!important}
 <label for="contact-message">Message <span class="required" aria-hidden="true">*</span></label>
 <textarea id="contact-message" name="message" rows="5" required aria-required="true"></textarea>
 </div>
+<div class="form-group">
+<div data-netlify-recaptcha="true"></div>
+</div>
 <button type="submit" class="btn btn--gold btn--full">Send Message</button>
 <div class="form-success" id="contactSuccess" role="alert" style="display:none;">Thank you for reaching out! We'll respond within one business day.</div>
+<div class="form-error" id="contactError" role="alert" style="display:none;color:#B0432F;margin-top:12px;"></div>
 </form>
+<script>
+(function(){
+  var form = document.getElementById('contactForm');
+  if(!form) return;
+  // Listen on document so this runs after script.js's per-form validator,
+  // which calls preventDefault() when a field is invalid.
+  document.addEventListener('submit', function(e){
+    if(e.target !== form || e.defaultPrevented) return;
+    e.preventDefault();
+    var btn = form.querySelector('[type="submit"]');
+    var success = document.getElementById('contactSuccess');
+    var errorBox = document.getElementById('contactError');
+    errorBox.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    var params = new URLSearchParams();
+    new FormData(form).forEach(function(value, key){ params.append(key, value); });
+
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    }).then(function(res){
+      if(!res.ok){ throw new Error('status ' + res.status); }
+      // Hide the fields, not the form: the success message lives inside it.
+      Array.prototype.forEach.call(form.children, function(el){
+        if(el !== success){ el.style.display = 'none'; }
+      });
+      success.style.display = '';
+      // The form collapses to one line, so bring the message into view.
+      success.scrollIntoView({ block: 'center' });
+      if(window.gtag){ window.gtag('event', 'contact_form_submit', { event_category: 'lead', event_label: form.querySelector('[name="subject"]') ? form.querySelector('[name="subject"]').value : '' }); }
+    }).catch(function(err){
+      errorBox.textContent = 'Something went wrong sending your message. Please email info@oxfordra.net or call 301.512.6125. (' + (err && err.message ? err.message : 'unknown error') + ')';
+      errorBox.style.display = '';
+      btn.disabled = false;
+      btn.textContent = 'Send Message';
+    });
+  });
+})();
+</script>
 </div>
 
 

@@ -39,9 +39,9 @@
 
 <!-- CSS -->
 <link rel="preload" as="image" type="image/avif" href="/images/01-2800-2826-banwick-exterior.avif" imagesrcset="/images/01-2800-2826-banwick-exterior-480w.avif 480w, /images/01-2800-2826-banwick-exterior.avif 800w" imagesizes="100vw" fetchpriority="high">
-<link rel="preload" as="style" href="/styles.css?v=19">
-<link rel="stylesheet" href="/styles.css?v=19" media="print" id="styles-css-async">
-<noscript><link rel="stylesheet" href="/styles.css?v=19"></noscript>
+<link rel="preload" as="style" href="/styles.css?v=20">
+<link rel="stylesheet" href="/styles.css?v=20" media="print" id="styles-css-async">
+<noscript><link rel="stylesheet" href="/styles.css?v=20"></noscript>
 <script>(function(){var l=document.getElementById("styles-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 <link rel="dns-prefetch" href="https://www.googletagmanager.com">
 
@@ -562,10 +562,10 @@ body{padding-top:36px}.nav{top:36px!important}
 .t-rotator__arrow{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.85);border-radius:50%;cursor:pointer;flex-shrink:0;transition:all .25s ease}
 .t-rotator__arrow:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,.08)}
 .t-rotator__arrow:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
-.t-rotator__dots{grid-column:1/-1;display:flex;justify-content:center;gap:10px;margin-top:32px}
-.t-rotator__dot{width:8px;height:8px;padding:0;border-radius:50%;background:rgba(255,255,255,.22);border:0;cursor:pointer;transition:all .35s cubic-bezier(0.4,0.0,0.2,1)}
+.t-rotator__dots{grid-column:1/-1;display:flex;justify-content:center;gap:0;margin-top:24px}
+.t-rotator__dot{box-sizing:border-box;width:24px;height:24px;padding:8px;border-radius:50%;background:rgba(255,255,255,.22);background-clip:content-box;border:0;cursor:pointer;transition:all .35s cubic-bezier(0.4,0.0,0.2,1)}
 .t-rotator__dot:hover{background:rgba(255,255,255,.45)}
-.t-rotator__dot[aria-selected="true"]{background:var(--gold);width:28px;border-radius:4px}
+.t-rotator__dot[aria-selected="true"]{background:var(--gold);background-clip:content-box;width:44px;border-radius:12px}
 .t-rotator__dot:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 @media(max-width:768px){
   .t-rotator{grid-template-columns:1fr;gap:0}

@@ -66,6 +66,27 @@ test('CSP-6 the script finder is not fooled by look-alike attributes, quoted ">"
   assert.match(hashOf('E\nF'), /^'sha256-[A-Za-z0-9+/]{43}='$/);
 });
 
+test('CSP-7 unpkg.com is allowed only for the exact files the pages load, never as a whole host', () => {
+  const csp = headers.match(/Content-Security-Policy:\s*([^\r\n]*)/)?.[1] ?? '';
+  const directive = (name) => (csp.split(';').map((d) => d.trim()).find((d) => d.startsWith(`${name} `)) ?? '').split(/\s+/).slice(1);
+  const scriptSrc = directive('script-src');
+  const styleSrc = directive('style-src');
+  for (const [name, list] of [['script-src', scriptSrc], ['style-src', styleSrc]]) {
+    for (const t of list.filter((x) => x.includes('unpkg.com'))) {
+      assert.match(t, /^https:\/\/unpkg\.com\/[^/\s]+\/.*[^/]$/, `${name} allows "${t}": a bare host or directory lets anyone's package on unpkg run on this site; allow the exact file`);
+    }
+  }
+  const used = { script: new Set(), style: new Set() };
+  for (const file of htmlPages(ROOT)) {
+    const html = readFileSync(path.join(ROOT, file), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    for (const m of html.matchAll(/<script\b[^>]*\ssrc=["'](https:\/\/unpkg\.com\/[^"']+)["']/gi)) used.script.add(m[1]);
+    for (const m of html.matchAll(/<link\b[^>]*\shref=["'](https:\/\/unpkg\.com\/[^"']+)["'][^>]*>/gi)) if (/rel=["']stylesheet["']|as=["']style["']/i.test(m[0])) used.style.add(m[1]);
+  }
+  assert.ok(used.script.size + used.style.size > 0, 'no unpkg usage found: if Leaflet moved off unpkg, drop its CSP tokens and this test');
+  for (const u of used.script) assert.ok(scriptSrc.includes(u), `a page loads ${u} but script-src does not allow that exact file, so it is blocked on the live site`);
+  for (const u of used.style) assert.ok(styleSrc.includes(u), `a page loads ${u} but style-src does not allow that exact file, so it is blocked on the live site`);
+});
+
 test('CSP-5 the injection-hardening directives are still there (a hash list is only worth having next to them)', () => {
   const csp = headers.match(/Content-Security-Policy:\s*([^\r\n]*)/)?.[1] ?? '';
   for (const d of ["object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'"]) assert.ok(csp.includes(d), `CSP lost "${d}"`);

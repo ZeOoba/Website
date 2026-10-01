@@ -74,6 +74,7 @@ const CMDS = {
   integ: test('site-integrity.test.mjs'),
   seo: test('seo.test.mjs', 'seo-entity.test.mjs'),
   nav: test('mobile-nav.test.mjs'),
+  budget: test('upload-budget.test.mjs'),
   verify: ['scripts/verify-jsonld.mjs'],
   build: ['scripts/build-dist.mjs'],
   // probe: the build must fail AND leave no dist/ behind
@@ -99,7 +100,7 @@ for (const step of [['scripts/build-listings.mjs', '--check'], ['scripts/build-k
 }
 let baselineBad = 0;
 console.log('== baseline (unmodified copy)');
-for (const cmd of ['forms', 'integ', 'seo', 'verify', ...(HAVE_BROWSER ? ['nav'] : [])]) {
+for (const cmd of ['forms', 'integ', 'seo', 'verify', ...(HAVE_BROWSER ? ['nav', 'budget'] : [])]) {
   const r = run(cmd);
   console.log(`  ${cmd}: exit ${r.status}`);
   if (r.status !== 0) { baselineBad++; console.log(r.out.slice(-2500)); }
@@ -114,7 +115,7 @@ console.log('== mutations');
 for (const c of CASES) {
   const label = `${c.id} ${c.what}`;
   if (ONLY && !ONLY.test(label)) continue;
-  if (c.run === 'nav' && !HAVE_BROWSER) { problem('skipped', `SKIPPED  ${label} (no playwright)`); continue; }
+  if ((c.run === 'nav' || c.run === 'budget') && !HAVE_BROWSER) { problem('skipped', `SKIPPED  ${label} (no playwright)`); continue; }
   const saved = [];
   let r;
   try {

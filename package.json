@@ -9,7 +9,7 @@
     "serve": "node scripts/serve-dist.mjs --port 8788",
     "verify:jsonld": "node scripts/verify-jsonld.mjs",
     "test:unit": "node scripts/run-unit-tests.mjs",
-    "test:site": "node --test tests/site/recaptcha-sitekey.test.mjs tests/site/csp-smoke.test.mjs tests/site/serve-dist-args.test.mjs tests/site/seo.test.mjs tests/site/seo-entity.test.mjs tests/site/analytics.test.mjs tests/site/netlify-forms.test.mjs tests/site/form-validator.test.mjs tests/site/site-integrity.test.mjs tests/site/mobile-nav.test.mjs tests/site/client-robustness.test.mjs",
+    "test:site": "node --test tests/site/recaptcha-sitekey.test.mjs tests/site/csp-smoke.test.mjs tests/site/serve-dist-args.test.mjs tests/site/seo.test.mjs tests/site/seo-entity.test.mjs tests/site/analytics.test.mjs tests/site/netlify-forms.test.mjs tests/site/form-validator.test.mjs tests/site/site-integrity.test.mjs tests/site/mobile-nav.test.mjs tests/site/client-robustness.test.mjs tests/site/upload-budget.test.mjs",
     "test:functions": "node --test tests/site/functions-smoke.test.mjs",
     "test:shim": "node --test tests/site/netlify-shim-patch.test.mjs",
     "test:mutation": "node tests/mutation/run.mjs",

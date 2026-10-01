@@ -42,7 +42,7 @@
   <link rel="preload" as="style" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print" id="leaflet-css-async" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin>
   <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin></noscript>
-  <script>(function(){var l=document.getElementById("leaflet-css-async");if(l){var f=function(){l.media="all";l.removeAttribute("id")};if(l.sheet){f()}else{l.addEventListener("load",f)}}})();</script>
+  <script>(function(){var l=document.getElementById("leaflet-css-async");if(l){requestAnimationFrame(function(){l.media="all";l.removeAttribute("id")})}})();</script>
 <!-- Stylesheets -->
   <link rel="preload" as="style" href="/styles.css?v=20">
   <link rel="stylesheet" href="/styles.css?v=20" media="print" id="styles-css-async">

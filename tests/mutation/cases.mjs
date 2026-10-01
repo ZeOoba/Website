@@ -57,6 +57,7 @@ export const CASES = [
   { id: 'W14b', what: 'the RUM allowance is widened to a *.nsvcs.net wildcard', edits: [['_headers', sub('https://ingesteer.services-prod.nsvcs.net;', 'https://*.nsvcs.net;')]], run: 'seo', expect: 'RUM collector host' },
   { id: 'W14c', what: 'the RUM host is also allowed as a script source', edits: [['_headers', sub('https://netlify-rum.netlify.app; style-src', 'https://netlify-rum.netlify.app https://ingesteer.services-prod.nsvcs.net; style-src')]], run: 'seo', expect: 'RUM collector host' },
   { id: 'W14d', what: 'the host is moved into a second connect-src while the real one drops it (browsers ignore the repeat)', edits: [['_headers', sub(" https://ingesteer.services-prod.nsvcs.net; frame-src 'self' https://www.google.com/recaptcha/;", "; frame-src 'self' https://www.google.com/recaptcha/; connect-src https://ingesteer.services-prod.nsvcs.net;")]], run: 'seo', expect: 'RUM collector host' },
+  { id: 'W15', what: 'a Columbus market-snapshot figure loses its source link', edits: [['markets/columbus-oh.html', sub('<li id="mkt-3">', '<li id="mkt-3x">')]], run: 'seo', expect: 'market snapshot figure cites' },
   { id: 'WP1', what: 'legitimate: a second rect in the logo is fine', edits: [['about.html', sub('<rect x="257" y="10" width="2" height="38" opacity="0.5"/>', '<rect x="257" y="10" width="2" height="38" opacity="0.5"/><rect x="0" y="0" width="0" height="0"/>')]], run: 'seo', expect: 'PASS' },
 
   // --- netlify-forms.test.mjs --------------------------------------------------

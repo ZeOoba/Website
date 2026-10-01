@@ -519,3 +519,22 @@ test('WP-26 the checklist form is honeypot-guarded, points at the privacy policy
   assert.match(handler, /gtag\('event',\s*'checklist_requested'/);
   assert.ok(handler.indexOf("success.style.display = ''") < handler.indexOf('checklist_requested'), 'the lead event fires before the success state is shown');
 });
+
+// ── 2026-10-01 market snapshot sections (Phase 4c of the fix plan) ──────────
+// Every market figure on these pages is a dated statistic from a named source. A figure
+// with no source link, or a source nothing cites, is how a number outlives its evidence.
+
+test('WP-27 each market snapshot figure cites a numbered source, every source is cited, and the section is dated', () => {
+  for (const file of ['markets/columbus-oh.html', 'markets/maryland.html']) {
+    const html = read(file);
+    const section = html.match(/<section[^>]*id="market-snapshot"[\s\S]*?<\/section>/)?.[0];
+    assert.ok(section, `${file}: no #market-snapshot section`);
+    assert.match(section, /Updated quarterly/, `${file}: the snapshot must say it is dated and refreshed`);
+    const cited = new Set([...section.matchAll(/<sup><a href="#mkt-(\d+)">/g)].map((m) => m[1]));
+    const sources = new Map([...section.matchAll(/<li id="mkt-(\d+)"><a href="(https:\/\/[^"]+)"/g)].map((m) => [m[1], m[2]]));
+    assert.ok(cited.size >= 4, `${file}: expected at least four cited figures, found ${cited.size}`);
+    for (const n of cited) assert.ok(sources.has(n), `${file}: citation [${n}] has no source link`);
+    for (const n of sources.keys()) assert.ok(cited.has(n), `${file}: source [${n}] is listed but nothing cites it`);
+    assert.ok(/not Oxford(?:&rsquo;|')s buildings/.test(section), `${file}: the section must say the statistics are not Oxford's own figures`);
+  }
+});

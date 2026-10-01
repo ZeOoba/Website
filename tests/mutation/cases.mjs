@@ -52,7 +52,7 @@ export const CASES = [
   { id: 'W10', what: 'llms.txt drops the Kansas City market', edits: [['llms.txt', (s) => s.split('Kansas City').join('KC')]], run: 'seo', expect: 'llms.txt' },
   { id: 'W11', what: 'meta.md reintroduces the 2008 ownership distinction', edits: [['scripts/meta.md', sub('Founded 2005;', 'Founded 2005 (advisory practice); shifted to direct ownership in 2008;')]], run: 'seo', expect: 'founding claim' },
   { id: 'W12', what: 'an image nothing references lands in images/', edits: [['images/zz-orphan.png', () => 'not really a png']], run: 'seo', expect: 'images/' },
-  { id: 'W13', what: 'script.js submit handler loses its defaultPrevented guard', edits: [['script.js', sub('function(i){if(i.defaultPrevented)return;', 'function(i){')]], run: 'seo', expect: 'generic validator respects' },
+  { id: 'W13', what: 'script.js submit handler loses its defaultPrevented guard', edits: [['script.js', (s) => { const t = s.replace(/if \(event\.defaultPrevented\) \{\s*return;\s*\}/, ''); if (t === s) throw new Error('anchor not found: defaultPrevented guard'); return t; }]], run: 'seo', expect: 'generic validator respects' },
   { id: 'W14', what: 'the Netlify RUM collector host drops out of connect-src (beacon blocked again)', edits: [['_headers', sub(' https://ingesteer.services-prod.nsvcs.net;', ';')]], run: 'seo', expect: 'RUM collector host' },
   { id: 'W14b', what: 'the RUM allowance is widened to a *.nsvcs.net wildcard', edits: [['_headers', sub('https://ingesteer.services-prod.nsvcs.net;', 'https://*.nsvcs.net;')]], run: 'seo', expect: 'RUM collector host' },
   { id: 'W14c', what: 'the RUM host is also allowed as a script source', edits: [['_headers', sub('https://netlify-rum.netlify.app; style-src', 'https://netlify-rum.netlify.app https://ingesteer.services-prod.nsvcs.net; style-src')]], run: 'seo', expect: 'RUM collector host' },
@@ -134,11 +134,24 @@ export const CASES = [
   { id: 'R3', what: 'rendered: base hide made !important', edits: [['dist/about.html', sub(BTN_BASE, BTN_BASE.replace('display:none', 'display:none!important'))]], run: 'nav', expect: 'reachable' },
   { id: 'R4', what: 'rendered: hamburger inside .nav__links', edits: [['dist/about.html', moveHamburgerIntoLinks]], run: 'nav', expect: 'reachable' },
   { id: 'R5', what: "rendered: 404's scrolling .site-nav__links hidden on phones", edits: [['dist/404.html', sub('</style>', '@media(max-width:640px){.site-nav__links{display:none}}</style>')]], run: 'nav', expect: 'reachable' },
-  { id: 'R6', what: 'rendered: script.js menu handler disabled', edits: [['dist/script.js', sub('t=n("#mobileNav");if(e&&t){', 't=n("#mobileNav");if(!1&&e&&t){')]], run: 'nav', expect: 'reachable' },
+  { id: 'R6', what: 'rendered: script.js menu handler disabled', edits: [['dist/script.js', sub('if (toggleButton && panel) {', 'if (false && toggleButton && panel) {')]], run: 'nav', expect: 'reachable' },
   { id: 'R7', what: 'rendered: range-syntax hide (1024-1279)', edits: [['dist/about.html', sub('</style>', '@media (1024px<=width<=1279px){.nav__mobile-btn{display:none}}</style>')]], run: 'nav', expect: 'reachable' },
   { id: 'R8', what: 'rendered: hamburger opacity:0', edits: [['dist/about.html', sub('</style>', '.nav__mobile-btn{opacity:0}</style>')]], run: 'nav', expect: 'reachable' },
   { id: 'R9', what: 'rendered: links parked off-screen, hamburger hidden', edits: [['dist/about.html', sub('</style>', '.nav__links{display:flex!important;position:absolute;left:-9999px}.nav__mobile-btn{display:none!important}</style>')]], run: 'nav', expect: 'reachable' },
   { id: 'R10', what: 'rendered: menu opens transparent', edits: [['dist/about.html', sub('</style>', '.nav__mobile.is-open{opacity:0}</style>')]], run: 'nav', expect: 'reachable' },
+
+  // --- upload budgets (rendered, tests/site/upload-budget.test.mjs) -----------------
+  { id: 'UB1', what: 'rendered: application-script.js stops flagging an over-cap file (only script.js\'s 10 MB check is left)', edits: [['dist/application-script.js', sub("input.setCustomValidity('File exceeds the per-field limit.');", '')]], run: 'budget', expect: 'over its 1.5 MB cap' },
+  { id: 'UB2', what: "rendered: driver's-licence cap raised past script.js's 10 MB cap", edits: [['dist/application-script.js', sub("'upload-drivers-license': 1.5 * 1024 * 1024", "'upload-drivers-license': 100 * 1024 * 1024")]], run: 'budget', expect: 'over its 1.5 MB cap' },
+  { id: 'UB3', what: 'rendered: the submit handler no longer runs validateStep', edits: [['dist/application-script.js', sub('if(!validateStep(TOTAL_STEPS)){ e.preventDefault(); return; }', '')]], run: 'budget', expect: 'over its 1.5 MB cap' },
+
+  // --- Available Space UI (rendered, tests/site/listings-ui.test.mjs) -----------------
+  { id: 'LS1', what: 'size filter goes back to summing all units against the minimum (the shipped bug)', edits: [['dist/listings.js', sub('return hi >= min && lo <= max;', 'return p.units.reduce(function (s, x) { return s + x.sf; }, 0) >= min && lo <= max;')]], run: 'listings', expect: 'shipped bug pinned' },
+  { id: 'LS2', what: 'stats bar totals use each unit\'s minimum instead of its maximum', edits: [['dist/listings.js', sub('return us + (u.sfMax || u.sf);', 'return us + u.sf;')]], run: 'listings', expect: 'stats bar' },
+  { id: 'LS3', what: 'size ascending sorts descending', edits: [['dist/listings.js', sub('return totalSF(a) - totalSF(b);', 'return totalSF(b) - totalSF(a);')]], run: 'listings', expect: 'sorting' },
+  { id: 'LS4', what: 'Escape no longer closes the detail overlay', edits: [['dist/listings.js', sub("if (e.key === 'Escape') closeDetail();", '')]], run: 'listings', expect: 'detail overlay' },
+  { id: 'LS5', what: 'the detail overlay stops trapping Tab focus', edits: [['dist/listings.js', sub("document.addEventListener('keydown', detailKeydownTrap);", '')]], run: 'listings', expect: 'detail overlay' },
+  { id: 'LS6', what: 'Clear all forgets to empty the search box', edits: [['dist/listings.js', sub("el('searchInput').value = '';", '')]], run: 'listings', expect: 'search matches' },
 
   // --- build-dist.mjs ---------------------------------------------------------------
   { id: 'B1', what: 'Overview PDF in both SITE_FILES and EXPECTED_EXCLUSIONS', edits: [['scripts/build-dist.mjs', sub("const EXPECTED_EXCLUSIONS = ['application-script.file-size.test.js',", "const EXPECTED_EXCLUSIONS = ['Oxford-Realty-Advisors-Overview.pdf', 'application-script.file-size.test.js',")]], run: 'buildFailsClean', expect: 'PASS' },

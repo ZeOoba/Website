@@ -3,6 +3,10 @@ node_modules/
 # Assembled Netlify publish directory (built by scripts/build-dist.mjs)
 dist/
 
+# Lighthouse reports (scripts/lighthouse-summary.mjs, .github/workflows/lighthouse.yml)
+lhr/
+lhr-local/
+
 # Netlify CLI local state
 .netlify/
 deno.lock

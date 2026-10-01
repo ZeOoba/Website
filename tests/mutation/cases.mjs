@@ -40,7 +40,7 @@ const moveLeasingHandlerAboveForm = (comment = '') => (s) => {
 export const CASES = [
   // --- seo.test.mjs WP-n: 2026-09-25 website-perfection audit -------------------
   { id: 'W1', what: 'Indianapolis reappears as a broker-form market option', edits: [['for-brokers.html', sub('<option value="Other">Other</option>', '<option value="Indianapolis">Indianapolis</option><option value="Other">Other</option>')]], run: 'seo', expect: 'Indianapolis' },
-  { id: 'W2', what: 'a LinkedIn origin sneaks back into the CSP', edits: [['_headers', sub("https://unpkg.com https://netlify-rum.netlify.app;", "https://unpkg.com https://snap.licdn.com https://netlify-rum.netlify.app;")]], run: 'seo', expect: 'LinkedIn' },
+  { id: 'W2', what: 'a LinkedIn origin sneaks back into the CSP', edits: [['_headers', sub("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js https://netlify-rum.netlify.app;", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js https://snap.licdn.com https://netlify-rum.netlify.app;")]], run: 'seo', expect: 'LinkedIn' },
   { id: 'W3', what: "CSP loses object-src 'none'", edits: [['_headers', sub("; object-src 'none'", '')]], run: 'seo', expect: 'injection-hardening' },
   { id: 'W3b', what: 'X-XSS-Protection flips back to the legacy auditor', edits: [['_headers', sub('X-XSS-Protection: 0', 'X-XSS-Protection: 1; mode=block')]], run: 'seo', expect: 'injection-hardening' },
   { id: 'W4', what: 'the logo "|" glyph returns as SVG text on one page', edits: [['about.html', sub('<rect x="257" y="10" width="2" height="38" opacity="0.5"/>', '<text x="252" y="42" font-size="40" opacity="0.5">|</text>')]], run: 'seo', expect: 'nav logo' },
@@ -160,6 +160,8 @@ export const CASES = [
   { id: 'CS4', what: 'an inline onclick handler is added to a page', edits: [['about.html', sub('</main>', '<button onclick="go()">x</button></main>')]], run: 'csp', expect: 'cannot allow' },
   { id: 'CS5', what: 'a hash is dropped from _headers', edits: [['_headers', (s) => { const t = s.replace(/'sha256-[^']+' /, ''); if (t === s) throw new Error('anchor not found: a sha256 source'); return t; }]], run: 'csp', expect: 'lists exactly the sha256' },
   { id: 'CS7', what: 'the build fails closed (and leaves no dist/) when an inline script changed without regenerating the hashes', edits: [['for-brokers.html', sub("var form = document.getElementById('brokerForm');", "var form = document.getElementById('brokerForm'); ")]], run: 'buildFailsClean', expect: 'PASS' },
+  { id: 'CS8', what: "script-src is widened back to the whole unpkg.com host", edits: [['_headers', sub('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js https://netlify-rum.netlify.app;', 'https://unpkg.com https://netlify-rum.netlify.app;')]], run: 'csp', expect: 'unpkg.com is allowed only for the exact files' },
+  { id: 'CS9', what: 'a page starts loading another unpkg file the CSP does not allow', edits: [['available-space.html', sub('</body>', '<script src="https://unpkg.com/other-lib@1.0.0/dist/x.js"></script></body>')]], run: 'csp', expect: 'unpkg.com is allowed only for the exact files' },
   { id: 'CS6', what: 'legitimate: a JSON-LD block is edited (data, not executable, needs no hash)', edits: [['about.html', sub('"@type": "Organization"', '"@type": "Organization", "slogan": "x"')]], run: 'csp', expect: 'PASS' },
 
   // --- build-dist.mjs ---------------------------------------------------------------

@@ -41,7 +41,15 @@ export async function handleScoreStatus(req, { readScoreResultImpl = readScoreRe
   }
   if (!result) return ok({ status: 'pending' });
   if (result.status === 'unavailable') return ok({ status: 'unavailable' });
-  return ok({ status: 'ready', score: result.finalScore, gates: result.gates, gateFailed: result.gateFailed, categories: result.categories });
+  // Too little was extractable for a meaningful score (2026-09-30 audit): the broker sees the same
+  // "our team will review it directly" message as any other unavailable result, never 0/100 or 100/100.
+  if (result.insufficientData) return ok({ status: 'unavailable' });
+  // Whitelist the category fields. `internalNote` carries the replacement-cost floor in dollars and is
+  // for the internal email and ledger only; it must never reach the browser.
+  const categories = (result.categories || []).map((c) => ({
+    key: c.key, label: c.label, possible: c.possible, excluded: c.excluded, earned: c.earned, note: c.note,
+  }));
+  return ok({ status: 'ready', score: result.finalScore, gates: result.gates, gateFailed: result.gateFailed, categories });
 }
 
 export default (req) => handleScoreStatus(req);

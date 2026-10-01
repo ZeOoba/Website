@@ -33,9 +33,10 @@ function json(status, body) {
 const ok = (body) => json(200, body);
 const fail = (status, error) => json(status, { ok: false, error });
 
-function logFailure(fetchImpl, { errorCode, detail }) {
+// submissionId is only known once the id is minted (after the upload checks), so earlier failures log ''.
+function logFailure(fetchImpl, { errorCode, detail, submissionId = '' }) {
   const siteUrl = process.env.URL || 'https://oxfordra.net';
-  return forwardToNetlifyForm(siteUrl, 'pipeline-failures', { 'source-function': 'broker-finalize', 'error-code': errorCode, 'submission-id': '', detail: detail || '', 'occurred-at': new Date().toISOString() }, { fetchImpl });
+  return forwardToNetlifyForm(siteUrl, 'pipeline-failures', { 'source-function': 'broker-finalize', 'error-code': errorCode, 'submission-id': submissionId, detail: detail || '', 'occurred-at': new Date().toISOString() }, { fetchImpl });
 }
 
 // V2 hands us a Headers object rather than V1's plain lower-cased object.
@@ -106,14 +107,17 @@ export async function handleBrokerFinalize(req, {
     message: sanitizeField(body.message, 2000),
   };
 
+  // The id is minted BEFORE the contact row so this row and the later score row share a join key
+  // (2026-09-30 audit: the contact row used to carry none, so the two could not be tied together).
+  const submissionId = generateSubmissionId();
   const siteUrl = process.env.URL || 'https://oxfordra.net';
   // Non-blocking: the broker still gets a success response and Gabriel/Eric
   // still get the email below even if the ledger row fails — but the failure
   // must land in pipeline-failures instead of vanishing, since it previously
   // had no durable trace at all.
-  const ledgerOk = await forwardToNetlifyForm(siteUrl, 'broker-network-ledger', { ...fields, 'document-path': claims.path }, { fetchImpl });
+  const ledgerOk = await forwardToNetlifyForm(siteUrl, 'broker-network-ledger', { ...fields, 'submission-id': submissionId, 'document-path': claims.path }, { fetchImpl });
   if (!ledgerOk) {
-    await logFailure(fetchImpl, { errorCode: 'ledger_write_failed', detail: claims.path });
+    await logFailure(fetchImpl, { errorCode: 'ledger_write_failed', detail: claims.path, submissionId });
   }
 
   try {
@@ -121,15 +125,18 @@ export async function handleBrokerFinalize(req, {
     await sendMail({ subject, html, to: ['ggoldberg@oxfordra.net', 'egoldberg@oxfordra.net'] }, { fetchImpl });
   } catch (err) {
     console.error('[broker-finalize] email failed', String(err));
-    await logFailure(fetchImpl, { errorCode: 'email_failed', detail: String(err) });
-    // The token was burned above; give it back so the broker's retry (same
-    // intakeToken, see broker-upload.js) can complete instead of hitting 409.
+    await logFailure(fetchImpl, { errorCode: 'email_failed', detail: String(err), submissionId });
+    // The token was burned above; give it back so a retry with the same intakeToken can complete
+    // instead of hitting 409. The shipped client does NOT do that: broker-upload.js submit() opens a
+    // fresh upload session on every attempt, so a browser resubmit gets a new token, a new submission-id
+    // and a second contact row. The contact row written above for THIS attempt keeps its id and never
+    // gets a score row; the email_failed row logged here carries the same id, so the orphan stays
+    // traceable (2026-10-01 review F4: accepted, documented, not reordered).
     try { await releaseIntakeTokenImpl(claims.path, {}); }
     catch (relErr) { console.error('[broker-finalize] releaseIntakeToken failed', String(relErr)); }
     return fail(502, 'email_failed');
   }
 
-  const submissionId = generateSubmissionId();
   const statusToken = signIntakeToken(
     { type: 'status', submissionId, exp: Date.now() + STATUS_TOKEN_TTL_MS },
     process.env.INTAKE_TOKEN_SECRET

@@ -1,14 +1,22 @@
 {
   "_meta": {
-    "source": "RCT v03, ratified 2026-07-14 (Gabriel, governor-level). Authoritative source is the 'Replacement Cost Table (RCT v03)' in the acquisition-underwriting skill's UNDERWRITING CONVENTIONS section. THIS FILE IS A COPY, duplicated here only because the public website cannot reach that skill at request time. If RCT is ever re-ratified to a new version, this file MUST be updated to match by hand — an out-of-sync copy here is a second, conflicting denominator, which ORA doctrine explicitly flags as a bug.",
-    "lastSyncedFromSkill": "2026-07-18"
+    "source": "RCT v3.1 (replacement-cost.v3.1), ratified by Gabriel Goldberg (governor-level). Authoritative source is oxford-command-center config/replacement-cost.v3.json and the 'Replacement Cost Table' in the acquisition-underwriting skill's UNDERWRITING CONVENTIONS section. THIS FILE IS A COPY of the LOW $/SF column, duplicated here only because the public website cannot reach that table at request time. If RCT is ever re-ratified to a new version, this file MUST be updated to match by hand — an out-of-sync copy here is a second, conflicting denominator, which ORA doctrine explicitly flags as a bug. Key mapping: 'Maryland' is the engine's 'Mid-Atlantic'; the other keys drop the state suffix. The broker extractor's matchedRctMarket enum is derived from these keys, so adding or removing a market here is the only edit needed.",
+    "lastSyncedFromSkill": "2026-10-01",
+    "rctVersion": "replacement-cost.v3.1"
   },
   "marketToRctLowPerSF": {
     "Maryland": 232.97,
     "Columbus": 229.65,
     "Kansas City": 227.90,
-    "Indianapolis": 253.83
+    "Indianapolis": 253.83,
+    "Cincinnati": 251.46,
+    "Madison": 229.08,
+    "Grand Rapids": 253.11,
+    "Richmond": 232.97,
+    "Des Moines": 231.66,
+    "Louisville": 237.07
   },
+  "proxyMarkets": ["Madison", "Grand Rapids", "Richmond", "Des Moines"],
   "vintageFloor": {
     "earlyYear": 1995,
     "earlyPct": 0.65,

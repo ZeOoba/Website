@@ -104,3 +104,19 @@ test('returns unavailable (not a 502) when the store throws, e.g. MissingBlobsEn
   assert.equal(res.statusCode, 200);
   assert.equal(JSON.parse(res.body).status, 'unavailable');
 }));
+
+// 2026-09-30 audit (oxfordra.net items 3 and 4).
+test('never returns internalNote to the broker, even if the stored result carries it', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const statusToken = validStatusToken('sub-1');
+  const stored = { status: 'ready', finalScore: 82, gates: { propertyType: 'PASS', market: 'PASS' }, gateFailed: false, coveragePct: 100, insufficientData: false, categories: [{ key: 'basis', label: 'Basis', earned: 0, possible: 25, excluded: false, note: 'Above the floor.', internalNote: 'SECRET floor of $230.12/SF' }] };
+  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1', statusToken } }, { readScoreResultImpl: async () => stored });
+  assert.doesNotMatch(res.body, /SECRET|230\.12|internalNote/);
+  assert.equal(JSON.parse(res.body).categories[0].note, 'Above the floor.');
+}));
+
+test('reports unavailable, not a score, when the stored result has insufficient data', () => withEnv({ INTAKE_TOKEN_SECRET: SECRET }, async () => {
+  const statusToken = validStatusToken('sub-1');
+  const stored = { status: 'ready', finalScore: null, gates: { propertyType: 'NOT_VERIFIED', market: 'NOT_VERIFIED' }, gateFailed: false, coveragePct: 35, insufficientData: true, categories: [] };
+  const res = await handler({ httpMethod: 'GET', queryStringParameters: { submissionId: 'sub-1', statusToken } }, { readScoreResultImpl: async () => stored });
+  assert.equal(JSON.parse(res.body).status, 'unavailable');
+}));

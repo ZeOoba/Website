@@ -108,7 +108,8 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
 
     await forwardToNetlifyFormImpl(siteUrl, 'broker-network-ledger', {
       'submission-id': submissionId,
-      'score-total': result.finalScore,
+      'score-total': result.finalScore == null ? '' : result.finalScore,
+      'score-coverage': result.coveragePct,
       'score-gate-property-type': result.gates.propertyType,
       'score-gate-market': result.gates.market,
       'score-breakdown': JSON.stringify(result.categories),

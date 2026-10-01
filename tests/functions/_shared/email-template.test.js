@@ -55,3 +55,32 @@ test('renderScoreFollowupEmail notes when a gate failure capped the score', () =
   const { subject } = renderScoreFollowupEmail({ fields: { company: 'Off-Box LLC' }, score });
   assert.match(subject, /30\/100/);
 });
+
+// 2026-09-30 audit (oxfordra.net items 3 and 4): the internal email is where the dollar detail lives.
+test('renderScoreFollowupEmail shows the internal note and coverage to Gabriel and Eric', () => {
+  const score = {
+    finalScore: 55, coveragePct: 85, insufficientData: false,
+    gates: { propertyType: 'PASS', market: 'PASS' }, gateFailed: false,
+    categories: [{ key: 'basis', label: 'Basis', earned: 0, possible: 25, excluded: false, note: 'Above the floor.', internalNote: 'Implied basis $408.00/SF exceeds the RCT v03 floor of $230.12/SF.' }],
+  };
+  const { html } = renderScoreFollowupEmail({ fields: { company: 'Acme Co' }, score });
+  assert.match(html, /230\.12/);
+  assert.match(html, /85%/);
+});
+
+test('renderScoreFollowupEmail says the score was withheld when data is insufficient', () => {
+  const score = { finalScore: null, coveragePct: 35, insufficientData: true, gates: { propertyType: 'NOT_VERIFIED', market: 'NOT_VERIFIED' }, gateFailed: false, categories: [] };
+  const { subject, html } = renderScoreFollowupEmail({ fields: { company: 'Thin OM LLC' }, score });
+  assert.match(subject, /withheld/i);
+  assert.match(subject, /35%/);
+  assert.doesNotMatch(subject, /null|100\/100/);
+  assert.doesNotMatch(html, /null\/100/);
+});
+
+// Independent review 2026-10-01 (F7): the new coverage row had no label, so the raw key was shown.
+test('renderScoreFollowupEmail labels the coverage row instead of showing the raw key', () => {
+  const score = { finalScore: 70, coveragePct: 85, insufficientData: false, gates: { propertyType: 'PASS', market: 'PASS' }, gateFailed: false, categories: [] };
+  const { html } = renderScoreFollowupEmail({ fields: { company: 'Acme Co' }, score });
+  assert.match(html, /Scorecard Coverage/);
+  assert.doesNotMatch(html, /scorecard-coverage/);
+});

@@ -153,6 +153,15 @@ export const CASES = [
   { id: 'LS5', what: 'the detail overlay stops trapping Tab focus', edits: [['dist/listings.js', sub("document.addEventListener('keydown', detailKeydownTrap);", '')]], run: 'listings', expect: 'detail overlay' },
   { id: 'LS6', what: 'Clear all forgets to empty the search box', edits: [['dist/listings.js', sub("el('searchInput').value = '';", '')]], run: 'listings', expect: 'search matches' },
 
+  // --- CSP script-src hashes ----------------------------------------------------------
+  { id: 'CS1', what: 'an injected inline script (the XSS the policy exists to stop) is on a served page', edits: [['dist/about.html', sub('</body>', '<script>window.__pwned=1</script></body>')]], run: 'cspPages', expect: 'no script-src violation' },
+  { id: 'CS2', what: 'an inline script is edited but the hashes are not regenerated', edits: [['for-brokers.html', sub("var form = document.getElementById('brokerForm');", "var form = document.getElementById('brokerForm'); ")]], run: 'csp', expect: 'lists exactly the sha256' },
+  { id: 'CS3', what: "'unsafe-inline' is put back into script-src", edits: [['_headers', sub("script-src 'self' ", "script-src 'unsafe-inline' 'self' ")]], run: 'csp', expect: "no 'unsafe-inline'" },
+  { id: 'CS4', what: 'an inline onclick handler is added to a page', edits: [['about.html', sub('</main>', '<button onclick="go()">x</button></main>')]], run: 'csp', expect: 'cannot allow' },
+  { id: 'CS5', what: 'a hash is dropped from _headers', edits: [['_headers', (s) => { const t = s.replace(/'sha256-[^']+' /, ''); if (t === s) throw new Error('anchor not found: a sha256 source'); return t; }]], run: 'csp', expect: 'lists exactly the sha256' },
+  { id: 'CS7', what: 'the build fails closed (and leaves no dist/) when an inline script changed without regenerating the hashes', edits: [['for-brokers.html', sub("var form = document.getElementById('brokerForm');", "var form = document.getElementById('brokerForm'); ")]], run: 'buildFailsClean', expect: 'PASS' },
+  { id: 'CS6', what: 'legitimate: a JSON-LD block is edited (data, not executable, needs no hash)', edits: [['about.html', sub('"@type": "Organization"', '"@type": "Organization", "slogan": "x"')]], run: 'csp', expect: 'PASS' },
+
   // --- build-dist.mjs ---------------------------------------------------------------
   { id: 'B1', what: 'Overview PDF in both SITE_FILES and EXPECTED_EXCLUSIONS', edits: [['scripts/build-dist.mjs', sub("const EXPECTED_EXCLUSIONS = ['application-script.file-size.test.js',", "const EXPECTED_EXCLUSIONS = ['Oxford-Realty-Advisors-Overview.pdf', 'application-script.file-size.test.js',")]], run: 'buildFailsClean', expect: 'PASS' },
   { id: 'BP1', what: 'a dot-file in resources/ does not ship', edits: [['resources/.draft-notes', () => 'private']], run: 'buildNoDotfile', expect: 'PASS' },

@@ -1,0 +1,92 @@
+# Lighthouse budget for oxfordra.net. INFORMATIONAL: it never fails a PR.
+#
+# Why it exists: nothing in CI notices a performance or accessibility regression
+# (a heavier hero image, a render-blocking script, a contrast slip) until someone
+# runs PageSpeed by hand. This runs Lighthouse on four representative pages of the
+# BUILT site, served by scripts/serve-dist.mjs with the real _headers/CSP applied,
+# and reports against the budget the site already targets (LCP <= 2.5 s, CLS <= 0.1,
+# TBT <= 200 ms, every category >= 90).
+#
+# Why it is not a gate (yet): lab scores on a shared runner swing by several points
+# between identical runs, so a hard threshold would produce flaky red builds and
+# train people to ignore CI. The job is continue-on-error and the summary script
+# always exits 0 on findings. After a few weeks of baselines, tighten the budget in
+# scripts/lighthouse-summary.mjs and promote this to a required check if the noise
+# floor allows.
+#
+# It is a separate file from ci.yml on purpose: the required "Build & verify" check
+# is untouched, and deleting this file removes the feature completely.
+#
+# NOTHING HERE DEPLOYS. Production deploys require Gabriel's explicit per-deploy
+# confirmation.
+
+name: Lighthouse
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    name: Lighthouse budget (informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (resolved 2026-09-25)
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (resolved 2026-09-25)
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Reuse the Chromium Playwright installs rather than depending on whatever
+      # Chrome the runner image happens to carry.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      - name: Serve dist/ with the real headers
+        run: |
+          node scripts/serve-dist.mjs --port=8788 --root=dist &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8788/ > /dev/null && exit 0; sleep 1; done
+          echo "server did not start" >&2
+          exit 1
+
+      # Lighthouse is pinned and fetched on demand, so it is not a dependency of the
+      # site and never ships anywhere.
+      - name: Run Lighthouse
+        run: |
+          CHROME_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")"
+          export CHROME_PATH
+          mkdir -p lhr
+          for page in "" for-brokers available-space sell-your-building; do
+            npx --yes lighthouse@12.6.1 "http://127.0.0.1:8788/${page}" \
+              --quiet \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --output=json --output-path="lhr/${page:-home}.json" \
+              --chrome-flags="--headless=new --no-sandbox"
+          done
+
+      - name: Summarise against the budget
+        run: node scripts/lighthouse-summary.mjs lhr
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4 (resolved 2026-09-25)
+        with:
+          name: lighthouse-reports
+          path: lhr/*.json
+          if-no-files-found: warn

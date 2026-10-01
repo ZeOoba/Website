@@ -107,7 +107,14 @@ export async function handleBrokerFinalize(req, {
   };
 
   const siteUrl = process.env.URL || 'https://oxfordra.net';
-  await forwardToNetlifyForm(siteUrl, 'broker-network-ledger', { ...fields, 'document-path': claims.path }, { fetchImpl });
+  // Non-blocking: the broker still gets a success response and Gabriel/Eric
+  // still get the email below even if the ledger row fails — but the failure
+  // must land in pipeline-failures instead of vanishing, since it previously
+  // had no durable trace at all.
+  const ledgerOk = await forwardToNetlifyForm(siteUrl, 'broker-network-ledger', { ...fields, 'document-path': claims.path }, { fetchImpl });
+  if (!ledgerOk) {
+    await logFailure(fetchImpl, { errorCode: 'ledger_write_failed', detail: claims.path });
+  }
 
   try {
     const { subject, html } = renderBrokerEmail({ fields, links: { document: item.webUrl } });

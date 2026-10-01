@@ -241,6 +241,23 @@ Shared helpers (Microsoft Graph auth/mail/file access, reCAPTCHA verification, f
 
 The CSP allowlist is now enforced pre-merge by `npm run test:site`. Adding a third-party script, style, font, frame, or XHR origin to any page without adding it to the matching `_headers` directive will fail the PR with the blocked URI and the directive that blocked it — instead of surfacing as a console error on the live site after deploy.
 
+### Inline scripts are allowed by hash, not by `'unsafe-inline'`
+
+`script-src` lists one `sha256` per distinct inline `<script>` (about 21) instead of `'unsafe-inline'`, so a script injected into a page has no matching hash and is blocked. **If you edit any inline `<script>` in any page, regenerate the hashes or the browser will silently block it on the live site:**
+
+```
+node scripts/csp-hashes.mjs --write   # rewrites the script-src hashes in _headers
+node scripts/csp-hashes.mjs --check   # exit 1 if _headers is out of date
+```
+
+`tests/site/csp-hashes.test.mjs` fails the build when `_headers` and the pages disagree, and `tests/site/csp-all-pages.test.mjs` loads every built page in a real browser and fails on any script violation. Inline event-handler attributes (`onclick=`) and `javascript:` URLs cannot be hashed and are rejected by that test; use `addEventListener`. `<script type="text/partytown">` blocks are hashed too, because Partytown re-inserts them as inline scripts if its service worker cannot start. JSON-LD blocks are data and need no hash.
+
+`style-src` keeps `'unsafe-inline'` on purpose: 350+ `style=""` attributes ship in the markup, and hashing attributes needs `'unsafe-hashes'` for every distinct value. CSS injection is a far smaller risk than script injection.
+
+`npm run build` (and therefore the Netlify build) also fails, and publishes nothing, when the hashes and the pages disagree, so a stale hash list cannot deploy.
+
+**After any deploy that touches a page or `_headers`, run** `node scripts/verify-live-csp.mjs` (or pass a deploy-preview URL). The repo tests and the build prove the hashes match the source; this proves it about the bytes the platform actually serves. Anything that rewrites or injects an inline script after the build (a snippet added in the Netlify dashboard, a post-processing setting, an edge function) is invisible to the repo and would be blocked; this check fails on every affected page.
+
 ## Content notes
 
 - `scripts/meta.md` holds canonical firm facts (leadership, markets, deal parameters, contact info) that feed the chat assistant's knowledge base — update it, not individual pages, when firm-level facts change.

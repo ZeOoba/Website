@@ -13,6 +13,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
+import { cspLines, requiredHashes, scriptSrcTokens } from './csp-hashes.mjs';
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -142,6 +143,25 @@ async function main() {
     if (await exists(path.join(DIST, banned))) failures.push(`internal path leaked into dist: ${banned}`);
   }
 
+  // Fail closed on CSP drift: script-src allows inline scripts by hash, so a page whose inline
+  // script changed without regenerating the hashes would ship and be silently blocked in the
+  // browser. Checked against the bytes about to be published, not the source tree.
+  if (await exists(path.join(DIST, '_headers'))) {
+    const headers = await fs.readFile(path.join(DIST, '_headers'), 'utf8');
+    const tokens = scriptSrcTokens(headers);
+    if (cspLines(headers).length !== 1 || !tokens) {
+      failures.push('_headers must contain exactly one Content-Security-Policy line with a script-src directive');
+    } else {
+      const need = requiredHashes(DIST);
+      const have = tokens.filter((t) => t.startsWith("'sha256-"));
+      const missing = need.filter((h) => !have.includes(h)).length;
+      const stale = have.filter((h) => !need.includes(h)).length;
+      if (tokens.includes("'unsafe-inline'") || missing || stale) {
+        failures.push(`CSP script-src is out of date (${missing} inline script hash(es) missing, ${stale} stale${tokens.includes("'unsafe-inline'") ? ", 'unsafe-inline' present" : ''}): run node scripts/csp-hashes.mjs --write`);
+      }
+    }
+  }
+
   console.log(`[build-dist] published: ${copied.sort().join(', ')}`);
   console.log(`[build-dist] excluded (never deployed): ${excluded.sort().join(', ')}`);
   if (failures.length > 0) {
@@ -153,7 +173,9 @@ async function main() {
   console.log(`[build-dist] OK — ${copied.length} root entries -> dist/ (${htmlCount} pages)`);
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
+  // A build that threw must not leave a half-assembled dist/ that could be deployed.
+  await fs.rm(DIST, { recursive: true, force: true }).catch(() => {});
   console.error('[build-dist] FAIL:', err);
   process.exit(1);
 });

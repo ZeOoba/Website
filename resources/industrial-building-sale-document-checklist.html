@@ -221,6 +221,14 @@ body{padding-top:36px}.nav{top:36px!important}
 .callout{background:var(--parchment);border-left:3px solid var(--gold);border-radius:6px;padding:20px 24px;margin:28px 0}
 .callout p{margin-bottom:0;font-size:16px;line-height:1.7}
 .callout p strong{display:block;margin-bottom:4px;font-family:var(--font-body);text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--gold-accessible)}
+.checklist-download{background:var(--parchment);border:1px solid var(--light-gray);border-top:3px solid var(--gold);border-radius:6px;padding:24px 28px;margin:32px 0}
+.checklist-download p{margin-bottom:0}
+.checklist-download__kicker{font-family:var(--font-body);text-transform:uppercase;letter-spacing:.08em;font-size:12px!important;color:var(--gold-accessible)!important;margin-bottom:6px!important}
+.checklist-download__title{font-family:var(--font-display);font-size:24px!important;color:var(--navy)!important;line-height:1.25!important;margin-bottom:8px!important}
+.checklist-download__lede{font-size:16px!important;margin-bottom:18px!important}
+.checklist-download .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.checklist-download__fine{font-size:13px!important;color:var(--slate)!important;margin-top:12px!important;line-height:1.5!important}
+@media(max-width:600px){.checklist-download{padding:20px}.checklist-download .form-row{grid-template-columns:1fr;gap:0}}
 .article-table{width:100%;border-collapse:collapse;margin:26px 0;font-size:15px}
 .article-table th,.article-table td{border:1px solid var(--light-gray);padding:12px 14px;text-align:left;vertical-align:top;line-height:1.6}
 .article-table th{background:var(--parchment);font-family:var(--font-body);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--navy)}
@@ -300,6 +308,71 @@ body{padding-top:36px}.nav{top:36px!important}
 
 <p>When you sell a building, the buyer will conduct due diligence: a structured review of the property's leases, finances, legal status, and physical condition. The smoother that review goes, the faster you close and the less room there is for a buyer to renegotiate. Almost all of that comes down to one thing you control &mdash; having your documents ready before anyone asks.</p>
 <p>Below is a practical checklist of what a buyer of an industrial or flex building will typically request. You don't need every item polished to list, but the more of it you can hand over early, the stronger your position.</p>
+
+<div class="checklist-download" id="checklist-download">
+<p class="checklist-download__kicker">Free printable</p>
+<p class="checklist-download__title">Get this checklist as a two-page PDF</p>
+<p class="checklist-download__lede">Every item below with a tick box, ready to print or send to your accountant. Enter your name and email and the download appears right here.</p>
+<form method="POST" name="checklist-download" id="checklistForm" data-netlify="true" netlify-honeypot="bot-field">
+<input type="hidden" name="form-name" value="checklist-download">
+<p class="hidden" aria-hidden="true"><label>Don't fill this out: <input name="bot-field" tabindex="-1" autocomplete="off" aria-hidden="true"></label></p>
+<div class="form-row">
+<div class="form-group">
+<label for="checklist-name">Name <span class="required" aria-hidden="true">*</span></label>
+<input type="text" id="checklist-name" name="name" required aria-required="true" autocomplete="name">
+</div>
+<div class="form-group">
+<label for="checklist-email">Email <span class="required" aria-hidden="true">*</span></label>
+<input type="email" id="checklist-email" name="email" required aria-required="true" autocomplete="email">
+</div>
+</div>
+<button type="submit" class="btn btn--gold">Get the Checklist</button>
+<p class="checklist-download__fine">By requesting the checklist you agree to our <a href="/privacy">Privacy Policy</a>.</p>
+<div class="form-success" id="checklistSuccess" role="alert" style="display:none;">Thank you. <a href="/Oxford-Sale-Ready-Checklist.pdf" rel="nofollow" download>Download the PDF checklist</a>.</div>
+<div class="form-error" id="checklistError" role="alert" style="display:none;color:#B0432F;margin-top:12px;"></div>
+</form>
+<script>
+(function(){
+  var form = document.getElementById('checklistForm');
+  if(!form) return;
+  // Listen on document so this runs after script.js's per-form validator,
+  // which calls preventDefault() when a field is invalid.
+  document.addEventListener('submit', function(e){
+    if(e.target !== form || e.defaultPrevented) return;
+    e.preventDefault();
+    var btn = form.querySelector('[type="submit"]');
+    var success = document.getElementById('checklistSuccess');
+    var errorBox = document.getElementById('checklistError');
+    errorBox.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    var params = new URLSearchParams();
+    new FormData(form).forEach(function(value, key){ params.append(key, value); });
+
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    }).then(function(res){
+      if(!res.ok){ throw new Error('status ' + res.status); }
+      // Hide the fields, not the form: the success message lives inside it.
+      Array.prototype.forEach.call(form.children, function(el){
+        if(el !== success){ el.style.display = 'none'; }
+      });
+      success.style.display = '';
+      success.scrollIntoView({ block: 'center' });
+      if(window.gtag){ window.gtag('event', 'checklist_requested', { event_category: 'lead' }); }
+    }).catch(function(err){
+      errorBox.textContent = 'Something went wrong. Please email info@oxfordra.net and we will send the checklist directly. (' + (err && err.message ? err.message : 'unknown error') + ')';
+      errorBox.style.display = '';
+      btn.disabled = false;
+      btn.textContent = 'Get the Checklist';
+    });
+  });
+})();
+</script>
+</div>
 
 <h2>1. Leases and tenancy</h2>
 <p>This is the heart of the file for any occupied building, because it drives the income the building is valued on.</p>

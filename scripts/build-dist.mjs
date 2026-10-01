@@ -63,6 +63,7 @@ const SITE_FILES = [
   'robots.txt',
   'sitemap.xml',
   'Oxford-Realty-Advisors-Overview.pdf',
+  'Oxford-Sale-Ready-Checklist.pdf',
 ];
 
 // Root entries that exist and must stay unpublished. An entry in neither list

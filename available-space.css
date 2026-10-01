@@ -50,7 +50,8 @@
 .as-hero {
   position: relative;
   background-color: var(--as-navy);
-  background-image: url('/images/04-1100-rarig-exterior-2-drive-ins-dock.webp'), url('/images/04-1100-rarig-exterior-2-drive-ins-dock.jpg');
+  background-image: url('/images/04-1100-rarig-exterior-2-drive-ins-dock.jpg');
+  background-image: image-set(url('/images/04-1100-rarig-exterior-2-drive-ins-dock.webp') type('image/webp'), url('/images/04-1100-rarig-exterior-2-drive-ins-dock.jpg') type('image/jpeg'));
   background-size: cover;
   background-position: center;
   background-blend-mode: overlay;

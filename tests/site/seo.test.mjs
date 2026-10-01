@@ -379,6 +379,26 @@ test('WP-13 the tenant-application form loads script.js and application-script.j
   assert.match(js, /addEventListener\("submit",function\((\w+)\)\{if\(\1\.defaultPrevented\)return;/, 'script.js submit handler must return early on a defaultPrevented event');
 });
 
+test('WP-17 CSP connect-src allows the exact Netlify RUM collector host, and only there, with no wildcard', () => {
+  // Netlify injects /.netlify/scripts/rum at deploy time (the local dist/ build
+  // never carries it, so csp-smoke cannot see it). That script POSTs Core Web
+  // Vitals with a CORS fetch to the collector below. Without the allowance the
+  // browser blocks the beacon on every page load ("connect-src" violation) and
+  // RUM data is silently lost. Confirmed live 2026-09-28 via securitypolicyviolation.
+  const RUM_HOST = 'https://ingesteer.services-prod.nsvcs.net';
+  const csp = read('_headers').match(/Content-Security-Policy:\s*([^\r\n]*)/)?.[1] ?? '';
+  const tokenised = csp.split(';').map((d) => d.trim().split(/\s+/)).filter((t) => t[0]);
+  // Browsers honour the FIRST occurrence of a directive and ignore repeats, so a
+  // second connect-src cannot be trusted to carry the host: require exactly one.
+  assert.equal(tokenised.filter((t) => t[0] === 'connect-src').length, 1, 'CSP must contain exactly one connect-src directive');
+  const directives = new Map(tokenised.map((t) => [t[0], t.slice(1)]));
+  assert.ok((directives.get('connect-src') ?? []).includes(RUM_HOST), `connect-src must list ${RUM_HOST} (Netlify RUM beacon target)`);
+  for (const [name, sources] of directives) {
+    if (name !== 'connect-src') assert.ok(!sources.includes(RUM_HOST), `${RUM_HOST} is a fetch target only; it does not belong in ${name}`);
+  }
+  assert.ok(!/nsvcs\.net/.test(csp.replaceAll(RUM_HOST, '')), 'CSP must name the exact collector host, never a wildcard or a sibling *.nsvcs.net origin');
+});
+
 // ── 2026-09-28 data-accuracy & positioning pass (Phase 1 of the fix plan) ───
 // Figures sourced from the Master Workbook DSOR (Notion 3706ecd8), most recent
 // ingest 2026-09-06: 138 tenants, 513,158 SF roster (512,258 SF leasable), 14
@@ -416,4 +436,86 @@ test('WP-16 the broker/owner deal-submission response promise is unified to 1 bu
   for (const file of htmlFiles()) {
     assert.ok(!/within 48 hours/i.test(read(file)), `${file} still promises a response "within 48 hours"`);
   }
+});
+
+// ── 2026-09-28 copy & lead-gen pass (Phase 4a of the fix plan) ──────────────
+
+test('WP-20 the leasing application and its confirmation page do not show the acquisitions rotator to a tenant', () => {
+  for (const file of ['tenant-application.html', 'application-received.html']) {
+    const html = read(file);
+    assert.ok(!/What We(?:'|&rsquo;)re Buying Now|Actively seeking \$1M/i.test(html), `${file} still shows the acquisitions announcement bar to a prospective tenant`);
+    assert.match(html, /class="announcement-bar__label">Now Leasing</, `${file}: announcement bar should read "Now Leasing"`);
+  }
+});
+
+test('WP-21 the lease application labels rent and deposit as the applicant\'s proposal and states the response time up front', () => {
+  const html = read('tenant-application.html');
+  assert.match(html, /for="monthly-rent">Proposed Monthly Rent/);
+  assert.match(html, /for="security-deposit">Proposed Security Deposit/);
+  assert.match(html, /respond within 2 business days of submission/, 'response time must be stated before the applicant submits');
+  assert.equal((html.match(/N\/A for any items that do not apply|please put N\/A/gi) || []).length, 1, 'the N/A instruction is stated once, not restated');
+  assert.match(read('application-received.html'), /If we(?:'|&rsquo;)re unable to move forward, we(?:'|&rsquo;)ll email you either way/, 'confirmation page must cover the not-approved path');
+});
+
+test('WP-22 the four owner guides close with four different calls to action, and the 1031 guide carries a worked example', () => {
+  const closers = new Map();
+  for (const f of ['selling-industrial-building-without-a-broker', 'how-industrial-buildings-are-valued', '1031-exchange-industrial-property-guide', 'industrial-building-sale-document-checklist']) {
+    const html = read(`resources/${f}.html`);
+    const p = html.match(/<p style="[^"]*max-width:600px">(Oxford Realty Advisors buys[^<]*)<\/p>/)?.[1];
+    assert.ok(p, `${f}: closing CTA paragraph not found`);
+    closers.set(f, p);
+  }
+  assert.equal(new Set(closers.values()).size, closers.size, 'two guides share a verbatim closing CTA');
+  const g = read('resources/1031-exchange-industrial-property-guide.html');
+  assert.match(g, /<h3>A worked example<\/h3>/);
+  for (const n of ['$2,000,000', '$700,000', '$1,300,000', '$1,500,000', '$2,300,000', '$1,000,000', '$200,000', '$1,100,000']) {
+    assert.ok(g.includes(n), `1031 worked example is missing ${n}`);
+  }
+});
+
+test('WP-23 contact.html names an acquisitions contact (Gabriel Goldberg, VP Acquisitions)', () => {
+  const html = read('contact.html');
+  assert.match(html, /Gabriel Goldberg, VP Acquisitions/);
+  assert.match(html, /href="mailto:ggoldberg@oxfordra\.net"/);
+});
+
+// ── 2026-09-28 gated checklist lead magnet (Phase 4b of the fix plan) ───────
+// The sale-ready checklist PDF sits behind a name+email form on the checklist
+// guide. It is a SOFT gate by design: the form's success state reveals the link;
+// nothing else links the file, and robots.txt asks crawlers to stay out.
+
+const CHECKLIST_PDF = 'Oxford-Sale-Ready-Checklist.pdf';
+const CHECKLIST_GUIDE = 'resources/industrial-building-sale-document-checklist.html';
+
+test('WP-24 the checklist PDF is a real two-page PDF that ships, and crawlers are asked to stay out', () => {
+  const bytes = readFileSync(path.join(ROOT, CHECKLIST_PDF));
+  assert.equal(bytes.subarray(0, 5).toString('latin1'), '%PDF-', 'not a PDF');
+  assert.ok(bytes.length > 20_000, `suspiciously small (${bytes.length} bytes): the render probably failed`);
+  assert.ok(read('scripts/build-dist.mjs').includes(`'${CHECKLIST_PDF}'`), 'build-dist.mjs does not publish the checklist PDF');
+  assert.match(read('robots.txt'), new RegExp(`^Disallow: /${CHECKLIST_PDF.replace(/\./g, '\\.')}$`, 'm'), 'robots.txt must disallow the gated file');
+  assert.ok(!read('sitemap.xml').includes(CHECKLIST_PDF), 'the gated file must not be in the sitemap');
+});
+
+test('WP-25 only the checklist form\'s success state links the PDF (the gate is not bypassed by a stray link)', () => {
+  for (const file of htmlFiles()) {
+    const html = read(file);
+    if (file === CHECKLIST_GUIDE || !html.includes(CHECKLIST_PDF)) continue;
+    assert.fail(`${file} links the gated checklist PDF outside the email form`);
+  }
+  const guide = read(CHECKLIST_GUIDE);
+  const success = guide.match(/<div class="form-success" id="checklistSuccess"[^>]*>([\s\S]*?)<\/div>/);
+  assert.ok(success && success[0].includes('style="display:none;"'), 'the success block must be hidden until the form succeeds');
+  assert.ok(success[1].includes(CHECKLIST_PDF), 'the success block must carry the download link');
+  assert.equal(guide.split(CHECKLIST_PDF).length - 1, 1, 'the PDF must be linked exactly once, inside the success block');
+});
+
+test('WP-26 the checklist form is honeypot-guarded, points at the privacy policy, and fires checklist_requested after the success state shows', () => {
+  const guide = read(CHECKLIST_GUIDE);
+  const form = guide.match(/<form\b[^>]*name="checklist-download"[\s\S]*?<\/form>/)?.[0] ?? '';
+  assert.match(form, /netlify-honeypot="bot-field"/);
+  assert.match(form, /name="bot-field"/);
+  assert.match(form, /href="\/privacy"/, 'consent line must link the Privacy Policy');
+  const handler = guide.match(/document\.addEventListener\('submit'[\s\S]*?\}\)\.catch/)?.[0] ?? '';
+  assert.match(handler, /gtag\('event',\s*'checklist_requested'/);
+  assert.ok(handler.indexOf("success.style.display = ''") < handler.indexOf('checklist_requested'), 'the lead event fires before the success state is shown');
 });

@@ -70,6 +70,7 @@ const EXPECTED_NETLIFY_FORMS = [
   'chat-lead-form.html#chat-lead',
   'contact.html#contact',
   'pipeline-failures-form.html#pipeline-failures',
+  'resources/industrial-building-sale-document-checklist.html#checklist-download',
   'sell-your-building.html#owner-submission-intake',
   'tenant-application.html#commercial-lease-application',
   'tenant-resources.html#leasing-inquiry',
@@ -258,4 +259,17 @@ test('sell-your-building owner form has a honeypot and a wired success state', (
   assert.equal(form.attrs.id, 'ownerForm', 'form needs id="ownerForm" for the submit handler');
   assert.match(form.body, /id="ownerSuccess"/, 'success message element missing');
   assert.match(html, /getElementById\(\s*['"]ownerSuccess['"]\s*\)/, 'no script reveals #ownerSuccess');
+});
+
+// The contact form is the one public lead form that carried only a honeypot: no
+// reCAPTCHA, unlike the lease application, so bot traffic went straight into a
+// channel Gabriel and Eric are emailed from (2026-09-28 lead-reliability pass).
+// Netlify's built-in reCAPTCHA needs BOTH the form attribute and the placeholder
+// element it renders the widget into; either alone silently does nothing.
+test('contact form is reCAPTCHA-gated: form attribute plus the widget placeholder', () => {
+  const form = forms(readFileSync(path.join(ROOT, 'contact.html'), 'utf8')).find((f) => formName(f) === 'contact');
+  assert.ok(form, 'contact form not found');
+  assert.equal(form.attrs['data-netlify-recaptcha'], 'true', 'form needs data-netlify-recaptcha="true"');
+  assert.match(form.body, /<div\b[^>]*data-netlify-recaptcha="true"[^>]*><\/div>/, 'widget placeholder <div data-netlify-recaptcha="true"> missing inside the form');
+  assert.match(form.body, /<input\b[^>]*name="bot-field"/, 'the honeypot stays as a second layer');
 });

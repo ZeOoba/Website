@@ -22,7 +22,7 @@ const LABELS = {
   'landlord-3-name': 'Landlord 3', 'landlord-3-address': 'Landlord 3 Address', 'landlord-3-phone': 'Landlord 3 Phone',
   'typed-signature': 'Signed By', 'signature-date': 'Signature Date',
   name: 'Name', company: 'Company', email: 'Email', phone: 'Phone', market: 'Market', message: 'Message',
-  'submission-score': 'Score', 'gate-property-type': 'Property Type Gate', 'gate-market': 'Market Gate',
+  'submission-score': 'Score', 'scorecard-coverage': 'Scorecard Coverage', 'gate-property-type': 'Property Type Gate', 'gate-market': 'Market Gate',
 };
 
 const DOC_LABELS = {

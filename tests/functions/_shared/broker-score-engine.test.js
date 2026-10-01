@@ -283,3 +283,46 @@ test('scoreDeal: exactly 60% coverage is scored, 45% is withheld', () => {
   assert.equal(at45.insufficientData, true);
   assert.equal(at45.finalScore, null);
 });
+
+// Independent review 2026-10-01 (F1): the no-dollars test only exercised the above-floor outcome, so
+// the floor could be put back in the other two broker notes without any test failing. Derive prices
+// from the floor so each of the three outcomes is actually hit.
+test('scoreDeal: the broker-facing basis note carries no dollar figures in ANY of the three outcomes', () => {
+  const { scoreDeal } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+  const rctLow = rctBenchmark.marketToRctLowPerSF.Columbus;
+  const floorPerSF = rctLow * (1 - vintageFloorPct(1990, rctBenchmark.vintageFloor));
+  const sf = 10_000;
+  const askFor = (perSF) => Math.round((perSF * sf) / 1.02);
+  const basisFor = (perSF) => scoreDeal({
+    askingPrice: askFor(perSF), buildingSizeSF: sf, assetClass: 'industrial', buildingGrade: 'B',
+    clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
+    valueAddSignals: ['vacancy'], notes: null,
+  }, rctBenchmark).categories.find((c) => c.key === 'basis');
+
+  const full = basisFor(floorPerSF * 0.8);
+  const partial = basisFor(floorPerSF * 0.92);
+  const over = basisFor(floorPerSF * 1.1);
+  assert.equal(full.earned, 25, 'price 20% under the floor must earn full credit');
+  assert.ok(partial.earned > 0 && partial.earned < 25, `price 8% under the floor must earn partial credit, got ${partial.earned}`);
+  assert.equal(over.earned, 0, 'price 10% over the floor must earn nothing');
+  for (const [name, cat] of [['full', full], ['partial', partial], ['over', over]]) {
+    // No digits at all: a bare number such as the floor without a $ or /SF must not slip through either
+    // (independent review 2026-10-01: a bare-number leak passed the earlier $-only pattern).
+    assert.doesNotMatch(cat.note, /\d/, `${name}: public note must carry no figures at all`);
+    assert.match(cat.internalNote, /\$\d/, `${name}: the internal note keeps the figures for Gabriel and Eric`);
+  }
+});
+
+// Independent review 2026-10-01 (F2): the threshold was only pinned at 45 and 60, so any value from 46
+// to 60 passed. 55% (dealSize 25 + clearHeight 15 + complexity 15) must be withheld.
+test('scoreDeal: 55% coverage is withheld, so the threshold cannot drift below 60 unnoticed', () => {
+  const { scoreDeal } = require('../../../netlify/functions/_shared/broker-score-engine.js');
+  const r = scoreDeal({
+    askingPrice: 2_000_000, buildingSizeSF: null, assetClass: 'industrial', buildingGrade: 'B',
+    clearHeightFt: 20, city: null, state: null, matchedRctMarket: null, yearBuilt: null,
+    valueAddSignals: ['vacancy', 'deferred_maintenance'], notes: null,
+  }, rctBenchmark);
+  assert.equal(r.coveragePct, 55);
+  assert.equal(r.insufficientData, true);
+  assert.equal(r.finalScore, null);
+});

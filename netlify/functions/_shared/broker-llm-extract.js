@@ -2,6 +2,25 @@
 
 const MODEL_DEFAULT = 'claude-sonnet-5';
 
+// The market list is DERIVED from the benchmark file so the extractor enum and the benchmark keys can
+// never drift apart (a mismatch silently excluded the basis category: the 2026-08-21 audit's market-gate
+// finding). Geography hints guide the model; a market with no hint falls back to its own name.
+const rctBenchmark = require('./rct-benchmark-data.js');
+const RCT_MARKETS = Object.keys(rctBenchmark.marketToRctLowPerSF);
+const MARKET_HINTS = {
+  Maryland: 'Maryland (covers DC Metro, Baltimore City, and the Eastern Shore of Maryland)',
+  Columbus: 'Columbus OH',
+  'Kansas City': 'Kansas City MO/KS',
+  Indianapolis: 'Indianapolis IN',
+  Cincinnati: 'Cincinnati OH',
+  Madison: 'Madison WI',
+  'Grand Rapids': 'Grand Rapids MI',
+  Richmond: 'Richmond VA',
+  'Des Moines': 'Des Moines IA',
+  Louisville: 'Louisville KY',
+};
+const MARKET_DESCRIPTION = `Which of these ${RCT_MARKETS.length} Oxford Realty Advisors target markets the property is in or immediately adjacent to: ${RCT_MARKETS.map((m) => MARKET_HINTS[m] || m).join('; ')}. Null if the property is not in or near any of these ${RCT_MARKETS.length}.`;
+
 const EXTRACTION_TOOL = {
   name: 'record_deal_terms',
   description: 'Record the deal terms extracted from the uploaded offering memorandum or rent roll. Only report fields explicitly stated or clearly inferable from the document; use null for anything not stated. Do not guess or estimate a number that is not in the document.',
@@ -15,7 +34,7 @@ const EXTRACTION_TOOL = {
       clearHeightFt: { type: ['number', 'null'], description: 'Clear height in feet, or null if not stated.' },
       city: { type: ['string', 'null'] },
       state: { type: ['string', 'null'] },
-      matchedRctMarket: { type: ['string', 'null'], enum: ['Maryland', 'Columbus', 'Kansas City', 'Indianapolis', null], description: 'Which of these four Oxford Realty Advisors target markets the property is in or immediately adjacent to: Maryland (covers DC Metro, Baltimore City, and the Eastern Shore of Maryland), Columbus OH, Kansas City MO, or Indianapolis IN. Null if the property is not in or near any of these four.' },
+      matchedRctMarket: { type: ['string', 'null'], enum: [...RCT_MARKETS, null], description: MARKET_DESCRIPTION },
       yearBuilt: { type: ['number', 'null'] },
       valueAddSignals: { type: 'array', items: { type: 'string', enum: ['vacancy', 'deferred_maintenance', 'environmental_issue', 'legal_issue', 'below_market_leases', 'none_stabilized'] }, description: 'All value-add signals present. Use ["none_stabilized"] if the property reads as fully stabilized and turnkey with none of the other signals present. Empty array if this cannot be assessed from the document.' },
       notes: { type: ['string', 'null'] },

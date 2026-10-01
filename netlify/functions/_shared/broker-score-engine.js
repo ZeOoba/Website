@@ -70,6 +70,10 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
   if (rctLow == null) {
     return { possible, excluded: true, note: `No RCT v03 benchmark for "${matchedRctMarket}" — excluded from scoring.` };
   }
+  // Markets whose benchmark is a proxy for another market's figure (RCT v3.1 `proxy: true`). Shown in the
+  // INTERNAL note only, so Gabriel and Eric know the floor behind a score is not directly sourced.
+  const proxySuffix = (rctBenchmark.proxyMarkets || []).includes(matchedRctMarket)
+    ? ` [proxy benchmark for ${matchedRctMarket}, not a directly sourced figure]` : '';
   const floorPct = vintageFloorPct(yearBuilt, rctBenchmark.vintageFloor);
   const floorPerSF = rctLow * (1 - floorPct);
   const impliedPricePerSF = (askingPrice * 1.02) / buildingSizeSF;
@@ -85,7 +89,7 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
     return {
       possible, earned: 0,
       note: 'Implied basis is above the replacement-cost floor for this market and vintage — does not clear ORA\'s replacement-cost discipline.',
-      internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF exceeds the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF for ${matchedRctMarket} — does not clear ORA's replacement-cost discipline.`,
+      internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF exceeds the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF for ${matchedRctMarket} — does not clear ORA's replacement-cost discipline.${proxySuffix}`,
     };
   }
   const comfortableFloor = floorPerSF * 0.85;
@@ -93,14 +97,14 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
     return {
       possible, earned: possible,
       note: 'Implied basis clears the replacement-cost floor with meaningful margin.',
-      internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF clears the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF with meaningful margin.`,
+      internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF clears the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF with meaningful margin.${proxySuffix}`,
     };
   }
   const t = (floorPerSF - impliedPricePerSF) / (floorPerSF - comfortableFloor);
   return {
     possible, earned: Math.round(t * possible),
     note: 'Implied basis clears the replacement-cost floor but not comfortably.',
-    internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF clears the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF but not comfortably.`,
+    internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF clears the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF but not comfortably.${proxySuffix}`,
   };
 }
 
@@ -120,12 +124,17 @@ const MIN_COVERAGE_PCT = 60;
 
 function scoreDeal(extracted, rctBenchmark) {
   const propertyTypeGate = evaluatePropertyTypeGate(extracted.assetClass);
-  const marketGate = evaluateMarketGate(extracted.matchedRctMarket, extracted.city, extracted.state);
+  // The extractor's schema constrains matchedRctMarket to the benchmark keys, but the engine must not rely on
+  // the model obeying it: any other string ("Phoenix") used to PASS the market gate uncapped. Treat a market
+  // that is not an own key of the benchmark as unmatched (independent review 2026-10-01, F2).
+  const matchedRctMarket = Object.prototype.hasOwnProperty.call(rctBenchmark.marketToRctLowPerSF || {}, extracted.matchedRctMarket)
+    ? extracted.matchedRctMarket : null;
+  const marketGate = evaluateMarketGate(matchedRctMarket, extracted.city, extracted.state);
   const gateFailed = propertyTypeGate === 'FAIL' || marketGate === 'FAIL';
 
   const rawCategories = [
     { key: 'dealSize', label: 'Deal Size', ...scoreDealSize(extracted.askingPrice) },
-    { key: 'basis', label: 'Acquisition Basis vs. Replacement Cost', ...scoreBasis(extracted.askingPrice, extracted.buildingSizeSF, extracted.yearBuilt, extracted.matchedRctMarket, rctBenchmark) },
+    { key: 'basis', label: 'Acquisition Basis vs. Replacement Cost', ...scoreBasis(extracted.askingPrice, extracted.buildingSizeSF, extracted.yearBuilt, matchedRctMarket, rctBenchmark) },
     { key: 'buildingSize', label: 'Building Size', ...scoreBuildingSize(extracted.buildingSizeSF) },
     { key: 'clearHeight', label: 'Clear Height', ...scoreClearHeight(extracted.clearHeightFt) },
     { key: 'complexity', label: 'Complexity / Value-Add Fit', ...scoreComplexity(extracted.valueAddSignals) },

@@ -126,6 +126,7 @@ flowchart TD
 │   │   └── _shared/           Shared helpers (Graph API auth/mail/files, validation, scoring)
 │   └── edge-functions/        Edge function for the /api/chat assistant + its knowledge base
 ├── .github/workflows/ci.yml    PR gate — runs `npm run verify` (plus a manual chat-eval job)
+├── .github/workflows/lighthouse.yml  Informational Lighthouse budget on 4 built pages; never fails a PR (see scripts/lighthouse-summary.mjs)
 ├── scripts/
 │   ├── build-dist.mjs         Assembles dist/ for deploy (see above)
 │   ├── build-kb.mjs           Builds the chat assistant's knowledge base

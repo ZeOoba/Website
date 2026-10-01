@@ -145,6 +145,14 @@ export const CASES = [
   { id: 'UB2', what: "rendered: driver's-licence cap raised past script.js's 10 MB cap", edits: [['dist/application-script.js', sub("'upload-drivers-license': 1.5 * 1024 * 1024", "'upload-drivers-license': 100 * 1024 * 1024")]], run: 'budget', expect: 'over its 1.5 MB cap' },
   { id: 'UB3', what: 'rendered: the submit handler no longer runs validateStep', edits: [['dist/application-script.js', sub('if(!validateStep(TOTAL_STEPS)){ e.preventDefault(); return; }', '')]], run: 'budget', expect: 'over its 1.5 MB cap' },
 
+  // --- Available Space UI (rendered, tests/site/listings-ui.test.mjs) -----------------
+  { id: 'LS1', what: 'size filter goes back to summing all units against the minimum (the shipped bug)', edits: [['dist/listings.js', sub('return hi >= min && lo <= max;', 'return p.units.reduce(function (s, x) { return s + x.sf; }, 0) >= min && lo <= max;')]], run: 'listings', expect: 'shipped bug pinned' },
+  { id: 'LS2', what: 'stats bar totals use each unit\'s minimum instead of its maximum', edits: [['dist/listings.js', sub('return us + (u.sfMax || u.sf);', 'return us + u.sf;')]], run: 'listings', expect: 'stats bar' },
+  { id: 'LS3', what: 'size ascending sorts descending', edits: [['dist/listings.js', sub('return totalSF(a) - totalSF(b);', 'return totalSF(b) - totalSF(a);')]], run: 'listings', expect: 'sorting' },
+  { id: 'LS4', what: 'Escape no longer closes the detail overlay', edits: [['dist/listings.js', sub("if (e.key === 'Escape') closeDetail();", '')]], run: 'listings', expect: 'detail overlay' },
+  { id: 'LS5', what: 'the detail overlay stops trapping Tab focus', edits: [['dist/listings.js', sub("document.addEventListener('keydown', detailKeydownTrap);", '')]], run: 'listings', expect: 'detail overlay' },
+  { id: 'LS6', what: 'Clear all forgets to empty the search box', edits: [['dist/listings.js', sub("el('searchInput').value = '';", '')]], run: 'listings', expect: 'search matches' },
+
   // --- build-dist.mjs ---------------------------------------------------------------
   { id: 'B1', what: 'Overview PDF in both SITE_FILES and EXPECTED_EXCLUSIONS', edits: [['scripts/build-dist.mjs', sub("const EXPECTED_EXCLUSIONS = ['application-script.file-size.test.js',", "const EXPECTED_EXCLUSIONS = ['Oxford-Realty-Advisors-Overview.pdf', 'application-script.file-size.test.js',")]], run: 'buildFailsClean', expect: 'PASS' },
   { id: 'BP1', what: 'a dot-file in resources/ does not ship', edits: [['resources/.draft-notes', () => 'private']], run: 'buildNoDotfile', expect: 'PASS' },

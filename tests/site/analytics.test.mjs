@@ -112,3 +112,33 @@ test('#2 script.js takes no dead geometry read at DOMContentLoaded (forced reflo
   assert.ok(!/c\?c\.offsetHeight:400/.test(js), 'script.js reads hero offsetHeight again; nothing consumes it and it forces a layout');
   assert.ok(!/requestIdleCallback\(u\)/.test(js), 'script.js schedules its scrollspy measure with a bare requestIdleCallback that can fire before first paint; use _idle()');
 });
+
+// ── 2026-09-28 conversion-event pass (Phase 2 of the fix plan) ──────────────
+// GA4 previously saw only page_view; the three lead-generating success paths
+// now fire a named event so Gabriel can see which pages/channels actually
+// produce a broker submission, a tenant application, or a contact message.
+
+test('WP-17 the broker deal-submission success path fires a broker_deal_submitted GA4 event', () => {
+  const html = read('for-brokers.html');
+  const successBlock = html.match(/window\.ORA_BROKER_UPLOAD\.submit\(form\)\.then\(function\(result\)\{[\s\S]*?\}\)\.catch/)?.[0] ?? '';
+  assert.match(successBlock, /gtag\('event',\s*'broker_deal_submitted'/, 'for-brokers.html success handler does not fire broker_deal_submitted');
+  // Must come after the success message is revealed, never inside .catch (a failed upload is not a submission).
+  assert.ok(successBlock.indexOf("success.style.display = ''") < successBlock.indexOf('broker_deal_submitted'), 'broker_deal_submitted fires before the success state is shown');
+});
+
+test('WP-18 application-received.html fires tenant_application_submitted exactly once, inside the text/partytown gtag worker', () => {
+  const html = read('application-received.html');
+  const s = scripts(html).filter((x) => x.body.includes("gtag('event','tenant_application_submitted')"));
+  assert.equal(s.length, 1, 'application-received.html must fire tenant_application_submitted exactly once');
+  assert.equal(s[0].attrs.type, 'text/partytown', 'the event call must live in the same text/partytown worker script as gtag(\'config\',...), not a main-thread script racing Partytown\'s proxy setup');
+});
+
+test('WP-19 contact.html has a wired AJAX success handler (was dead markup — #contactSuccess had no JS reveal) and fires contact_form_submit', () => {
+  const html = read('contact.html');
+  assert.match(html, /document\.getElementById\('contactError'\)/, 'contact.html has no error box wired — the success handler this test expects is missing');
+  const successBlock = html.match(/document\.addEventListener\('submit',\s*function\(e\)\{\s*if\(e\.target !== form \|\| e\.defaultPrevented\) return;[\s\S]*?\}\)\.catch/)?.[0] ?? '';
+  assert.match(successBlock, /success\.style\.display = '';/, 'contact.html submit handler does not reveal #contactSuccess');
+  assert.match(successBlock, /success\.scrollIntoView/, 'contact.html submit handler does not scroll the success message into view');
+  assert.match(successBlock, /gtag\('event',\s*'contact_form_submit'/, 'contact.html success handler does not fire contact_form_submit');
+  assert.ok(successBlock.indexOf("success.style.display = ''") < successBlock.indexOf('contact_form_submit'), 'contact_form_submit fires before the success state is shown');
+});

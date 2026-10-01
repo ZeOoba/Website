@@ -411,6 +411,7 @@ body{padding-top:36px}.nav{top:36px!important}
       });
       success.style.display = '';
       success.scrollIntoView({ block: 'center' });
+      if(window.gtag){ window.gtag('event', 'broker_deal_submitted', { event_category: 'lead', event_label: form.querySelector('[name="market"]') ? form.querySelector('[name="market"]').value : '' }); }
       if(result && result.submissionId){
         window.ORA_BROKER_UPLOAD.pollForScore(result.submissionId, result.statusToken, renderScoreCard, showUnavailable);
       } else {

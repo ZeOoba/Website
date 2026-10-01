@@ -379,6 +379,26 @@ test('WP-13 the tenant-application form loads script.js and application-script.j
   assert.match(js, /addEventListener\(\s*"submit"\s*,\s*function\s*\(\s*(\w+)\s*\)\s*\{\s*if\s*\(\s*\1\.defaultPrevented\s*\)\s*\{?\s*return/, 'script.js submit handler must return early on a defaultPrevented event');
 });
 
+test('WP-17 CSP connect-src allows the exact Netlify RUM collector host, and only there, with no wildcard', () => {
+  // Netlify injects /.netlify/scripts/rum at deploy time (the local dist/ build
+  // never carries it, so csp-smoke cannot see it). That script POSTs Core Web
+  // Vitals with a CORS fetch to the collector below. Without the allowance the
+  // browser blocks the beacon on every page load ("connect-src" violation) and
+  // RUM data is silently lost. Confirmed live 2026-09-28 via securitypolicyviolation.
+  const RUM_HOST = 'https://ingesteer.services-prod.nsvcs.net';
+  const csp = read('_headers').match(/Content-Security-Policy:\s*([^\r\n]*)/)?.[1] ?? '';
+  const tokenised = csp.split(';').map((d) => d.trim().split(/\s+/)).filter((t) => t[0]);
+  // Browsers honour the FIRST occurrence of a directive and ignore repeats, so a
+  // second connect-src cannot be trusted to carry the host: require exactly one.
+  assert.equal(tokenised.filter((t) => t[0] === 'connect-src').length, 1, 'CSP must contain exactly one connect-src directive');
+  const directives = new Map(tokenised.map((t) => [t[0], t.slice(1)]));
+  assert.ok((directives.get('connect-src') ?? []).includes(RUM_HOST), `connect-src must list ${RUM_HOST} (Netlify RUM beacon target)`);
+  for (const [name, sources] of directives) {
+    if (name !== 'connect-src') assert.ok(!sources.includes(RUM_HOST), `${RUM_HOST} is a fetch target only; it does not belong in ${name}`);
+  }
+  assert.ok(!/nsvcs\.net/.test(csp.replaceAll(RUM_HOST, '')), 'CSP must name the exact collector host, never a wildcard or a sibling *.nsvcs.net origin');
+});
+
 // ── 2026-09-28 data-accuracy & positioning pass (Phase 1 of the fix plan) ───
 // Figures sourced from the Master Workbook DSOR (Notion 3706ecd8), most recent
 // ingest 2026-09-06: 138 tenants, 513,158 SF roster (512,258 SF leasable), 14

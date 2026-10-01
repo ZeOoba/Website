@@ -126,8 +126,12 @@ export async function handleBrokerFinalize(req, {
   } catch (err) {
     console.error('[broker-finalize] email failed', String(err));
     await logFailure(fetchImpl, { errorCode: 'email_failed', detail: String(err), submissionId });
-    // The token was burned above; give it back so the broker's retry (same
-    // intakeToken, see broker-upload.js) can complete instead of hitting 409.
+    // The token was burned above; give it back so a retry with the same intakeToken can complete
+    // instead of hitting 409. The shipped client does NOT do that: broker-upload.js submit() opens a
+    // fresh upload session on every attempt, so a browser resubmit gets a new token, a new submission-id
+    // and a second contact row. The contact row written above for THIS attempt keeps its id and never
+    // gets a score row; the email_failed row logged here carries the same id, so the orphan stays
+    // traceable (2026-10-01 review F4: accepted, documented, not reordered).
     try { await releaseIntakeTokenImpl(claims.path, {}); }
     catch (relErr) { console.error('[broker-finalize] releaseIntakeToken failed', String(relErr)); }
     return fail(502, 'email_failed');

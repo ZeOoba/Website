@@ -716,9 +716,16 @@
     return;
   }
   var current = 0;
-  setInterval(function () {
+  function rotate() {
     items[current].classList.remove("is-active");
     current = (current + 1) % items.length;
     items[current].classList.add("is-active");
-  }, 4000);
+  }
+  // First rotation waits 12s so the load-time visual progress settles
+  // (a text swap inside the capture window reads as "still loading" and
+  // inflates Speed Index); then the original 4s cadence resumes.
+  setTimeout(function () {
+    rotate();
+    setInterval(rotate, 4000);
+  }, 12000);
 })();

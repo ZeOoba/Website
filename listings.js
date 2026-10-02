@@ -20,8 +20,8 @@
       "state": "OH",
       "market": "Columbus",
       "category": "Flex",
-      "lat": 39.957,
-      "lng": -82.96,
+      "lat": 39.93003,
+      "lng": -82.91239,
       "img": "/images/10-zettler-2012-2026-exterior-.jpg",
       "imgW": 800,
       "slug": "2012-2026-zettler-rd",
@@ -45,8 +45,8 @@
       "state": "OH",
       "market": "Columbus",
       "category": "Flex",
-      "lat": 39.938,
-      "lng": -82.974,
+      "lat": 39.98419,
+      "lng": -82.85314,
       "img": "/images/17-warehouse-columbus-external.jpg",
       "imgW": 700,
       "slug": "384-398-morrison-rd",
@@ -70,8 +70,8 @@
       "state": "OH",
       "market": "Columbus",
       "category": "Industrial",
-      "lat": 39.958,
-      "lng": -82.961,
+      "lat": 39.9299,
+      "lng": -82.9122,
       "img": "/images/07-2000_2002-front.jpg",
       "imgW": 700,
       "slug": "2000-2002-zettler-rd",
@@ -100,16 +100,16 @@
       "id": 4,
       "name": "Northwood Business Center",
       "subtitle": "2203 Northwood Dr",
-      "city": "Easton",
+      "city": "Salisbury",
       "state": "MD",
       "market": "Maryland",
       "category": "Flex",
-      "lat": 38.78,
-      "lng": -76.08,
+      "lat": 38.39957,
+      "lng": -75.5801,
       "img": "/images/06-exterior-beauty.jpg",
       "imgW": 700,
       "slug": "2203-northwood-dr",
-      "desc": "Multi-tenant industrial flex park in Easton, MD.",
+      "desc": "Multi-tenant industrial flex park in Salisbury, MD.",
       "loopnetId": "33776831",
       "units": [
         {
@@ -138,8 +138,8 @@
       "state": "OH",
       "market": "Columbus",
       "category": "Flex",
-      "lat": 39.939,
-      "lng": -82.953,
+      "lat": 39.92552,
+      "lng": -82.9209,
       "img": "/images/01-2800-2826-banwick-exterior.jpg",
       "imgW": 800,
       "slug": "2800-2826-banwick-rd",
@@ -163,8 +163,8 @@
       "state": "MO",
       "market": "Kansas City",
       "category": "Retail",
-      "lat": 38.946,
-      "lng": -94.462,
+      "lat": 38.99156,
+      "lng": -94.46884,
       "img": "/images/05-exterior-front.jpg",
       "imgW": 485,
       "slug": "9620-state-route-350",
@@ -189,8 +189,8 @@
       "state": "OH",
       "market": "Columbus",
       "category": "Flex",
-      "lat": 39.994,
-      "lng": -82.923,
+      "lat": 39.99418,
+      "lng": -82.92302,
       "img": "/images/04-1100-rarig-exterior-2-drive-ins-dock.jpg",
       "imgW": 800,
       "slug": "1100-rarig-ave",
@@ -222,8 +222,8 @@
       "state": "MD",
       "market": "Maryland",
       "category": "Flex",
-      "lat": 39.229,
-      "lng": -76.817,
+      "lat": 39.22908,
+      "lng": -76.81735,
       "img": "/images/20-9050-red-branch-exterior.jpg",
       "imgW": 800,
       "slug": "9050-red-branch-rd",
@@ -248,8 +248,8 @@
       "state": "MD",
       "market": "Maryland",
       "category": "Flex",
-      "lat": 38.813,
-      "lng": -76.07,
+      "lat": 38.81276,
+      "lng": -76.0704,
       "img": "/images/08-20161026_120215.jpg",
       "imgW": 800,
       "slug": "29000-information-ln",
@@ -582,11 +582,15 @@
   function initMap() {
     if (!window.L || !el('map')) return;
     try {
-      map = L.map('map', { zoomControl: true, scrollWheelZoom: false });
+      map = L.map('map', { zoomControl: true, scrollWheelZoom: false, maxZoom: 19 });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 18
+        maxZoom: 19
       }).addTo(map);
+      // Wheel-zoom is armed by a click/focus on the map and released when the
+      // pointer leaves, so scrolling the page past the map never gets captured.
+      map.on('click focus', function () { map.scrollWheelZoom.enable(); });
+      map.on('mouseout blur', function () { map.scrollWheelZoom.disable(); });
       // LoopNet-style diamond pin, gold for available listings
       function buildDiamondIcon(color) {
         return L.divIcon({
@@ -628,7 +632,7 @@
     if (filtered.length > 0) {
       try {
         var bounds = L.latLngBounds(filtered.map(function (p) { return [p.lat, p.lng]; }));
-        map.fitBounds(bounds.pad(0.15), { animate: true, maxZoom: 13 });
+        map.fitBounds(bounds.pad(0.15), { animate: true, maxZoom: 16 });
       } catch (e) { }
     }
   }

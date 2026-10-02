@@ -8,9 +8,9 @@
 .pf-stats { background: var(--navy-dark); color: var(--white); padding: 32px 0 28px; border-bottom: 1px solid rgba(201, 169, 110, .25); }
 .pf-stats__list { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 16px; text-align: center; max-width: 980px; margin: 0 auto; }
 .pf-stat { display: grid; grid-template-areas: "num" "label" "note"; justify-items: center; align-content: start; row-gap: 4px; }
-.pf-stat dd { grid-area: num; font-family: var(--font-mono, monospace); font-size: 30px; line-height: 1.1; letter-spacing: -.02em; color: var(--gold-light, #D4B87E); margin: 0; }
+.pf-stat dd:not(.pf-stat__note) { grid-area: num; font-family: var(--font-mono, monospace); font-size: 30px; line-height: 1.1; letter-spacing: -.02em; color: var(--gold-light, #D4B87E); margin: 0; }
 .pf-stat dt { grid-area: label; font-size: 11px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: rgba(255, 255, 255, .78); }
-.pf-stat__note { grid-area: note; font-size: 12px; color: rgba(255, 255, 255, .6); }
+.pf-stat dd.pf-stat__note { grid-area: note; font-size: 12px; color: rgba(255, 255, 255, .6); margin: 0; }
 .pf-stats__cta { margin-top: 24px; text-align: center; font-size: 14px; color: rgba(255, 255, 255, .78); }
 .pf-stats__cta a { color: var(--gold-light, #D4B87E); font-weight: 500; white-space: nowrap; }
 
@@ -104,6 +104,8 @@
 /* ---------- Property detail pages ---------- */
 .pf-crumbs { font-size: 13px; color: var(--slate); margin-bottom: 32px; }
 .pf-crumbs a { color: var(--gold-accessible); }
+/* Links inside running text must not rely on color alone (axe: link-in-text-block). */
+.pf-crumbs a, .pf-detail__more a, .pf-note a, .pf-stats__cta a { text-decoration: underline; text-underline-offset: 2px; }
 .pf-detail__grid { display: grid; grid-template-columns: 1fr; gap: 40px; align-items: start; }
 .pf-detail__main h2, .pf-detail__facts h2 { font-size: 26px; margin-bottom: 16px; }
 .pf-detail__main p { margin-bottom: 16px; max-width: 62ch; }

@@ -40,7 +40,7 @@ after(async () => {
 });
 
 /** Open the page; `tiles` is 'ok' (stub PNG) or 'fail' (abort). Returns null when Leaflet is unreachable. */
-async function open({ tiles = 'ok', touch = false } = {}) {
+async function open({ tiles = 'ok', touch = false, extraListings = [] } = {}) {
   const context = await browser.newContext({ locale: 'en-US', viewport: { width: 1280, height: 900 }, hasTouch: touch });
   const page = await context.newPage();
   await page.route('**/*', (route) => {
@@ -50,6 +50,19 @@ async function open({ tiles = 'ok', touch = false } = {}) {
     if (u.hostname.endsWith('tile.openstreetmap.org')) return tiles === 'ok' ? route.fulfill({ status: 200, contentType: 'image/png', body: PNG }) : route.abort();
     return route.abort();
   });
+  if (extraListings.length) {
+    // test-only: append listings to the in-page LISTINGS array before the app builds its state,
+    // so scenarios the live data no longer contains (e.g. two buildings on one pin) stay covered
+    await page.route('**/listings.js*', async (route) => {
+      const u = new URL(route.request().url());
+      if (u.origin !== server.url) return route.continue();
+      const res = await route.fetch();
+      const marker = 'var filtered = LISTINGS.slice();';
+      const body = await res.text();
+      assert.ok(body.includes(marker), 'listings.js changed shape: update the extraListings injection point');
+      await route.fulfill({ response: res, body: body.replace(marker, `LISTINGS.push(...${JSON.stringify(extraListings)}); ${marker}`) });
+    });
+  }
   await page.goto(`${server.url}/available-space.html`, { waitUntil: 'load' });
   const ready = await page.waitForFunction(() => window.L && document.querySelectorAll('.leaflet-marker-icon').length > 0, null, { timeout: 15_000 }).then(() => true, () => false);
   if (!ready) { await context.close(); return null; }
@@ -128,21 +141,31 @@ test('the + button reaches street level (zoom 19) and stops there', async (t) =>
 });
 
 test('overlapping pins share one popup so none is unreachable; a lone pin shows only itself', async (t) => {
-  const o = await open();
+  const z2 = LISTINGS.find((p) => p.name === '2000-2002 Zettler Rd');
+  assert.ok(z2, 'fixture anchor listing present in data/listings.json');
+  // synthetic neighbour on the exact same coordinates: the live data has no overlapping pair to rely on
+  const z = {
+    ...z2,
+    id: 9001,
+    name: 'Fixture Overlap Rd',
+    slug: 'fixture-overlap-rd',
+    desc: 'Synthetic listing that shares a pin with 2000-2002 Zettler Rd (test only).',
+    loopnetId: '0',
+    units: [{ suite: 'X1', sf: 1000, sfLabel: '1,000 SF', rate: '$10.00', rateType: 'NNN', use: 'Flex' }],
+  };
+  const o = await open({ extraListings: [z] });
   if (!o) return t.skip('Leaflet unreachable');
   const { page } = o;
-  const z = LISTINGS.find((p) => p.id === 1);
-  const z2 = LISTINGS.find((p) => p.id === 3);
-  // whole-portfolio view: all Columbus pins sit within a few pixels of each other
+  // whole-portfolio view: both buildings sit on one pin, so one click must reach both
   await page.locator(`.leaflet-marker-icon[title="${z.name}"]`).click({ force: true });
   const popup = page.locator('.leaflet-popup-content');
   await popup.waitFor();
   const text = await popup.innerText();
-  assert.ok(text.includes(z.name) && text.includes(z2.name), `popup lists both Zettler Rd properties: ${text}`);
+  assert.ok(text.includes(z.name) && text.includes(z2.name), `popup lists both overlapping properties: ${text}`);
   assert.ok((await popup.locator('.as-map-popup__details').count()) >= 2, 'each entry has its own Details button');
 
   // narrowed to one property the map zooms to it and the popup is just that property
-  await page.fill('#searchInput', '2000-2002');
+  await page.fill('#searchInput', '2000-2002 Zettler');
   await settle(page, 1800);
   await page.locator(`.leaflet-marker-icon[title="${z2.name}"]`).click({ force: true });
   await popup.waitFor();

@@ -584,3 +584,15 @@ test('wherever a page hides its nav links, a wired hamburger is showing', () => 
   }
   assert.ok(hiding >= 20, `only ${hiding} pages hide their nav links; the CSS scan is broken`);
 });
+
+// scripts/build-kb.mjs rewrites netlify/edge-functions/knowledge-base.json on every
+// build (new generatedAt, page text from the current tree). Tracking it made it show
+// dirty in every worktree, and the committed copy went weeks stale because Netlify and
+// `npm run verify` regenerate it before it is read. It must stay a build artifact.
+test('knowledge-base.json is a gitignored build artifact, not a tracked file', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const KB = 'netlify/edge-functions/knowledge-base.json';
+  const tracked = execFileSync('git', ['ls-files', '--', KB], { cwd: ROOT, encoding: 'utf8' }).trim();
+  assert.equal(tracked, '', `${KB} must not be tracked (regenerated on every build)`);
+  assert.match(read('.gitignore'), /^\/?netlify\/edge-functions\/knowledge-base\.json\s*$/m, `${KB} must be in .gitignore`);
+});

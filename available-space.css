@@ -280,6 +280,27 @@
   z-index: 1;
 }
 
+/* Shown only when the public OSM tile server fails to deliver any tiles */
+.as-map-note {
+  position: absolute;
+  left: 24px;
+  right: 32px;
+  bottom: 28px;
+  z-index: 2;
+  margin: 0;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #E5E0D6;
+  border-radius: var(--as-radius);
+  font-family: var(--as-font-body);
+  font-size: 13px;
+  color: var(--as-slate);
+}
+
+.as-map-note[hidden] {
+  display: none;
+}
+
 /* LoopNet-style diamond pin hover */
 .ora-pin:hover > div {
   transform: rotate(45deg) scale(1.18) !important;

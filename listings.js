@@ -20,8 +20,8 @@
       "state": "OH",
       "market": "Columbus",
       "category": "Flex",
-      "lat": 39.93003,
-      "lng": -82.91239,
+      "lat": 39.93096,
+      "lng": -82.90974,
       "img": "/images/10-zettler-2012-2026-exterior-.jpg",
       "imgW": 800,
       "slug": "2012-2026-zettler-rd",
@@ -45,8 +45,8 @@
       "state": "OH",
       "market": "Columbus",
       "category": "Flex",
-      "lat": 39.98419,
-      "lng": -82.85314,
+      "lat": 39.98527,
+      "lng": -82.85498,
       "img": "/images/17-warehouse-columbus-external.jpg",
       "imgW": 700,
       "slug": "384-398-morrison-rd",
@@ -70,8 +70,8 @@
       "state": "OH",
       "market": "Columbus",
       "category": "Industrial",
-      "lat": 39.9299,
-      "lng": -82.9122,
+      "lat": 39.93064,
+      "lng": -82.91113,
       "img": "/images/07-2000_2002-front.jpg",
       "imgW": 700,
       "slug": "2000-2002-zettler-rd",
@@ -104,8 +104,8 @@
       "state": "MD",
       "market": "Maryland",
       "category": "Flex",
-      "lat": 38.39957,
-      "lng": -75.5801,
+      "lat": 38.39942,
+      "lng": -75.5791,
       "img": "/images/06-exterior-beauty.jpg",
       "imgW": 700,
       "slug": "2203-northwood-dr",
@@ -138,8 +138,8 @@
       "state": "OH",
       "market": "Columbus",
       "category": "Flex",
-      "lat": 39.92552,
-      "lng": -82.9209,
+      "lat": 39.92593,
+      "lng": -82.92199,
       "img": "/images/01-2800-2826-banwick-exterior.jpg",
       "imgW": 800,
       "slug": "2800-2826-banwick-rd",
@@ -163,8 +163,8 @@
       "state": "MO",
       "market": "Kansas City",
       "category": "Retail",
-      "lat": 38.99156,
-      "lng": -94.46884,
+      "lat": 38.99217,
+      "lng": -94.46813,
       "img": "/images/05-exterior-front.jpg",
       "imgW": 485,
       "slug": "9620-state-route-350",
@@ -189,8 +189,8 @@
       "state": "OH",
       "market": "Columbus",
       "category": "Flex",
-      "lat": 39.99418,
-      "lng": -82.92302,
+      "lat": 39.99401,
+      "lng": -82.92233,
       "img": "/images/04-1100-rarig-exterior-2-drive-ins-dock.jpg",
       "imgW": 800,
       "slug": "1100-rarig-ave",
@@ -248,8 +248,8 @@
       "state": "MD",
       "market": "Maryland",
       "category": "Flex",
-      "lat": 38.81276,
-      "lng": -76.0704,
+      "lat": 38.81341,
+      "lng": -76.06947,
       "img": "/images/08-20161026_120215.jpg",
       "imgW": 800,
       "slug": "29000-information-ln",
@@ -583,7 +583,7 @@
     if (!window.L || !el('map')) return;
     try {
       map = L.map('map', { zoomControl: true, scrollWheelZoom: false, maxZoom: 19 });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19
       }).addTo(map);
@@ -601,14 +601,42 @@
         });
       }
       var goldIcon = buildDiamondIcon('#C9A96E');
-      LISTINGS.forEach(function (p) {
+      function popupEntry(p) {
         var unitText = p.units.length === 1 ? '1 space' : p.units.length + ' spaces';
+        return '<strong style="font-family:DM Sans,sans-serif;color:#1B2A4A">' + p.name + '</strong><br>' +
+          '<span style="font-family:DM Sans,sans-serif;font-size:12px;color:#596B7D">' + p.city + ', ' + p.state + ' &bull; ' + unitText + '</span><br>' +
+          '<button class="as-map-popup__details" data-id="' + p.id + '" style="margin-top:6px;font-family:DM Sans,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;border:1px solid #1B2A4A;background:none;padding:4px 12px;cursor:pointer;color:#1B2A4A">Details</button>';
+      }
+      // Pins that overlap on screen at the current zoom share one popup, so a pin
+      // hidden underneath another is still reachable without zooming in first.
+      function popupFor(layer) {
+        var here = map.latLngToLayerPoint(layer.getLatLng());
+        var entries = [];
+        markers.forEach(function (m) {
+          if (m.marker !== layer && !map.hasLayer(m.marker)) return;
+          if (m.marker === layer || map.latLngToLayerPoint(m.marker.getLatLng()).distanceTo(here) < 24) {
+            entries.push(popupEntry(LISTINGS.find(function (x) { return x.id === m.id; })));
+          }
+        });
+        return entries.join('<hr style="border:0;border-top:1px solid #E5E0D6;margin:10px 0">');
+      }
+      LISTINGS.forEach(function (p) {
         var m = L.marker([p.lat, p.lng], { icon: goldIcon, title: p.name, riseOnHover: true })
-          .bindPopup('<strong style="font-family:DM Sans,sans-serif;color:#1B2A4A">' + p.name + '</strong><br>' +
-            '<span style="font-family:DM Sans,sans-serif;font-size:12px;color:#596B7D">' + p.city + ', ' + p.state + ' &bull; ' + unitText + '</span><br>' +
-            '<button class="as-map-popup__details" data-id="' + p.id + '" style="margin-top:6px;font-family:DM Sans,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;border:1px solid #1B2A4A;background:none;padding:4px 12px;cursor:pointer;color:#1B2A4A">Details</button>')
+          .bindPopup(popupFor)
           .addTo(map);
         markers.push({ id: p.id, marker: m });
+      });
+      // If the public OSM tile server is down, say so instead of showing a blank
+      // grey map; the pins and every listing card still work without tiles.
+      var tileErrors = 0, tilesLoaded = 0;
+      tileLayer.on('tileload', function () {
+        tilesLoaded++;
+        var note = el('mapTileNote'); if (note) note.hidden = true;
+      });
+      tileLayer.on('tileerror', function () {
+        tileErrors++;
+        var note = el('mapTileNote');
+        if (note && tileErrors >= 4 && tilesLoaded === 0) note.hidden = false;
       });
       var bounds = L.latLngBounds(LISTINGS.map(function (p) { return [p.lat, p.lng]; }));
       map.fitBounds(bounds.pad(0.15));

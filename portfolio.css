@@ -36,6 +36,39 @@
 .pf-card__thesis { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--light-gray); font-size: 14px; line-height: 1.6; color: var(--charcoal); }
 .pf-card--other .portfolio-card__meta span:last-child { background: transparent; box-shadow: inset 0 0 0 1px var(--light-gray); }
 
+.pf-card__more { display: inline-block; margin-top: 14px; font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--gold-accessible); }
+
+/* ---------- Table view ---------- */
+.pf-controls[hidden], .pf-table-wrap[hidden], #portfolioGrid[hidden] { display: none; }
+.pf-table-wrap { overflow-x: auto; margin-bottom: 24px; }
+.pf-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 14px; }
+.pf-table th, .pf-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--light-gray); }
+.pf-table thead th { background: var(--parchment); border-bottom: 2px solid var(--gold); white-space: nowrap; }
+.pf-table tbody th { font-weight: 500; color: var(--navy); }
+.pf-table__num { text-align: right !important; font-variant-numeric: tabular-nums; }
+.pf-table__sort { font: inherit; font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--navy); background: none; border: 0; padding: 0; cursor: pointer; }
+.pf-table__sort:hover { color: var(--gold-accessible); }
+[aria-sort="ascending"] .pf-table__sort::after { content: " \25B2"; font-size: 9px; }
+[aria-sort="descending"] .pf-table__sort::after { content: " \25BC"; font-size: 9px; }
+.pf-table tr.is-hidden { display: none; }
+
+/* ---------- Property detail pages ---------- */
+.pf-crumbs { font-size: 13px; color: var(--slate); margin-bottom: 32px; }
+.pf-crumbs a { color: var(--gold-accessible); }
+.pf-detail__grid { display: grid; grid-template-columns: 1fr; gap: 40px; align-items: start; }
+.pf-detail__main h2, .pf-detail__facts h2 { font-size: 26px; margin-bottom: 16px; }
+.pf-detail__main p { margin-bottom: 16px; max-width: 62ch; }
+.pf-detail__highlights { list-style: none; margin: 24px 0; padding: 0; display: grid; gap: 10px; }
+.pf-detail__highlights li { position: relative; padding-left: 22px; }
+.pf-detail__highlights li::before { content: ""; position: absolute; left: 0; top: .6em; width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); }
+.pf-detail__more a { font-weight: 500; }
+.pf-detail__facts { background: var(--parchment); border-radius: var(--radius-card, 8px); padding: 28px; box-shadow: var(--shadow-card); }
+.pf-detail__facts dl { margin: 0 0 24px; }
+.pf-detail__facts dl > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--light-gray); font-size: 14px; }
+.pf-detail__facts dt { color: var(--slate); }
+.pf-detail__facts dd { margin: 0; text-align: right; color: var(--navy); font-weight: 500; }
+@media (min-width: 900px) { .pf-detail__grid { grid-template-columns: 1.6fr 1fr; gap: 56px; } }
+
 /* ---------- Filtering state ---------- */
 .pf-card.is-hidden, .pf-group.is-hidden { display: none; }
 .pf-empty { text-align: center; color: var(--slate); padding: 48px 0; }

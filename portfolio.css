@@ -64,6 +64,12 @@
 .pf-detail__highlights li { position: relative; padding-left: 22px; }
 .pf-detail__highlights li::before { content: ""; position: absolute; left: 0; top: .6em; width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); }
 .pf-detail__more a { font-weight: 500; }
+.pf-detail__main .pf-detail__specs-title { font-size: 22px; margin: 32px 0 8px; }
+.pf-detail__specs { margin: 0 0 24px; max-width: 62ch; }
+.pf-detail__specs > div { display: grid; grid-template-columns: 9em 1fr; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--light-gray); font-size: 15px; }
+.pf-detail__specs dt { color: var(--slate); }
+.pf-detail__specs dd { margin: 0; color: var(--charcoal); }
+@media (max-width: 520px) { .pf-detail__specs > div { grid-template-columns: 1fr; gap: 2px; } }
 .pf-detail__facts { background: var(--parchment); border-radius: var(--radius-card, 8px); padding: 28px; box-shadow: var(--shadow-card); }
 .pf-detail__facts dl { margin: 0 0 24px; }
 .pf-detail__facts dl > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--light-gray); font-size: 14px; }

@@ -98,7 +98,7 @@ ${picture(a.image)}
 <p class="portfolio-card__location">${esc(a.city)}, ${esc(a.state)}</p>
 <div class="portfolio-card__meta">
 <span>${fmtSf(a.sf)} SF</span>
-<span>${esc(a.type)}</span>
+<span>${esc(a.type)}</span>${a.acquired ? `\n<span>Acquired ${a.acquired}</span>` : ''}
 </div>${badge}${thesis}${more}
 </div>
 </article>`;
@@ -244,6 +244,11 @@ ${heroSources}
 </section>
 `;
   const market = marketHref ? `<a href="${marketHref}">${esc(marketLabel)}</a>` : esc(marketLabel);
+  // Physical specifications only (loading, unit sizes, ceiling, site). Never prices,
+  // NOI, debt, occupancy, tenant names or leasing contacts: those stay off the page.
+  const specs = d.specs && d.specs.length
+    ? `\n<h2 class="pf-detail__specs-title">Specifications</h2>\n<dl class="pf-detail__specs">\n${d.specs.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('\n')}\n</dl>`
+    : '';
   const body = `<!-- ═══ PROPERTY DETAIL ═══ -->
 <section class="section" aria-label="Property detail">
 <div class="container pf-detail">
@@ -254,7 +259,7 @@ ${heroSources}
 ${d.summary.map((p) => `<p>${esc(p)}</p>`).join('\n')}
 <ul class="pf-detail__highlights">
 ${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
-</ul>
+</ul>${specs}
 <p class="pf-detail__more"><a href="/track-record">See how Oxford creates value across the portfolio &rarr;</a></p>
 </div>
 <aside class="pf-detail__facts" aria-label="Property facts">
@@ -263,7 +268,7 @@ ${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
 <div><dt>Location</dt><dd>${esc(a.city)}, ${esc(a.state)}</dd></div>
 <div><dt>Size</dt><dd>${fmtSf(a.sf)} SF</dd></div>
 <div><dt>Property type</dt><dd>${esc(a.type)}</dd></div>
-<div><dt>Market</dt><dd>${market}</dd></div>
+<div><dt>Market</dt><dd>${market}</dd></div>${a.acquired ? `\n<div><dt>Acquired</dt><dd>${a.acquired}</dd></div>` : ''}
 <div><dt>Status</dt><dd>Current holding</dd></div>
 </dl>
 <a class="btn btn--outline btn--full" href="/portfolio#${s}">Back to portfolio</a>

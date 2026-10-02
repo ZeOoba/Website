@@ -31,6 +31,33 @@ const DETAIL_DIR = path.join(ROOT, 'properties');
 
 const GRID_RE = /<!-- portfolio:grid:begin -->[\s\S]*?<!-- portfolio:grid:end -->/;
 const LD_RE = /<!-- portfolio:jsonld:begin -->[\s\S]*?<!-- portfolio:jsonld:end -->/;
+const MIX_RE = /<!-- portfolio:mix:begin -->[\s\S]*?<!-- portfolio:mix:end -->/;
+const FAQ_RE = /<!-- portfolio:faq:begin -->[\s\S]*?<!-- portfolio:faq:end -->/;
+
+// Visible FAQ and its FAQPage JSON-LD are rendered from this one list, so the two
+// can never differ. Every answer states only facts the site already publishes.
+const FAQ = [
+  {
+    q: 'What does Oxford Realty Advisors own?',
+    a: 'Oxford owns 513,000+ SF of shallow-bay industrial, flex and light industrial outdoor storage (IOS) space, plus a small share of retail and office, across Maryland, Columbus (Ohio) and Kansas City (Missouri).',
+  },
+  {
+    q: 'What is shallow-bay industrial?',
+    a: "Shallow-bay industrial buildings are small-format industrial and flex buildings, typically divided into multiple units that each have their own loading. In Oxford's portfolio, units generally run from about 1,500 to 15,000 SF with at-grade drive-in doors or truck-height docks.",
+  },
+  {
+    q: 'Does Oxford sell the properties it buys?',
+    a: 'Oxford is a family-owned firm that invests 100% proprietary capital and manages its properties as permanent holdings.',
+  },
+  {
+    q: 'Where can I see space available to lease?',
+    a: 'Current suites across the portfolio are listed on the Available Space page, where you can also start a tenant application.',
+  },
+  {
+    q: 'How do I sell a building to Oxford?',
+    a: 'Brokers and owners can submit an offering memorandum or rent roll and get a preliminary indication of interest within 1 business day. Oxford buys all-cash and closes in 30 to 45 days.',
+  },
+];
 
 // Render order of the market groups. `key` matches `market` in the data file.
 const MARKETS = [
@@ -60,6 +87,35 @@ const typeKey = (a) => {
   return key;
 };
 
+// Rough (S, W, N, E) bounds of the states the portfolio spans. They catch gross
+// errors (swapped lat/lng, a missing minus sign, a pin in the wrong state); they
+// do not prove a pin is on the building. Pins come from county parcel layers; see
+// the geocoding note in the repo's memory before adding or moving one.
+const STATE_BOUNDS = {
+  OH: [38.4, -84.82, 42.33, -80.52],
+  MD: [37.91, -79.49, 39.72, -75.05],
+  MO: [35.99, -95.77, 40.61, -89.1],
+};
+const decimals = (n) => { const s = String(n); const i = s.indexOf('.'); return i < 0 ? 0 : s.length - i - 1; };
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// "2015-08" -> "Aug 2015" (the transaction-history spec's display convention).
+export const fmtAcquired = (iso) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
+
+export function validateAssets(assets) {
+  for (const a of assets) {
+    const who = `portfolio.json "${a.name}"`;
+    if (a.acquired !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(a.acquired)) {
+      throw new Error(`${who}: acquired must be an ISO month like "2015-08" (got ${JSON.stringify(a.acquired)})`);
+    }
+    if (typeof a.lat !== 'number' || typeof a.lng !== 'number') throw new Error(`${who}: lat/lng required (numbers)`);
+    if (decimals(a.lat) < 4 || decimals(a.lng) < 4) throw new Error(`${who}: lat/lng need >= 4 decimals (3 decimals is ~100 m, which is how pins ended up kilometres off)`);
+    const box = STATE_BOUNDS[a.state];
+    if (!box) throw new Error(`${who}: no coordinate bounds for state "${a.state}"`);
+    if (a.lat < box[0] || a.lat > box[2] || a.lng < box[1] || a.lng > box[3]) throw new Error(`${who}: ${a.lat},${a.lng} is outside ${a.state}`);
+  }
+}
+
 // "~259K SF": rounded to the nearest thousand, never an exact figure.
 const roughSf = (n) => `~${Math.round(n / 1000)}K SF`;
 
@@ -74,6 +130,86 @@ function picture(img) {
   return `<picture>\n${sources}\n<img src="${esc(img.src)}" alt="${esc(img.alt)}" width="400" height="250" loading="lazy" decoding="async">\n</picture>`;
 }
 
+// Spec chips for a card, derived ONLY from the sourced `detail.specs` (never typed by
+// hand), so a chip can never claim something the property page does not state.
+export function chipsFor(a) {
+  const specs = Object.fromEntries((a.detail && a.detail.specs) || []);
+  const text = Object.values(specs).join(' ');
+  const chips = [];
+  if (/multi-tenant/i.test(specs.Configuration || '')) chips.push('Multi-tenant');
+  else if (/single-tenant/i.test(specs.Configuration || '')) chips.push('Single-tenant');
+  if (/drive-in|drive-on/i.test(text)) chips.push('Drive-in doors');
+  if (/truck-?(height|high)/i.test(text)) chips.push('Truck docks');
+  if (specs['Ceiling height']) chips.push(`${specs['Ceiling height']} ceilings`);
+  return chips.slice(0, 3);
+}
+
+// Share of gross SF by filter key, as whole percents that sum to exactly 100
+// (largest-remainder rounding). Never a building count.
+export function mixShares(assets) {
+  const total = assets.reduce((n, a) => n + a.sf, 0);
+  const keys = ['flex', 'ios', 'other'];
+  const raw = keys.map((k) => (assets.filter((a) => typeKey(a) === k).reduce((n, a) => n + a.sf, 0) / total) * 100);
+  const floors = raw.map(Math.floor);
+  let left = 100 - floors.reduce((n, v) => n + v, 0);
+  raw
+    .map((v, i) => ({ i, r: v - Math.floor(v) }))
+    .sort((x, y) => y.r - x.r)
+    .forEach(({ i }) => { if (left-- > 0) floors[i] += 1; });
+  return Object.fromEntries(keys.map((k, i) => [k, floors[i]]));
+}
+
+const MIX_LABELS = { flex: 'Industrial &amp; flex', ios: 'Industrial + IOS', other: 'Retail &amp; office' };
+
+function renderMix(assets) {
+  const shares = mixShares(assets);
+  const keys = ['flex', 'ios', 'other'];
+  const aria = keys.map((k) => `${MIX_LABELS[k].replace('&amp;', '&')} ${shares[k]}%`).join(', ');
+  const segs = keys.map((k) => `<span class="pf-mix__seg pf-mix__seg--${k}" style="flex-grow:${shares[k]}"></span>`).join('');
+  const legend = keys
+    .map((k) => `<li><span class="pf-mix__dot pf-mix__dot--${k}" aria-hidden="true"></span>${MIX_LABELS[k]} <strong>${shares[k]}%</strong></li>`)
+    .join('\n');
+  return `<!-- portfolio:mix:begin -->
+<div class="pf-mix animate-on-scroll">
+<h2 class="pf-mix__title">What We Own</h2>
+<div class="pf-mix__bar" role="img" aria-label="Share of square footage: ${aria}">${segs}</div>
+<ul class="pf-mix__legend">
+${legend}
+</ul>
+<p class="pf-mix__note">Share of gross square footage. Shallow-bay industrial and flex is the core of the portfolio.</p>
+</div>
+<!-- portfolio:mix:end -->`;
+}
+
+function renderFaq() {
+  const items = FAQ.map((f, i) => `<div class="faq-item">
+<button class="faq-item__trigger" id="pf-faq-${i + 1}-trigger" aria-expanded="false" aria-controls="pf-faq-${i + 1}">
+<span>${esc(f.q)}</span>
+<svg class="faq-item__icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</button>
+<div class="faq-item__body" id="pf-faq-${i + 1}" role="region" aria-labelledby="pf-faq-${i + 1}-trigger">
+<div class="faq-item__answer">
+<p>${esc(f.a)}</p>
+</div>
+</div>
+</div>`).join('\n\n');
+  return `<!-- portfolio:faq:begin -->
+<section class="section section--parchment" aria-label="Frequently asked questions about the Oxford portfolio">
+<div class="container">
+<div class="section__header animate-on-scroll">
+<span class="section__label">FAQ</span>
+<h2>About the Portfolio: Common Questions</h2>
+</div>
+<div class="faq-list animate-on-scroll">
+
+${items}
+
+</div>
+</div>
+</section>
+<!-- portfolio:faq:end -->`;
+}
+
 // Suites currently listed per listings.json slug. A property with no listing
 // (everything leased) has no entry, so it renders no badge.
 export function availabilityBySlug(listings) {
@@ -84,6 +220,8 @@ function card(a, avail) {
   const key = typeKey(a);
   const thesis = a.thesis ? `\n<p class="pf-card__thesis">${esc(a.thesis)}</p>` : '';
   const more = a.detail ? `\n<a class="pf-card__more" href="${detailPath(a)}">Property details &rarr;</a>` : '';
+  const chipList = chipsFor(a);
+  const chips = chipList.length ? `\n<ul class="pf-chips" aria-label="Features">${chipList.map((c) => `<li class="pf-chip">${esc(c)}</li>`).join('')}</ul>` : '';
   const suites = a.listingSlug ? avail.get(a.listingSlug) || 0 : 0;
   const badge = suites
     ? `\n<a class="pf-card__avail" href="/available-space#${esc(a.listingSlug)}">${suites} suite${suites === 1 ? '' : 's'} available</a>`
@@ -91,15 +229,15 @@ function card(a, avail) {
   // data-* feed the client-side table view (portfolio.js) so it never re-parses card text.
   const href = a.detail ? ` data-href="${detailPath(a)}"` : '';
   const availAttr = suites ? ` data-avail="${suites}" data-avail-href="/available-space#${esc(a.listingSlug)}"` : '';
-  return `<article class="portfolio-card pf-card pf-card--${key} animate-on-scroll" id="${slug(a.name)}" data-market="${esc(a.market)}" data-type="${key}" data-name="${esc(a.name)}" data-location="${esc(a.city)}, ${esc(a.state)}" data-sf="${a.sf}" data-type-label="${esc(a.type)}"${href}${availAttr}>
+  return `<article class="portfolio-card pf-card pf-card--${key} animate-on-scroll" id="${slug(a.name)}" data-market="${esc(a.market)}" data-type="${key}" data-name="${esc(a.name)}" data-location="${esc(a.city)}, ${esc(a.state)}" data-lat="${a.lat}" data-lng="${a.lng}" data-sf="${a.sf}" data-type-label="${esc(a.type)}"${href}${availAttr}>
 ${picture(a.image)}
 <div class="portfolio-card__body">
 <h3>${esc(a.name)}</h3>
 <p class="portfolio-card__location">${esc(a.city)}, ${esc(a.state)}</p>
 <div class="portfolio-card__meta">
 <span>${fmtSf(a.sf)} SF</span>
-<span>${esc(a.type)}</span>${a.acquired ? `\n<span>Acquired ${a.acquired}</span>` : ''}
-</div>${badge}${thesis}${more}
+<span>${esc(a.type)}</span>${a.acquired ? `\n<span>Acquired ${fmtAcquired(a.acquired)}</span>` : ''}${a.ownership ? `\n<span>${esc(a.ownership)}</span>` : ''}
+</div>${chips}${badge}${thesis}${more}
 </div>
 </article>`;
 }
@@ -139,17 +277,24 @@ function renderJsonLd(assets) {
     item: {
       '@type': 'Place',
       name: a.name,
-      url: `${origin}/portfolio#${slug(a.name)}`,
+      url: a.detail ? `${origin}${detailPath(a)}` : `${origin}/portfolio#${slug(a.name)}`,
       image: `${origin}${a.image.src}`,
       address: { '@type': 'PostalAddress', addressLocality: a.city, addressRegion: a.state, addressCountry: 'US' },
+      geo: { '@type': 'GeoCoordinates', latitude: a.lat, longitude: a.lng },
       floorSize: { '@type': 'QuantitativeValue', value: a.sf, unitCode: 'FTK' },
       additionalProperty: { '@type': 'PropertyValue', name: 'Property Type', value: a.type },
     },
   }));
+  const faq = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQ.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+  };
   // One list item per line keeps the page diff and weight small.
   const lines = items.map((it) => `    ${JSON.stringify(it)}`).join(',\n');
   const ld = `{\n  "@context": "https://schema.org",\n  "@type": "ItemList",\n  "name": "Oxford Realty Advisors Portfolio",\n  "itemListElement": [\n${lines}\n  ]\n}`;
-  return `<!-- portfolio:jsonld:begin -->\n<script type="application/ld+json">\n${ld}\n</script>\n<!-- portfolio:jsonld:end -->`;
+  const faqScript = `<script type="application/ld+json">\n${JSON.stringify(faq, null, 2)}\n</script>`;
+  return `<!-- portfolio:jsonld:begin -->\n<script type="application/ld+json">\n${ld}\n</script>\n${faqScript}\n<!-- portfolio:jsonld:end -->`;
 }
 
 // Real pixel size of a JPEG, read from its SOF marker (og:image dimensions
@@ -175,7 +320,7 @@ function replaceOne(str, re, replacement, what) {
 
 const MARKET_PAGES = { Maryland: ['Maryland', '/markets/maryland'], Ohio: ['Columbus, OH', '/markets/columbus-oh'], Missouri: ['Kansas City, MO', null] };
 
-async function renderDetail(a, page) {
+async function renderDetail(a, page, assets) {
   const d = a.detail;
   const s = slug(a.name);
   const url = `https://oxfordra.net${detailPath(a)}`;
@@ -218,6 +363,7 @@ async function renderDetail(a, page) {
   ] };
   const place = { '@context': 'https://schema.org', '@type': 'Place', name: a.name, url, image: `https://oxfordra.net${a.image.src}`, description: d.summary[0],
     address: { '@type': 'PostalAddress', addressLocality: a.city, addressRegion: a.state, addressCountry: 'US' },
+    geo: { '@type': 'GeoCoordinates', latitude: a.lat, longitude: a.lng },
     floorSize: { '@type': 'QuantitativeValue', value: a.sf, unitCode: 'FTK' },
     additionalProperty: { '@type': 'PropertyValue', name: 'Property Type', value: a.type } };
   const ld = [crumbs, place].map((o) => `<script type="application/ld+json">\n${JSON.stringify(o, null, 2)}\n</script>`).join('\n');
@@ -246,6 +392,11 @@ ${heroSources}
   const market = marketHref ? `<a href="${marketHref}">${esc(marketLabel)}</a>` : esc(marketLabel);
   // Physical specifications only (loading, unit sizes, ceiling, site). Never prices,
   // NOI, debt, occupancy, tenant names or leasing contacts: those stay off the page.
+  // Internal links to the other property pages in the same market.
+  const related = assets.filter((x) => x.detail && x.market === a.market && x.name !== a.name).slice(0, 6);
+  const relatedHtml = related.length
+    ? `\n<h2 class="pf-detail__specs-title">More in ${esc(marketLabel)}</h2>\n<ul class="pf-related">\n${related.map((r) => `<li><a href="${detailPath(r)}">${esc(r.name)}</a><span>${fmtSf(r.sf)} SF &middot; ${esc(r.type)}</span></li>`).join('\n')}\n</ul>`
+    : '';
   const specs = d.specs && d.specs.length
     ? `\n<h2 class="pf-detail__specs-title">Specifications</h2>\n<dl class="pf-detail__specs">\n${d.specs.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('\n')}\n</dl>`
     : '';
@@ -259,7 +410,7 @@ ${heroSources}
 ${d.summary.map((p) => `<p>${esc(p)}</p>`).join('\n')}
 <ul class="pf-detail__highlights">
 ${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
-</ul>${specs}
+</ul>${specs}${relatedHtml}
 <p class="pf-detail__more"><a href="/track-record">See how Oxford creates value across the portfolio &rarr;</a></p>
 </div>
 <aside class="pf-detail__facts" aria-label="Property facts">
@@ -268,10 +419,11 @@ ${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
 <div><dt>Location</dt><dd>${esc(a.city)}, ${esc(a.state)}</dd></div>
 <div><dt>Size</dt><dd>${fmtSf(a.sf)} SF</dd></div>
 <div><dt>Property type</dt><dd>${esc(a.type)}</dd></div>
-<div><dt>Market</dt><dd>${market}</dd></div>${a.acquired ? `\n<div><dt>Acquired</dt><dd>${a.acquired}</dd></div>` : ''}
+<div><dt>Market</dt><dd>${market}</dd></div>${a.acquired ? `\n<div><dt>Acquired</dt><dd>${fmtAcquired(a.acquired)}</dd></div>` : ''}${a.ownership ? `\n<div><dt>Ownership</dt><dd>${esc(a.ownership)}</dd></div>` : ''}
 <div><dt>Status</dt><dd>Current holding</dd></div>
 </dl>
-<a class="btn btn--outline btn--full" href="/portfolio#${s}">Back to portfolio</a>
+<a class="btn btn--outline btn--full" href="/portfolio?view=map#${s}">View on portfolio map</a>
+<a class="pf-detail__back" href="/portfolio#${s}">Back to portfolio</a>
 </aside>
 </div>
 </div>
@@ -286,9 +438,10 @@ ${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
 // build-listings.mjs can regenerate the page too: the availability badges depend
 // on data/listings.json, which the weekly LoopNet sync rewrites.
 export function renderPortfolioPage(src, assets, listings) {
-  if (!GRID_RE.test(src) || !LD_RE.test(src)) {
-    throw new Error('portfolio.html is missing the portfolio:grid / portfolio:jsonld markers');
+  if (![GRID_RE, LD_RE, MIX_RE, FAQ_RE].every((re) => re.test(src))) {
+    throw new Error('portfolio.html is missing a portfolio:grid / jsonld / mix / faq marker pair');
   }
+  validateAssets(assets);
   const avail = availabilityBySlug(listings);
   // A listing no portfolio card claims would silently lose its badge. Fail loudly
   // instead: whoever adds a property to listings.json adds the card (and its
@@ -298,7 +451,11 @@ export function renderPortfolioPage(src, assets, listings) {
   if (orphans.length) {
     throw new Error(`data/listings.json has listings no data/portfolio.json asset claims via listingSlug: ${orphans.join(', ')}`);
   }
-  return src.replace(GRID_RE, () => renderGrid(assets, avail)).replace(LD_RE, () => renderJsonLd(assets));
+  return src
+    .replace(GRID_RE, () => renderGrid(assets, avail))
+    .replace(LD_RE, () => renderJsonLd(assets))
+    .replace(MIX_RE, () => renderMix(assets))
+    .replace(FAQ_RE, () => renderFaq());
 }
 
 async function main() {
@@ -315,7 +472,7 @@ async function main() {
   // their CSP hashes can never drift from the portfolio page's.
   const writes = new Map([[PAGE, next]]);
   for (const a of assets.filter((x) => x.detail)) {
-    writes.set(path.join(DETAIL_DIR, `${slug(a.name)}.html`), await renderDetail(a, next));
+    writes.set(path.join(DETAIL_DIR, `${slug(a.name)}.html`), await renderDetail(a, next, assets));
   }
 
   const drift = [];

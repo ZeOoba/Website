@@ -392,6 +392,15 @@
   }
 }
 
+/* The home page's floating "Submit Your Deal" CTA (styles.css, >768px) is
+   fixed at the same bottom/right corner (24px; ~52px tall) as the launcher
+   and would sit under it. Lift the launcher above it while it is showing. */
+@media (min-width: 769px) {
+  body:has(.floating-cta.is-visible) .ora-chat-trigger {
+    bottom: 88px;
+  }
+}
+
 /* ----- Reduced motion ----- */
 @media (prefers-reduced-motion: reduce) {
   #ora-chat-panel,

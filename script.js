@@ -613,6 +613,18 @@
         if (banner) {
           banner.style.display = "";
           banner.classList.add("visible");
+          // Publish the banner's live height so the fixed chat launcher
+          // (assets/chat.css) can sit above it instead of on top of it.
+          var root = document.documentElement,
+            syncBannerHeight = function () {
+              root.style.setProperty("--cookie-banner-h", banner.offsetHeight + "px");
+            };
+          syncBannerHeight();
+          if ("ResizeObserver" in window) {
+            new ResizeObserver(syncBannerHeight).observe(banner);
+          } else {
+            window.addEventListener("resize", syncBannerHeight);
+          }
           var hideBanner = function () {
               banner.classList.remove("visible");
               banner.classList.add("hidden");

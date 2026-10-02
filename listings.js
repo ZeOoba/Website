@@ -729,6 +729,10 @@
     el('viewCards').classList.toggle('as-view-btn--active', mode === 'cards');
     el('viewTable').classList.toggle('as-view-btn--active', mode === 'table');
     renderCards();
+    // The map panel is hidden in table view below 1280px (see
+    // available-space.css); Leaflet only measures its container on init and
+    // on window resize, so re-measure once the panel is visible again.
+    if (map) setTimeout(function () { map.invalidateSize(); }, 60);
   }
 
   // ── Reset filters ─────────────────────────────────────────────────────────────

@@ -65,9 +65,25 @@ test('validate rejects a listing missing a required field', async () => {
   const bad = JSON.parse(JSON.stringify(DATA));
   delete bad[1].lat;
   assert.throws(() => validate(bad), /384-398 Morrison Rd.*lat/);
-  bad[1].lat = 1;
+  bad[1].lat = DATA[1].lat;
   bad[2].units = [];
   assert.throws(() => validate(bad), /units/);
+});
+
+test('validate rejects coordinates that are rounded guesses or outside the listing state', async () => {
+  const { validate } = await load();
+  const mutate = (fn) => { const bad = JSON.parse(JSON.stringify(DATA)); fn(bad[0]); return bad; };
+  // 3-decimal pins are how the old map ended up 3-11 km off
+  assert.throws(() => validate(mutate((p) => { p.lat = 39.957; })), /2012-2026 Zettler Rd.*4 decimals/);
+  assert.throws(() => validate(mutate((p) => { p.lng = -82.96; })), /4 decimals/);
+  // swapped lat/lng and a dropped minus sign both land outside Ohio
+  assert.throws(() => validate(mutate((p) => { [p.lat, p.lng] = [p.lng, p.lat]; })), /outside OH/);
+  assert.throws(() => validate(mutate((p) => { p.lng = Math.abs(p.lng); })), /outside OH/);
+  // a pin geocoded to the wrong state (Easton MD coordinates on an OH listing)
+  assert.throws(() => validate(mutate((p) => { p.lat = 38.78123; p.lng = -76.08123; })), /outside OH/);
+  // a state with no bounds entry must fail loudly rather than skip the check
+  assert.throws(() => validate(mutate((p) => { p.state = 'TX'; })), /no coordinate bounds/);
+  assert.doesNotThrow(() => validate(JSON.parse(JSON.stringify(DATA))));
 });
 
 test('cache-buster: available-space.html loads listings.js at ?v=<hash of listings.js>', async () => {

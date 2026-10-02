@@ -183,7 +183,7 @@ export function planSync(current, scraped) {
 
   for (const p of dashboard) {
     if (claimed.has(p)) continue;
-    result.needsInput.push(`new LoopNet property not on the site: ${p.address}, ${p.city}, ${p.state} (${p.units.length} unit(s)) - needs photo, lat/lng, market, category, description before it can be added to data/listings.json`);
+    result.needsInput.push(`new LoopNet property not on the site: ${p.address}, ${p.city}, ${p.state} (${p.units.length} unit(s)) - needs photo, lat/lng, market, category, description before it can be added to data/listings.json. Get lat/lng with: node scripts/geocode-listing.mjs "${p.address}, ${p.city}, ${p.state}" then confirm the pin sits on the building (county parcel layer / aerial) - never type coordinates from memory`);
   }
 
   if (result.changes.length === 0) return result;

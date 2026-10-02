@@ -67,8 +67,13 @@ test('acquisition months: ISO format, rendered Mon YYYY, and held rows stay unda
   for (const n of sepich) assert.strictEqual(asset(n).acquired, '2021-02', n);
 });
 
-test('ownership badges carry no percentages', () => {
-  for (const a of ASSETS) if (a.ownership) assert.ok(!/\d/.test(a.ownership), a.name + ': ' + a.ownership);
+test('no ownership structure is ever shown (Gabriel, 2026-10-02: no joint venture / partnership badge anywhere)', () => {
+  for (const a of ASSETS) assert.strictEqual(a.ownership, undefined, a.name + ' carries an ownership field');
+  const files = ['portfolio.html', ...fs.readdirSync(path.join(ROOT, 'properties')).map((f) => 'properties/' + f)];
+  for (const f of files) {
+    const html = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    assert.ok(!/joint[- ]venture|\bpartnership\b|\bJV\b|co-?invest/i.test(html), f + ' mentions an ownership structure');
+  }
 });
 
 test('two assets may share a parcel (4595/4601 E Fifth) but no other pin is a duplicate', () => {

@@ -47,11 +47,13 @@ const SITE_FILES = [
   // styles
   'application-style.css',
   'available-space.css',
+  'portfolio.css',
   'styles.css',
   // scripts
   'application-script.js',
   'broker-upload.js',
   'listings.js',
+  'portfolio.js',
   'script.js',
   // platform + assets
   '_headers',

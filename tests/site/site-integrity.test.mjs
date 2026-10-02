@@ -120,7 +120,7 @@ test('every ItemList and BreadcrumbList has sequential positions and a numberOfI
 const EXPECTED_JSONLD_TYPES = {
   'index.html': ['FAQPage', 'Organization', 'WebSite'],
   'about.html': ['BreadcrumbList', 'FAQPage', 'Organization'],
-  'portfolio.html': ['BreadcrumbList', 'ItemList'],
+  'portfolio.html': ['BreadcrumbList', 'FAQPage', 'ItemList'],
   'properties/9050-red-branch-road.html': ['BreadcrumbList', 'Place'],
   'properties/29000-information-lane.html': ['BreadcrumbList', 'Place'],
   'properties/1900-north-broadway.html': ['BreadcrumbList', 'Place'],

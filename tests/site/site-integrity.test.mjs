@@ -592,7 +592,11 @@ test('wherever a page hides its nav links, a wired hamburger is showing', () => 
 test('knowledge-base.json is a gitignored build artifact, not a tracked file', async () => {
   const { execFileSync } = await import('node:child_process');
   const KB = 'netlify/edge-functions/knowledge-base.json';
-  const tracked = execFileSync('git', ['ls-files', '--', KB], { cwd: ROOT, encoding: 'utf8' }).trim();
-  assert.equal(tracked, '', `${KB} must not be tracked (regenerated on every build)`);
+  // The mutation harness runs these tests in a temp copy with no .git; only the
+  // .gitignore assertion below can run there.
+  if (existsSync(path.join(ROOT, '.git'))) {
+    const tracked = execFileSync('git', ['ls-files', '--', KB], { cwd: ROOT, encoding: 'utf8' }).trim();
+    assert.equal(tracked, '', `${KB} must not be tracked (regenerated on every build)`);
+  }
   assert.match(read('.gitignore'), /^\/?netlify\/edge-functions\/knowledge-base\.json\s*$/m, `${KB} must be in .gitignore`);
 });

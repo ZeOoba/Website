@@ -236,7 +236,7 @@ ${picture(a.image)}
 <p class="portfolio-card__location">${esc(a.city)}, ${esc(a.state)}</p>
 <div class="portfolio-card__meta">
 <span>${fmtSf(a.sf)} SF</span>
-<span>${esc(a.type)}</span>${a.acquired ? `\n<span>Acquired ${fmtAcquired(a.acquired)}</span>` : ''}${a.ownership ? `\n<span>${esc(a.ownership)}</span>` : ''}
+<span>${esc(a.type)}</span>${a.acquired ? `\n<span>Acquired ${fmtAcquired(a.acquired)}</span>` : ''}
 </div>${chips}${badge}${thesis}${more}
 </div>
 </article>`;
@@ -419,7 +419,7 @@ ${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
 <div><dt>Location</dt><dd>${esc(a.city)}, ${esc(a.state)}</dd></div>
 <div><dt>Size</dt><dd>${fmtSf(a.sf)} SF</dd></div>
 <div><dt>Property type</dt><dd>${esc(a.type)}</dd></div>
-<div><dt>Market</dt><dd>${market}</dd></div>${a.acquired ? `\n<div><dt>Acquired</dt><dd>${fmtAcquired(a.acquired)}</dd></div>` : ''}${a.ownership ? `\n<div><dt>Ownership</dt><dd>${esc(a.ownership)}</dd></div>` : ''}
+<div><dt>Market</dt><dd>${market}</dd></div>${a.acquired ? `\n<div><dt>Acquired</dt><dd>${fmtAcquired(a.acquired)}</dd></div>` : ''}
 <div><dt>Status</dt><dd>Current holding</dd></div>
 </dl>
 <a class="btn btn--outline btn--full" href="/portfolio?view=map#${s}">View on portfolio map</a>

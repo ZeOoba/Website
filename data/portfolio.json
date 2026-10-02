@@ -1,0 +1,441 @@
+[
+ {
+  "name": "9050 Red Branch Road",
+  "city": "Columbia",
+  "state": "MD",
+  "market": "Maryland",
+  "sf": 90000,
+  "type": "Industrial/Flex",
+  "thesis": "Oxford's largest Maryland asset. Acquired stabilized with slightly below-market rents; active management has grown income with minimal turnover.",
+  "image": {
+   "src": "/images/20-9050-red-branch-exterior.jpg",
+   "alt": "9050 Red Branch Road — 90,000 SF Industrial/Flex in Columbia, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/20-9050-red-branch-exterior-480w.avif 480w, /images/20-9050-red-branch-exterior.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/20-9050-red-branch-exterior-480w.webp 480w, /images/20-9050-red-branch-exterior.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "55 New Plant Court",
+  "city": "Owings Mills",
+  "state": "MD",
+  "market": "Maryland",
+  "sf": 34500,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/14-aerial-55-new-plant-court.jpg",
+   "alt": "55 New Plant Court — 34,500 SF Industrial/Flex in Owings Mills, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/14-aerial-55-new-plant-court-480w.avif 480w, /images/14-aerial-55-new-plant-court.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/14-aerial-55-new-plant-court-480w.webp 480w, /images/14-aerial-55-new-plant-court.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "29000 Information Lane",
+  "city": "Eastern Shore",
+  "state": "MD",
+  "market": "Maryland",
+  "sf": 48000,
+  "type": "Industrial/Flex",
+  "thesis": "Acquired one-third occupied from an owner that had deprioritized it. Non-traditional marketing and targeted concessions led to a full lease-up and a waiting list.",
+  "image": {
+   "src": "/images/08-20161026_120215.jpg",
+   "alt": "29000 Information Lane — 48,000 SF Industrial/Flex in Eastern Shore, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/08-20161026_120215-480w.avif 480w, /images/08-20161026_120215.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/08-20161026_120215-480w.webp 480w, /images/08-20161026_120215.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "2203-2207 Northwood Dr",
+  "city": "Eastern Shore",
+  "state": "MD",
+  "market": "Maryland",
+  "sf": 53700,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/06-exterior-beauty.jpg",
+   "alt": "2203-2207 Northwood Dr — 53,700 SF Industrial/Flex in Eastern Shore, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/06-exterior-beauty-480w.avif 480w, /images/06-exterior-beauty.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/06-exterior-beauty-480w.webp 480w, /images/06-exterior-beauty.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "1900 North Broadway",
+  "city": "Baltimore",
+  "state": "MD",
+  "market": "Maryland",
+  "sf": 27650,
+  "type": "Medical Retail",
+  "thesis": "Acquired partly vacant with below-market rents. A multi-tenant reconfiguration for a national dialysis operator replaced legacy tenancies with market-rate leases.",
+  "image": {
+   "src": "/images/03-exterior-nice-photo.jpg",
+   "alt": "1900 North Broadway — 27,650 SF Medical Retail in Baltimore, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/03-exterior-nice-photo-480w.avif 480w, /images/03-exterior-nice-photo.avif 601w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/03-exterior-nice-photo-480w.webp 480w, /images/03-exterior-nice-photo.webp 601w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "401 Sunburst Highway",
+  "city": "Eastern Shore",
+  "state": "MD",
+  "market": "Maryland",
+  "sf": 5100,
+  "type": "Auto-Service Retail",
+  "image": {
+   "src": "/images/18-401-sunburst-hwy-main-picture.jpg",
+   "alt": "401 Sunburst Highway — 5,100 SF Auto-Service Retail in Eastern Shore, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/18-401-sunburst-hwy-main-picture-480w.avif 480w, /images/18-401-sunburst-hwy-main-picture.avif 784w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/18-401-sunburst-hwy-main-picture-480w.webp 480w, /images/18-401-sunburst-hwy-main-picture.webp 784w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "3540 E Fifth Avenue",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 36000,
+  "type": "Industrial",
+  "image": {
+   "src": "/images/09-3540-rear-exterior-1.jpg",
+   "alt": "3540 E Fifth Avenue — 36,000 SF Industrial in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/09-3540-rear-exterior-1-480w.avif 480w, /images/09-3540-rear-exterior-1.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/09-3540-rear-exterior-1-480w.webp 480w, /images/09-3540-rear-exterior-1.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "1100 Rarig Avenue",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 21000,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/04-1100-rarig-exterior-2-drive-ins-dock.jpg",
+   "alt": "1100 Rarig Avenue — 21,000 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/04-1100-rarig-exterior-2-drive-ins-dock-480w.avif 480w, /images/04-1100-rarig-exterior-2-drive-ins-dock.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/04-1100-rarig-exterior-2-drive-ins-dock-480w.webp 480w, /images/04-1100-rarig-exterior-2-drive-ins-dock.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "2800-2826 Banwick Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 24000,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/01-2800-2826-banwick-exterior.jpg",
+   "alt": "2800-2826 Banwick Rd — 24,000 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/01-2800-2826-banwick-exterior-480w.avif 480w, /images/01-2800-2826-banwick-exterior.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/01-2800-2826-banwick-exterior-480w.webp 480w, /images/01-2800-2826-banwick-exterior.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "2000-2002 Zettler Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 11160,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/07-2000_2002-front.jpg",
+   "alt": "2000-2002 Zettler Rd — 11,160 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/07-2000_2002-front-480w.avif 480w, /images/07-2000_2002-front.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/07-2000_2002-front-480w.webp 480w, /images/07-2000_2002-front.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "2004-2008 Zettler Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 19096,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/21-2004-2008-zettler-exterior.jpg",
+   "alt": "2004-2008 Zettler Rd — 19,096 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/21-2004-2008-zettler-exterior-480w.avif 480w, /images/21-2004-2008-zettler-exterior.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/21-2004-2008-zettler-exterior-480w.webp 480w, /images/21-2004-2008-zettler-exterior.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "2012-2026 Zettler Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 16800,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/10-zettler-2012-2026-exterior-.jpg",
+   "alt": "2012-2026 Zettler Rd — 16,800 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/10-zettler-2012-2026-exterior--480w.avif 480w, /images/10-zettler-2012-2026-exterior-.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/10-zettler-2012-2026-exterior--480w.webp 480w, /images/10-zettler-2012-2026-exterior-.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "384-398 Morrison Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 14400,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/17-warehouse-columbus-external.jpg",
+   "alt": "384-398 Morrison Rd — 14,400 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/17-warehouse-columbus-external-480w.avif 480w, /images/17-warehouse-columbus-external.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/17-warehouse-columbus-external-480w.webp 480w, /images/17-warehouse-columbus-external.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "406-420 Morrison Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 16800,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/22-406-420-morrison-exterior.jpg",
+   "alt": "406-420 Morrison Rd — 16,800 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/22-406-420-morrison-exterior-480w.avif 480w, /images/22-406-420-morrison-exterior.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/22-406-420-morrison-exterior-480w.webp 480w, /images/22-406-420-morrison-exterior.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "3034 Westerville Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 18360,
+  "type": "Industrial + IOS",
+  "image": {
+   "src": "/images/11-gate-building.jpg",
+   "alt": "3034 Westerville Rd — 18,360 SF Industrial + IOS in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/11-gate-building-480w.avif 480w, /images/11-gate-building.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/11-gate-building-480w.webp 480w, /images/11-gate-building.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "7658 Fishel Drive N",
+  "city": "Dublin",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 24000,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/16-exterior-docks-2-7658-fishel.jpg",
+   "alt": "7658 Fishel Drive N — 24,000 SF Industrial/Flex in Dublin, OH",
+   "sources": [
+    {
+     "type": "image/webp",
+     "srcset": "/images/16-exterior-docks-2-7658-fishel.webp"
+    }
+   ]
+  }
+ },
+ {
+  "name": "3875-3883 E Livingston",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 10950,
+  "type": "Industrial + IOS",
+  "image": {
+   "src": "/images/12-aerial-view-3875-livingston.jpg",
+   "alt": "3875-3883 E Livingston — 10,950 SF Industrial + IOS in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/12-aerial-view-3875-livingston-480w.avif 480w, /images/12-aerial-view-3875-livingston.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/12-aerial-view-3875-livingston-480w.webp 480w, /images/12-aerial-view-3875-livingston.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "4601 E Fifth Avenue",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 3300,
+  "type": "Office/Retail",
+  "image": {
+   "src": "/images/19-4601-e-5th-ave-exterior-1.jpg",
+   "alt": "4601 E Fifth Avenue — 3,300 SF Office/Retail in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/19-4601-e-5th-ave-exterior-1-480w.avif 480w, /images/19-4601-e-5th-ave-exterior-1.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/19-4601-e-5th-ave-exterior-1-480w.webp 480w, /images/19-4601-e-5th-ave-exterior-1.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "4595 E Fifth Avenue",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "sf": 4100,
+  "type": "Industrial + IOS",
+  "image": {
+   "src": "/images/13-4595-towards-front-drive-in-door_.jpg",
+   "alt": "4595 E Fifth Avenue — 4,100 SF Industrial + IOS in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/13-4595-towards-front-drive-in-door_-480w.avif 480w, /images/13-4595-towards-front-drive-in-door_.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/13-4595-towards-front-drive-in-door_-480w.webp 480w, /images/13-4595-towards-front-drive-in-door_.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "9620 State Route 350",
+  "city": "Raytown",
+  "state": "MO",
+  "market": "Missouri",
+  "sf": 34300,
+  "type": "Industrial/Flex",
+  "image": {
+   "src": "/images/05-exterior-front.jpg",
+   "alt": "9620 State Route 350 — 34,300 SF Industrial/Flex in Raytown, MO",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/05-exterior-front-480w.avif 480w, /images/05-exterior-front.avif 485w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/05-exterior-front-480w.webp 480w, /images/05-exterior-front.webp 485w"
+    }
+   ]
+  }
+ }
+]

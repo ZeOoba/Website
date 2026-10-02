@@ -34,6 +34,16 @@ const CHEVRON_SVG = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"
 const PROP_FIELDS = { id: 'number', name: 'string', city: 'string', state: 'string', market: 'string', category: 'string', lat: 'number', lng: 'number', img: 'string', imgW: 'number', slug: 'string', desc: 'string' };
 const UNIT_FIELDS = { suite: 'string', sf: 'number', sfLabel: 'string', rate: 'string', rateType: 'string', use: 'string' };
 
+// Rough bounding boxes (S, W, N, E) of each state the portfolio can list in. They do
+// not prove a pin is right; they catch the gross errors: a swapped lat/lng, a missing
+// minus sign, or a pin geocoded to the wrong city's state.
+export const STATE_BOUNDS = {
+  OH: [38.40, -84.82, 42.33, -80.52], MD: [37.91, -79.49, 39.72, -75.05], IN: [37.77, -88.10, 41.76, -84.78],
+  WI: [42.49, -92.89, 47.31, -86.25], MO: [35.99, -95.77, 40.61, -89.10], KS: [36.99, -102.05, 40.00, -94.59],
+  TN: [34.98, -90.31, 36.68, -81.65],
+};
+const decimals = (n) => { const s = String(n); const i = s.indexOf('.'); return i < 0 ? 0 : s.length - i - 1; };
+
 export function validate(listings) {
   if (!Array.isArray(listings)) throw new Error('listings.json must be an array');
   const ids = new Set();
@@ -43,6 +53,12 @@ export function validate(listings) {
     for (const [k, t] of Object.entries(PROP_FIELDS)) {
       if (typeof p[k] !== t || p[k] === '') throw new Error(`${who}: missing/invalid ${k}`);
     }
+    // 3-decimal coordinates (~100 m) are how the old pins ended up 3-11 km off: they were
+    // typed in from memory. Geocode the street address instead: node scripts/geocode-listing.mjs
+    if (decimals(p.lat) < 4 || decimals(p.lng) < 4) throw new Error(`${who}: lat/lng need >= 4 decimals (geocode the address: node scripts/geocode-listing.mjs "<street>, <city>, <ST>")`);
+    const box = STATE_BOUNDS[p.state];
+    if (!box) throw new Error(`${who}: no coordinate bounds for state "${p.state}" - add it to STATE_BOUNDS`);
+    if (p.lat < box[0] || p.lat > box[2] || p.lng < box[1] || p.lng > box[3]) throw new Error(`${who}: lat/lng (${p.lat}, ${p.lng}) fall outside ${p.state}`);
     if (ids.has(p.id) || slugs.has(p.slug)) throw new Error(`${who}: duplicate id or slug`);
     ids.add(p.id);
     slugs.add(p.slug);

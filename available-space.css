@@ -696,6 +696,12 @@
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  /* .as-listings is a 2-column card grid from 768px up; without this the
+     table is confined to one column (about half the panel) and its right-hand
+     columns, including Inquire, are clipped. min-width:0 lets the wrapper
+     shrink so the table scrolls inside it instead of widening the grid. */
+  grid-column: 1 / -1;
+  min-width: 0;
 }
 
 .as-table {
@@ -751,6 +757,48 @@
 .as-table__name {
   font-weight: 600;
   color: var(--as-navy);
+}
+
+/* Long property names ("Northwood Business Center — 2203 Northwood Dr"),
+   locations and use types may wrap so the table fits beside the map on
+   mid-size desktops; figures, rent and the Inquire action never wrap. */
+.as-table tbody td.as-table__name,
+.as-table tbody td:nth-child(2),
+.as-table tbody td:nth-child(5) {
+  white-space: normal;
+}
+
+.as-table tbody td.as-table__name {
+  min-width: 180px;
+}
+
+/* Below 1536px the 35-40% listings column is narrower than the table (about
+   840px with wrapping), so table view takes the whole row and the map steps
+   aside (cards view and the map return together). */
+@media (max-width: 1535px) {
+  .as-content:has(.as-table-wrap) .as-map-panel {
+    display: none;
+  }
+}
+
+/* On narrow screens the table scrolls sideways; pin the Inquire column so the
+   action is always reachable. */
+@media (max-width: 899px) {
+  .as-table thead th:last-child,
+  .as-table tbody td:last-child {
+    position: sticky;
+    right: 0;
+    background: var(--as-white);
+    box-shadow: -6px 0 8px -6px rgba(27, 42, 74, 0.18);
+  }
+
+  .as-table thead th:last-child {
+    background: var(--as-navy);
+  }
+
+  .as-table tbody tr:nth-child(even) td:last-child {
+    background: var(--as-parchment);
+  }
 }
 
 .as-table__action {

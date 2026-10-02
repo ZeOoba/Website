@@ -14,6 +14,9 @@
  *   - Per-market SF is rounded and prefixed "~" because card SF is gross and
  *     includes two 50%-owned assets.
  *   - A thesis line renders only where the data file carries one.
+ *   - Availability badges come from data/listings.json via each asset's
+ *     `listingSlug`. build-listings.mjs also regenerates portfolio.html (through
+ *     renderPortfolioPage), so the weekly LoopNet sync keeps the badges current.
  */
 
 import { promises as fs } from 'node:fs';
@@ -23,6 +26,7 @@ import url from 'node:url';
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
 const PAGE = path.join(ROOT, 'portfolio.html');
 const DATA = path.join(ROOT, 'data', 'portfolio.json');
+const LISTINGS = path.join(ROOT, 'data', 'listings.json');
 const DETAIL_DIR = path.join(ROOT, 'properties');
 
 const GRID_RE = /<!-- portfolio:grid:begin -->[\s\S]*?<!-- portfolio:grid:end -->/;
@@ -70,13 +74,24 @@ function picture(img) {
   return `<picture>\n${sources}\n<img src="${esc(img.src)}" alt="${esc(img.alt)}" width="400" height="250" loading="lazy" decoding="async">\n</picture>`;
 }
 
-function card(a) {
+// Suites currently listed per listings.json slug. A property with no listing
+// (everything leased) has no entry, so it renders no badge.
+export function availabilityBySlug(listings) {
+  return new Map(listings.map((p) => [p.slug, p.units.length]));
+}
+
+function card(a, avail) {
   const key = typeKey(a);
   const thesis = a.thesis ? `\n<p class="pf-card__thesis">${esc(a.thesis)}</p>` : '';
   const more = a.detail ? `\n<a class="pf-card__more" href="${detailPath(a)}">Property details &rarr;</a>` : '';
+  const suites = a.listingSlug ? avail.get(a.listingSlug) || 0 : 0;
+  const badge = suites
+    ? `\n<a class="pf-card__avail" href="/available-space#${esc(a.listingSlug)}">${suites} suite${suites === 1 ? '' : 's'} available</a>`
+    : '';
   // data-* feed the client-side table view (portfolio.js) so it never re-parses card text.
   const href = a.detail ? ` data-href="${detailPath(a)}"` : '';
-  return `<article class="portfolio-card pf-card pf-card--${key} animate-on-scroll" id="${slug(a.name)}" data-market="${esc(a.market)}" data-type="${key}" data-name="${esc(a.name)}" data-location="${esc(a.city)}, ${esc(a.state)}" data-sf="${a.sf}" data-type-label="${esc(a.type)}"${href}>
+  const availAttr = suites ? ` data-avail="${suites}" data-avail-href="/available-space#${esc(a.listingSlug)}"` : '';
+  return `<article class="portfolio-card pf-card pf-card--${key} animate-on-scroll" id="${slug(a.name)}" data-market="${esc(a.market)}" data-type="${key}" data-name="${esc(a.name)}" data-location="${esc(a.city)}, ${esc(a.state)}" data-sf="${a.sf}" data-type-label="${esc(a.type)}"${href}${availAttr}>
 ${picture(a.image)}
 <div class="portfolio-card__body">
 <h3>${esc(a.name)}</h3>
@@ -84,12 +99,12 @@ ${picture(a.image)}
 <div class="portfolio-card__meta">
 <span>${fmtSf(a.sf)} SF</span>
 <span>${esc(a.type)}</span>
-</div>${thesis}${more}
+</div>${badge}${thesis}${more}
 </div>
 </article>`;
 }
 
-function renderGrid(assets) {
+function renderGrid(assets, avail) {
   const groups = MARKETS.map((m) => {
     const inMarket = assets.filter((a) => a.market === m.key);
     if (!inMarket.length) throw new Error(`portfolio.json: no assets for market "${m.key}"`);
@@ -105,7 +120,7 @@ function renderGrid(assets) {
 <span class="pf-group__sf">${roughSf(total)}</span>${link}
 </header>
 <div class="portfolio-grid">
-${ordered.map(card).join('\n')}
+${ordered.map((a) => card(a, avail)).join('\n')}
 </div>
 </section>`;
   });
@@ -262,16 +277,33 @@ ${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
   return `${head}${page.slice(bodyAt, mainAt)}<main id="main-content">\n\n${hero}\n${body}${tail}`;
 }
 
-async function main() {
-  const check = process.argv.includes('--check');
-  const assets = JSON.parse(await fs.readFile(DATA, 'utf8'));
-  const html = await fs.readFile(PAGE, 'utf8');
-  // The working copy is CRLF on Windows; the index is LF. Compare and write LF.
-  const src = html.replace(/\r\n/g, '\n');
+// The whole portfolio.html this data produces. Pure (LF text in, LF text out) so
+// build-listings.mjs can regenerate the page too: the availability badges depend
+// on data/listings.json, which the weekly LoopNet sync rewrites.
+export function renderPortfolioPage(src, assets, listings) {
   if (!GRID_RE.test(src) || !LD_RE.test(src)) {
     throw new Error('portfolio.html is missing the portfolio:grid / portfolio:jsonld markers');
   }
-  const next = src.replace(GRID_RE, () => renderGrid(assets)).replace(LD_RE, () => renderJsonLd(assets));
+  const avail = availabilityBySlug(listings);
+  // A listing no portfolio card claims would silently lose its badge. Fail loudly
+  // instead: whoever adds a property to listings.json adds the card (and its
+  // `listingSlug`) to data/portfolio.json in the same change.
+  const claimed = new Set(assets.map((a) => a.listingSlug).filter(Boolean));
+  const orphans = [...avail.keys()].filter((s) => !claimed.has(s));
+  if (orphans.length) {
+    throw new Error(`data/listings.json has listings no data/portfolio.json asset claims via listingSlug: ${orphans.join(', ')}`);
+  }
+  return src.replace(GRID_RE, () => renderGrid(assets, avail)).replace(LD_RE, () => renderJsonLd(assets));
+}
+
+async function main() {
+  const check = process.argv.includes('--check');
+  const assets = JSON.parse(await fs.readFile(DATA, 'utf8'));
+  const listings = JSON.parse(await fs.readFile(LISTINGS, 'utf8'));
+  const html = await fs.readFile(PAGE, 'utf8');
+  // The working copy is CRLF on Windows; the index is LF. Compare and write LF.
+  const src = html.replace(/\r\n/g, '\n');
+  const next = renderPortfolioPage(src, assets, listings);
 
   // Every output is computed before the first write. Detail pages reuse the
   // rendered portfolio page's chrome (head, nav, footer, inline blocks), so
@@ -299,7 +331,10 @@ async function main() {
   console.log(`build-portfolio: updated ${drift.join(', ')}`);
 }
 
-main().catch((err) => {
-  console.error(err.message);
-  process.exit(1);
-});
+// Importable (build-listings.mjs) without running the CLI.
+if (process.argv[1] && path.resolve(process.argv[1]) === url.fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error(err.message);
+    process.exit(1);
+  });
+}

@@ -6,6 +6,7 @@
   "market": "Maryland",
   "sf": 90000,
   "type": "Industrial/Flex",
+  "listingSlug": "9050-red-branch-rd",
   "thesis": "Oxford's largest Maryland asset. Acquired stabilized with slightly below-market rents; active management has grown income with minimal turnover.",
   "detail": {
    "metaDescription": "9050 Red Branch Road: 90,000 SF industrial/flex building in Columbia, MD, owned and operated by Oxford Realty Advisors with permanent, proprietary capital.",
@@ -63,6 +64,7 @@
   "market": "Maryland",
   "sf": 48000,
   "type": "Industrial/Flex",
+  "listingSlug": "29000-information-ln",
   "thesis": "Acquired one-third occupied from an owner that had deprioritized it. Non-traditional marketing and targeted concessions led to a full lease-up and a waiting list.",
   "detail": {
    "metaDescription": "29000 Information Lane: 48,000 SF industrial/flex building on Maryland's Eastern Shore, leased up by Oxford Realty Advisors from one-third occupancy.",
@@ -98,6 +100,7 @@
   "market": "Maryland",
   "sf": 53700,
   "type": "Industrial/Flex",
+  "listingSlug": "2203-northwood-dr",
   "image": {
    "src": "/images/06-exterior-beauty.jpg",
    "alt": "2203-2207 Northwood Dr — 53,700 SF Industrial/Flex in Eastern Shore, MD",
@@ -212,6 +215,7 @@
   "market": "Ohio",
   "sf": 21000,
   "type": "Industrial/Flex",
+  "listingSlug": "1100-rarig-ave",
   "image": {
    "src": "/images/04-1100-rarig-exterior-2-drive-ins-dock.jpg",
    "alt": "1100 Rarig Avenue — 21,000 SF Industrial/Flex in Columbus, OH",
@@ -234,6 +238,7 @@
   "market": "Ohio",
   "sf": 24000,
   "type": "Industrial/Flex",
+  "listingSlug": "2800-2826-banwick-rd",
   "image": {
    "src": "/images/01-2800-2826-banwick-exterior.jpg",
    "alt": "2800-2826 Banwick Rd — 24,000 SF Industrial/Flex in Columbus, OH",
@@ -256,6 +261,7 @@
   "market": "Ohio",
   "sf": 11160,
   "type": "Industrial/Flex",
+  "listingSlug": "2000-2002-zettler-rd",
   "image": {
    "src": "/images/07-2000_2002-front.jpg",
    "alt": "2000-2002 Zettler Rd — 11,160 SF Industrial/Flex in Columbus, OH",
@@ -300,6 +306,7 @@
   "market": "Ohio",
   "sf": 16800,
   "type": "Industrial/Flex",
+  "listingSlug": "2012-2026-zettler-rd",
   "image": {
    "src": "/images/10-zettler-2012-2026-exterior-.jpg",
    "alt": "2012-2026 Zettler Rd — 16,800 SF Industrial/Flex in Columbus, OH",
@@ -322,6 +329,7 @@
   "market": "Ohio",
   "sf": 14400,
   "type": "Industrial/Flex",
+  "listingSlug": "384-398-morrison-rd",
   "image": {
    "src": "/images/17-warehouse-columbus-external.jpg",
    "alt": "384-398 Morrison Rd — 14,400 SF Industrial/Flex in Columbus, OH",
@@ -472,6 +480,7 @@
   "market": "Missouri",
   "sf": 34300,
   "type": "Industrial/Flex",
+  "listingSlug": "9620-state-route-350",
   "image": {
    "src": "/images/05-exterior-front.jpg",
    "alt": "9620 State Route 350 — 34,300 SF Industrial/Flex in Raytown, MO",

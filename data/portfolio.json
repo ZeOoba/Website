@@ -7,6 +7,18 @@
   "sf": 90000,
   "type": "Industrial/Flex",
   "thesis": "Oxford's largest Maryland asset. Acquired stabilized with slightly below-market rents; active management has grown income with minimal turnover.",
+  "detail": {
+   "metaDescription": "9050 Red Branch Road: 90,000 SF industrial/flex building in Columbia, MD, owned and operated by Oxford Realty Advisors with permanent, proprietary capital.",
+   "summary": [
+    "At 90,000 SF, 9050 Red Branch Road is Oxford's largest Maryland asset. Oxford acquired it stabilized, with rents slightly below market.",
+    "Turnover has been minimal. Active management has grown the building's income, and Oxford has declined purchase offers in favor of continued rent growth."
+   ],
+   "highlights": [
+    "Acquired stabilized with slightly below-market rents",
+    "Minimal tenant turnover",
+    "Held for continued rent growth rather than sold"
+   ]
+  },
   "image": {
    "src": "/images/20-9050-red-branch-exterior.jpg",
    "alt": "9050 Red Branch Road — 90,000 SF Industrial/Flex in Columbia, MD",
@@ -52,6 +64,18 @@
   "sf": 48000,
   "type": "Industrial/Flex",
   "thesis": "Acquired one-third occupied from an owner that had deprioritized it. Non-traditional marketing and targeted concessions led to a full lease-up and a waiting list.",
+  "detail": {
+   "metaDescription": "29000 Information Lane: 48,000 SF industrial/flex building on Maryland's Eastern Shore, leased up by Oxford Realty Advisors from one-third occupancy.",
+   "summary": [
+    "Oxford acquired 29000 Information Lane roughly one-third occupied from a multi-billion-dollar construction company that had deprioritized the asset.",
+    "Non-traditional marketing, targeted concessions and improved responsiveness leased the building up. Rents have nearly doubled, and the property now has a waiting list."
+   ],
+   "highlights": [
+    "Acquired roughly one-third occupied",
+    "Rents nearly doubled",
+    "Waiting list for space"
+   ]
+  },
   "image": {
    "src": "/images/08-20161026_120215.jpg",
    "alt": "29000 Information Lane — 48,000 SF Industrial/Flex in Eastern Shore, MD",
@@ -97,6 +121,18 @@
   "sf": 27650,
   "type": "Medical Retail",
   "thesis": "Acquired partly vacant with below-market rents. A multi-tenant reconfiguration for a national dialysis operator replaced legacy tenancies with market-rate leases.",
+  "detail": {
+   "metaDescription": "1900 North Broadway: 27,650 SF medical retail property in Baltimore, MD, repositioned by Oxford Realty Advisors for a national dialysis operator.",
+   "summary": [
+    "Oxford acquired 1900 North Broadway from a national ministry at 77% occupancy, with a 6,000 SF vacancy and below-market rents.",
+    "Oxford negotiated a complex multi-tenant reconfiguration to accommodate a national dialysis operator, replacing below-market tenancies with market-rate leases and immediately adding to net operating income."
+   ],
+   "highlights": [
+    "Acquired at 77% occupancy",
+    "Multi-tenant reconfiguration for a national dialysis operator",
+    "Below-market tenancies replaced with market-rate leases"
+   ]
+  },
   "image": {
    "src": "/images/03-exterior-nice-photo.jpg",
    "alt": "1900 North Broadway — 27,650 SF Medical Retail in Baltimore, MD",
@@ -141,6 +177,19 @@
   "market": "Ohio",
   "sf": 36000,
   "type": "Industrial",
+  "thesis": "A functionally obsolete truck repair facility, repositioned with a full renovation and leased long-term to a global fragrance manufacturer.",
+  "detail": {
+   "metaDescription": "3540 E Fifth Avenue: 36,000 SF industrial building in Columbus, OH, repositioned by Oxford Realty Advisors from a functionally obsolete truck repair facility.",
+   "summary": [
+    "3540 E Fifth Avenue began as a functionally obsolete truck repair facility. Oxford repositioned it with a new metal building skin, roof replacement, full asphalt milling and repaving, overhead door replacements, a complete office rebuild and upgraded HVAC systems.",
+    "The project also addressed environmental challenges, coordinating with the Ohio EPA on vapor mitigation systems. Oxford then executed a 10-year lease with a global fragrance manufacturer."
+   ],
+   "highlights": [
+    "Functionally obsolete building repositioned",
+    "Environmental work coordinated with the Ohio EPA",
+    "10-year lease with a global fragrance manufacturer"
+   ]
+  },
   "image": {
    "src": "/images/09-3540-rear-exterior-1.jpg",
    "alt": "3540 E Fifth Avenue — 36,000 SF Industrial in Columbus, OH",

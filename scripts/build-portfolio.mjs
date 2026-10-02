@@ -23,6 +23,7 @@ import url from 'node:url';
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
 const PAGE = path.join(ROOT, 'portfolio.html');
 const DATA = path.join(ROOT, 'data', 'portfolio.json');
+const DETAIL_DIR = path.join(ROOT, 'properties');
 
 const GRID_RE = /<!-- portfolio:grid:begin -->[\s\S]*?<!-- portfolio:grid:end -->/;
 const LD_RE = /<!-- portfolio:jsonld:begin -->[\s\S]*?<!-- portfolio:jsonld:end -->/;
@@ -48,6 +49,7 @@ const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const fmtSf = (n) => n.toLocaleString('en-US');
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const detailPath = (a) => `/properties/${slug(a.name)}`;
 const typeKey = (a) => {
   const key = TYPE_KEYS[a.type];
   if (!key) throw new Error(`portfolio.json: no filter key for type "${a.type}" (${a.name})`);
@@ -71,7 +73,10 @@ function picture(img) {
 function card(a) {
   const key = typeKey(a);
   const thesis = a.thesis ? `\n<p class="pf-card__thesis">${esc(a.thesis)}</p>` : '';
-  return `<article class="portfolio-card pf-card pf-card--${key} animate-on-scroll" id="${slug(a.name)}" data-market="${esc(a.market)}" data-type="${key}">
+  const more = a.detail ? `\n<a class="pf-card__more" href="${detailPath(a)}">Property details &rarr;</a>` : '';
+  // data-* feed the client-side table view (portfolio.js) so it never re-parses card text.
+  const href = a.detail ? ` data-href="${detailPath(a)}"` : '';
+  return `<article class="portfolio-card pf-card pf-card--${key} animate-on-scroll" id="${slug(a.name)}" data-market="${esc(a.market)}" data-type="${key}" data-name="${esc(a.name)}" data-location="${esc(a.city)}, ${esc(a.state)}" data-sf="${a.sf}" data-type-label="${esc(a.type)}"${href}>
 ${picture(a.image)}
 <div class="portfolio-card__body">
 <h3>${esc(a.name)}</h3>
@@ -79,7 +84,7 @@ ${picture(a.image)}
 <div class="portfolio-card__meta">
 <span>${fmtSf(a.sf)} SF</span>
 <span>${esc(a.type)}</span>
-</div>${thesis}
+</div>${thesis}${more}
 </div>
 </article>`;
 }
@@ -132,6 +137,131 @@ function renderJsonLd(assets) {
   return `<!-- portfolio:jsonld:begin -->\n<script type="application/ld+json">\n${ld}\n</script>\n<!-- portfolio:jsonld:end -->`;
 }
 
+// Real pixel size of a JPEG, read from its SOF marker (og:image dimensions
+// must match the file; site-integrity.test.mjs enforces it).
+async function jpegSize(rel) {
+  const buf = await fs.readFile(path.join(ROOT, rel.replace(/^\//, '')));
+  let i = 2;
+  while (i < buf.length) {
+    if (buf[i] !== 0xff) { i += 1; continue; }
+    const marker = buf[i + 1];
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+    }
+    i += 2 + buf.readUInt16BE(i + 2);
+  }
+  throw new Error(`could not read JPEG size of ${rel}`);
+}
+
+function replaceOne(str, re, replacement, what) {
+  if (!re.test(str)) throw new Error(`portfolio.html template: could not find ${what}`);
+  return str.replace(re, () => replacement);
+}
+
+const MARKET_PAGES = { Maryland: ['Maryland', '/markets/maryland'], Ohio: ['Columbus, OH', '/markets/columbus-oh'], Missouri: ['Kansas City, MO', null] };
+
+async function renderDetail(a, page) {
+  const d = a.detail;
+  const s = slug(a.name);
+  const url = `https://oxfordra.net${detailPath(a)}`;
+  const title = `${a.name} | Oxford Realty Advisors`;
+  if (title.length > 60) throw new Error(`detail title over 60 chars: "${title}"`);
+  const desc = d.metaDescription;
+  const descLen = [...desc].length;
+  if (descLen < 140 || descLen > 160) throw new Error(`${a.name}: metaDescription is ${descLen} chars (need 140-160)`);
+  const [marketLabel, marketHref] = MARKET_PAGES[a.market];
+  const { width, height } = await jpegSize(a.image.src);
+
+  const bodyAt = page.indexOf('<body>');
+  const mainAt = page.indexOf('<main id="main-content">');
+  const nextAt = page.indexOf('<section class="section section--navy" aria-label="Next steps">');
+  if (bodyAt < 0 || mainAt < 0 || nextAt < 0) throw new Error('portfolio.html template: body/main/next-steps anchors not found');
+
+  let head = page.slice(0, bodyAt);
+  const oldTitle = head.match(/<title>([^<]*)<\/title>/)[1];
+  head = head.split(oldTitle).join(esc(title));
+  head = replaceOne(head, /<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(desc)}">`, 'meta description');
+  head = replaceOne(head, /<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${esc(desc)}">`, 'og:description');
+  head = replaceOne(head, /<meta name="twitter:description" content="[^"]*">/, `<meta name="twitter:description" content="${esc(desc)}">`, 'twitter:description');
+  head = replaceOne(head, /<link rel="canonical" href="[^"]*">/, `<link rel="canonical" href="${url}">`, 'canonical');
+  head = replaceOne(head, /<meta property="og:url" content="[^"]*">/, `<meta property="og:url" content="${url}">`, 'og:url');
+  head = replaceOne(head, /<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="https://oxfordra.net${a.image.src}">`, 'og:image');
+  head = replaceOne(head, /<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="https://oxfordra.net${a.image.src}">`, 'twitter:image');
+  head = replaceOne(head, /<meta property="og:image:width" content="[^"]*">/, `<meta property="og:image:width" content="${width}">`, 'og:image:width');
+  head = replaceOne(head, /<meta property="og:image:height" content="[^"]*">/, `<meta property="og:image:height" content="${height}">`, 'og:image:height');
+
+  const avif = a.image.sources.find((x) => x.type === 'image/avif');
+  const preload = avif
+    ? `<link rel="preload" as="image" type="image/avif" href="${esc(avif.srcset.split(',').pop().trim().split(' ')[0])}" imagesrcset="${esc(avif.srcset)}" imagesizes="100vw" fetchpriority="high">`
+    : '';
+  head = replaceOne(head, /<link rel="preload" as="image"[^>]*>/, preload, 'hero image preload');
+
+  const crumbs = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://oxfordra.net/' },
+    { '@type': 'ListItem', position: 2, name: 'Portfolio', item: 'https://oxfordra.net/portfolio' },
+    { '@type': 'ListItem', position: 3, name: a.name, item: url },
+  ] };
+  const place = { '@context': 'https://schema.org', '@type': 'Place', name: a.name, url, image: `https://oxfordra.net${a.image.src}`, description: d.summary[0],
+    address: { '@type': 'PostalAddress', addressLocality: a.city, addressRegion: a.state, addressCountry: 'US' },
+    floorSize: { '@type': 'QuantitativeValue', value: a.sf, unitCode: 'FTK' },
+    additionalProperty: { '@type': 'PropertyValue', name: 'Property Type', value: a.type } };
+  const ld = [crumbs, place].map((o) => `<script type="application/ld+json">\n${JSON.stringify(o, null, 2)}\n</script>`).join('\n');
+  // The portfolio page's own BreadcrumbList (Home > Portfolio) must not survive
+  // next to the property's three-level one.
+  head = replaceOne(head, /<script type="application\/ld\+json">\s*\{\s*"@context": "https:\/\/schema\.org",\s*"@type": "BreadcrumbList"[\s\S]*?<\/script>\n/, '', 'portfolio BreadcrumbList');
+  head = replaceOne(head, LD_RE, ld, 'portfolio:jsonld markers');
+
+  const heroSources = a.image.sources.map((x) => `<source type="${esc(x.type)}" srcset="${esc(x.srcset)}" sizes="100vw">`).join('\n');
+  const hero = `<!-- ═══ PROPERTY HERO ═══ -->
+<section class="subpage-hero" aria-label="${esc(a.name)}">
+<div class="subpage-hero__bg">
+<picture>
+${heroSources}
+<img src="${esc(a.image.src)}" alt="${esc(a.image.alt)}" width="${width}" height="${height}" decoding="async" fetchpriority="high">
+</picture>
+</div>
+<div class="subpage-hero__overlay"></div>
+<div class="subpage-hero__content">
+<span class="section__label section__label--light">Portfolio &middot; ${esc(marketLabel)}</span>
+<h1>${esc(a.name)}</h1>
+<p>${esc(a.city)}, ${esc(a.state)} &middot; ${fmtSf(a.sf)} SF &middot; ${esc(a.type)}</p>
+</div>
+</section>
+`;
+  const market = marketHref ? `<a href="${marketHref}">${esc(marketLabel)}</a>` : esc(marketLabel);
+  const body = `<!-- ═══ PROPERTY DETAIL ═══ -->
+<section class="section" aria-label="Property detail">
+<div class="container pf-detail">
+<nav class="pf-crumbs" aria-label="Breadcrumb"><a href="/">Home</a> <span aria-hidden="true">/</span> <a href="/portfolio">Portfolio</a> <span aria-hidden="true">/</span> <span aria-current="page">${esc(a.name)}</span></nav>
+<div class="pf-detail__grid">
+<div class="pf-detail__main">
+<h2>About this property</h2>
+${d.summary.map((p) => `<p>${esc(p)}</p>`).join('\n')}
+<ul class="pf-detail__highlights">
+${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
+</ul>
+<p class="pf-detail__more"><a href="/track-record">See how Oxford creates value across the portfolio &rarr;</a></p>
+</div>
+<aside class="pf-detail__facts" aria-label="Property facts">
+<h2>At a glance</h2>
+<dl>
+<div><dt>Location</dt><dd>${esc(a.city)}, ${esc(a.state)}</dd></div>
+<div><dt>Size</dt><dd>${fmtSf(a.sf)} SF</dd></div>
+<div><dt>Property type</dt><dd>${esc(a.type)}</dd></div>
+<div><dt>Market</dt><dd>${market}</dd></div>
+<div><dt>Status</dt><dd>Current holding</dd></div>
+</dl>
+<a class="btn btn--outline btn--full" href="/portfolio#${s}">Back to portfolio</a>
+</aside>
+</div>
+</div>
+</section>
+
+`;
+  const tail = page.slice(nextAt).replace(/<script defer src="\/portfolio\.js\?v=\d+"><\/script>\n?/, '');
+  return `${head}${page.slice(bodyAt, mainAt)}<main id="main-content">\n\n${hero}\n${body}${tail}`;
+}
+
 async function main() {
   const check = process.argv.includes('--check');
   const assets = JSON.parse(await fs.readFile(DATA, 'utf8'));
@@ -142,16 +272,31 @@ async function main() {
     throw new Error('portfolio.html is missing the portfolio:grid / portfolio:jsonld markers');
   }
   const next = src.replace(GRID_RE, () => renderGrid(assets)).replace(LD_RE, () => renderJsonLd(assets));
-  if (next === src) {
-    console.log('build-portfolio: portfolio.html is up to date');
+
+  // Every output is computed before the first write. Detail pages reuse the
+  // rendered portfolio page's chrome (head, nav, footer, inline blocks), so
+  // their CSP hashes can never drift from the portfolio page's.
+  const writes = new Map([[PAGE, next]]);
+  for (const a of assets.filter((x) => x.detail)) {
+    writes.set(path.join(DETAIL_DIR, `${slug(a.name)}.html`), await renderDetail(a, next));
+  }
+
+  const drift = [];
+  for (const [file, content] of writes) {
+    const cur = await fs.readFile(file, 'utf8').then((t) => t.replace(/\r\n/g, '\n'), () => null);
+    if (cur !== content) drift.push(path.relative(ROOT, file).replace(/\\/g, '/'));
+  }
+  if (!drift.length) {
+    console.log('build-portfolio: portfolio.html and property pages are up to date');
     return;
   }
   if (check) {
-    console.error('build-portfolio: portfolio.html has drifted from data/portfolio.json — run `node scripts/build-portfolio.mjs`');
+    console.error(`build-portfolio: out of sync with data/portfolio.json: ${drift.join(', ')} — run \`node scripts/build-portfolio.mjs\``);
     process.exit(1);
   }
-  await fs.writeFile(PAGE, next);
-  console.log('build-portfolio: portfolio.html updated');
+  await fs.mkdir(DETAIL_DIR, { recursive: true });
+  for (const [file, content] of writes) await fs.writeFile(file, content);
+  console.log(`build-portfolio: updated ${drift.join(', ')}`);
 }
 
 main().catch((err) => {

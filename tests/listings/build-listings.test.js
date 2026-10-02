@@ -137,7 +137,7 @@ test('the real sitemap.xml has exactly one stampable <loc>/<lastmod> for SITEMAP
 function scratchRoot() {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'build-listings-'));
   fs.mkdirSync(path.join(root, 'data'));
-  for (const f of ['data/listings.json', 'listings.js', 'available-space.html', 'sitemap.xml']) {
+  for (const f of ['data/listings.json', 'data/portfolio.json', 'listings.js', 'available-space.html', 'portfolio.html', 'sitemap.xml']) {
     fs.copyFileSync(path.join(ROOT, f), path.join(root, f));
   }
   return root;
@@ -171,6 +171,43 @@ test('generate(): write mode with drift stamps only the available-space <lastmod
   assert.strictEqual(sitemap1, sitemap0.replace('<loc>' + SITEMAP_LOC + '</loc><lastmod>' + lastmodOf(sitemap0, SITEMAP_LOC), '<loc>' + SITEMAP_LOC + '</loc><lastmod>2030-01-01'));
   assert.deepStrictEqual(await generate({ write: true, root, today: '2031-01-01' }), []);
   assert.strictEqual(slurp(root, 'sitemap.xml'), sitemap1, 'no drift, so the sitemap is not re-stamped');
+});
+
+// The portfolio cards' "N suites available" badges derive from listings.json, so the
+// weekly sync's build-listings run has to regenerate portfolio.html as well.
+test('generate(): a listing that leaves listings.json drops its portfolio badge and stamps the /portfolio <lastmod>', async () => {
+  const { generate } = await load();
+  const root = scratchRoot();
+  const file = path.join(root, 'data', 'listings.json');
+  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const gone = data.shift(); // every suite at this property leased
+  fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+  const anchor = 'href="/available-space#' + gone.slug + '"';
+  assert.ok(slurp(root, 'portfolio.html').includes(anchor), 'fixture: the portfolio page shows a badge for ' + gone.slug);
+  const drifted = await generate({ write: true, root, today: '2030-01-01' });
+  assert.ok(drifted.includes('portfolio.html'), 'portfolio.html must be regenerated: ' + drifted);
+  assert.ok(!slurp(root, 'portfolio.html').includes(anchor), 'the badge must disappear once the listing is gone');
+  assert.strictEqual(lastmodOf(slurp(root, 'sitemap.xml'), 'https://oxfordra.net/portfolio'), '2030-01-01');
+  assert.deepStrictEqual(await generate({ write: true, root, today: '2031-01-01' }), [], 'idempotent');
+});
+
+test('generate(): a listing no portfolio asset claims fails the run before any file is written', async () => {
+  const { generate } = await load();
+  const root = scratchRoot();
+  const file = path.join(root, 'data', 'listings.json');
+  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  data.push({ ...data[0], id: 9999, slug: 'zz-unclaimed-property', loopnetId: '1' });
+  fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+  const before = ['listings.js', 'available-space.html', 'portfolio.html', 'sitemap.xml'].map((f) => slurp(root, f));
+  await assert.rejects(() => generate({ write: true, root, today: '2030-01-01' }), /zz-unclaimed-property/);
+  assert.deepStrictEqual(['listings.js', 'available-space.html', 'portfolio.html', 'sitemap.xml'].map((f) => slurp(root, f)), before);
+});
+
+test('every listing in listings.json is claimed by a portfolio asset, and every listingSlug is a plausible slug', () => {
+  const portfolio = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'portfolio.json'), 'utf8'));
+  const claimed = portfolio.map((a) => a.listingSlug).filter(Boolean);
+  assert.strictEqual(new Set(claimed).size, claimed.length, 'two portfolio assets claim the same listing');
+  for (const s of claimed) assert.match(s, /^[a-z0-9]+(-[a-z0-9]+)*$/, 'listingSlug ' + s);
 });
 
 test('generate(): a sitemap that cannot be stamped fails the run before any file is written', async () => {

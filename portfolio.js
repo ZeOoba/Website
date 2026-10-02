@@ -68,7 +68,8 @@
       { key: 'location', label: 'Location' },
       { key: 'market', label: 'Market' },
       { key: 'sf', label: 'Size (SF)', num: true },
-      { key: 'type', label: 'Type' }
+      { key: 'type', label: 'Type' },
+      { key: 'avail', label: 'Available', num: true }
     ];
     var headRow = document.createElement('tr');
     cols.forEach(function (col) {
@@ -101,7 +102,8 @@
         location: card.getAttribute('data-location'),
         market: MARKET_LABEL[card.getAttribute('data-market')] || card.getAttribute('data-market'),
         sf: Number(card.getAttribute('data-sf')),
-        type: card.getAttribute('data-type-label')
+        type: card.getAttribute('data-type-label'),
+        avail: Number(card.getAttribute('data-avail')) || 0
       };
       tr._data = data;
       var nameCell = document.createElement('th');
@@ -120,6 +122,17 @@
       tr.appendChild(cell('td', data.market));
       tr.appendChild(cell('td', data.sf.toLocaleString('en-US'), 'pf-table__num'));
       tr.appendChild(cell('td', data.type));
+      var availCell = cell('td', '', 'pf-table__num');
+      var availHref = card.getAttribute('data-avail-href');
+      if (data.avail && availHref) {
+        var availLink = document.createElement('a');
+        availLink.href = availHref;
+        availLink.textContent = data.avail + (data.avail === 1 ? ' suite' : ' suites');
+        availCell.appendChild(availLink);
+      } else {
+        availCell.textContent = '—';
+      }
+      tr.appendChild(availCell);
       tbody.appendChild(tr);
       rows.push(tr);
     });

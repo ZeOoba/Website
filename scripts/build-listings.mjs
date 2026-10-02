@@ -6,6 +6,9 @@
  *   2. available-space.html       — the static fallback cards in #listingsPanel
  *                                   (what crawlers see before listings.js runs)
  *   3. available-space.html       — the id="listing-schema" JSON-LD ItemList
+ *   4. portfolio.html             — the "N suites available" badges on the cards
+ *                                   (rendered by build-portfolio.mjs; the rest of
+ *                                   that page comes from data/portfolio.json)
  *
  * The outputs stay committed (no deploy-time generation) so a listings PR shows
  * the exact served markup in its diff; `--check` fails `npm run verify` if any
@@ -19,6 +22,7 @@ import { promises as fs } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import url from 'node:url';
+import { renderPortfolioPage } from './build-portfolio.mjs';
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
 
@@ -113,7 +117,8 @@ function cardImg(p) {
 function card(p) {
   const multi = p.units.length > 1;
   const L = [];
-  L.push(`        <article class="as-card" data-id="${p.id}">`);
+  // id = slug so /available-space#<slug> (the portfolio badges) resolves in static HTML too.
+  L.push(`        <article class="as-card" id="${esc(p.slug)}" data-id="${p.id}">`);
   L.push('          <div class="as-card__img">');
   L.push(...cardImg(p));
   L.push(`            <span class="as-card__badge as-card__badge--available">${multi ? p.units.length + ' Spaces' : '1 Space'}</span>`);
@@ -239,6 +244,9 @@ const GENERATORS = {
         splice(src, /(<div class="as-listings" id="listingsPanel">\n)[\s\S]*?(        <div class="as-no-results" id="noResults")/, renderCards(listings), '#listingsPanel cards'),
         /(<script type="application\/ld\+json" id="listing-schema">\n)[\s\S]*?(    <\/script>)/, renderSchema(listings), 'listing-schema JSON-LD'),
       /(<script defer src="[/]listings[.]js[?]v=)[^"]*(")/, version, 'listings.js cache-buster'),
+  // The portfolio cards' "N suites available" badges are derived from listings.json,
+  // so the weekly sync must regenerate the page too (data/portfolio.json owns the rest).
+  'portfolio.html': (src, listings, _version, portfolio) => renderPortfolioPage(src, portfolio, listings),
 };
 
 // _headers serves /*.js as immutable for a year, so listings.js must get a new
@@ -250,6 +258,7 @@ export const listingsVersion = (listingsJs) =>
 // The sitemap entry for the page these generators rewrite. Search engines use
 // <lastmod> to decide when to recrawl a page marked changefreq=weekly.
 export const SITEMAP_LOC = 'https://oxfordra.net/available-space';
+const PORTFOLIO_LOC = 'https://oxfordra.net/portfolio';
 
 // Set <lastmod> for one <loc>; every other byte (and the EOL style) is untouched.
 export function stampSitemapLastmod(xml, loc, date) {
@@ -268,13 +277,14 @@ export function stampSitemapLastmod(xml, loc, date) {
 // `root` is injectable so tests can run the real write path on a scratch copy.
 export async function generate({ write = false, today = new Date().toISOString().slice(0, 10), root = ROOT } = {}) {
   const listings = JSON.parse(await fs.readFile(path.join(root, 'data', 'listings.json'), 'utf8'));
+  const portfolio = JSON.parse(await fs.readFile(path.join(root, 'data', 'portfolio.json'), 'utf8'));
   const drift = [];
   const writes = [];
   let version; // set by listings.js (first entry), consumed by available-space.html
   for (const [name, gen] of Object.entries(GENERATORS)) {
     const raw = await fs.readFile(path.join(root, name), 'utf8');
     const eol = raw.includes('\r\n') ? '\r\n' : '\n';
-    const lf = gen(raw.replace(/\r\n/g, '\n'), listings, version);
+    const lf = gen(raw.replace(/\r\n/g, '\n'), listings, version, portfolio);
     if (name === 'listings.js') version = listingsVersion(lf);
     const next = lf.replace(/\n/g, eol);
     if (next !== raw) {
@@ -285,7 +295,9 @@ export async function generate({ write = false, today = new Date().toISOString()
   if (write && drift.length) {
     const file = path.join(root, 'sitemap.xml');
     const raw = await fs.readFile(file, 'utf8');
-    const next = stampSitemapLastmod(raw, SITEMAP_LOC, today);
+    let next = stampSitemapLastmod(raw, SITEMAP_LOC, today);
+    // The portfolio page changed too (availability badges): tell crawlers.
+    if (drift.includes('portfolio.html')) next = stampSitemapLastmod(next, PORTFOLIO_LOC, today);
     if (next !== raw) writes.push([file, next]);
   }
   if (write) for (const [file, content] of writes) await fs.writeFile(file, content);

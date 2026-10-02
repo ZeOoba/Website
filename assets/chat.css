@@ -401,6 +401,14 @@
   }
 }
 
+/* While the cookie banner is showing it covers the bottom of the viewport
+   (~70px desktop, ~135px phones, z-index 9000). Sit the launcher 12px above
+   it; script.js publishes the live height as --cookie-banner-h. Declared last
+   so it wins over the CTA rules above (same specificity). */
+body:has(.cookie-banner.visible) .ora-chat-trigger {
+  bottom: calc(var(--cookie-banner-h, 140px) + 12px);
+}
+
 /* ----- Reduced motion ----- */
 @media (prefers-reduced-motion: reduce) {
   #ora-chat-panel,

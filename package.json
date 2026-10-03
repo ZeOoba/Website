@@ -4,7 +4,7 @@
   "description": "Build and verification tooling for oxfordra.net. `npm run build` assembles the dist/ publish directory (the same command netlify.toml runs); `npm run verify` is the full pre-merge gate that .github/workflows/ci.yml executes. Also pins netlify-cli to a tested version so deploys resolve a local install instead of npx's evictable cache.",
   "scripts": {
     "postinstall": "node scripts/patch-netlify-shim.js",
-    "build": "node scripts/build-listings.mjs --check && node scripts/build-kb.mjs && node scripts/build-dist.mjs",
+    "build": "node scripts/build-listings.mjs --check && node scripts/build-portfolio.mjs --check && node scripts/build-kb.mjs && node scripts/build-dist.mjs",
     "build:listings": "node scripts/build-listings.mjs",
     "serve": "node scripts/serve-dist.mjs --port 8788",
     "verify:jsonld": "node scripts/verify-jsonld.mjs",

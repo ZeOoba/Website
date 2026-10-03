@@ -19,7 +19,7 @@ const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..'
 const DIST = path.join(ROOT, 'dist');
 
 // Directories copied recursively.
-const SITE_DIRS = ['assets', 'images', 'fonts', 'markets', 'resources'];
+const SITE_DIRS = ['assets', 'images', 'fonts', 'markets', 'properties', 'resources'];
 
 // Every published root file, enumerated one-by-one — no wildcards. Adding a
 // public page means adding it here; that is deliberate, this is the boundary
@@ -47,11 +47,13 @@ const SITE_FILES = [
   // styles
   'application-style.css',
   'available-space.css',
+  'portfolio.css',
   'styles.css',
   // scripts
   'application-script.js',
   'broker-upload.js',
   'listings.js',
+  'portfolio.js',
   'script.js',
   // platform + assets
   '_headers',

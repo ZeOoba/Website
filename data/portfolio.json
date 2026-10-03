@@ -1,0 +1,890 @@
+[
+ {
+  "name": "9050 Red Branch Road",
+  "city": "Columbia",
+  "state": "MD",
+  "market": "Maryland",
+  "lat": 39.22908,
+  "lng": -76.81735,
+  "sf": 90000,
+  "type": "Industrial/Flex",
+  "acquired": "2015-08",
+  "listingSlug": "9050-red-branch-rd",
+  "thesis": "Oxford's largest Maryland asset: a 90,000 SF multi-tenant, rear-loaded industrial/flex building held as a permanent holding.",
+  "detail": {
+   "metaDescription": "9050 Red Branch Road: 90,000 SF industrial/flex building in Columbia, MD, owned and operated by Oxford Realty Advisors with permanent, proprietary capital.",
+   "summary": [
+    "At 90,000 SF, 9050 Red Branch Road is Oxford's largest Maryland asset. Oxford acquired it in August 2015 and holds it as a permanent holding.",
+    "The multi-tenant, rear-loaded building offers units from 5,000 to 15,000 SF with truck-high docks, and some units also have ramps for drive-in access."
+   ],
+   "highlights": [
+    "Oxford's largest Maryland asset",
+    "Multi-tenant, rear-loaded configuration",
+    "Held as a permanent, proprietary-capital holding"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Multi-tenant, rear-loaded"
+    ],
+    [
+     "Unit sizes",
+     "5,000 to 15,000 SF"
+    ],
+    [
+     "Loading",
+     "Truck-high docks; some units also have ramps for drive-in access"
+    ],
+    [
+     "Office",
+     "Varying levels of build-out"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/20-9050-red-branch-exterior.jpg",
+   "alt": "9050 Red Branch Road — 90,000 SF Industrial/Flex in Columbia, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/20-9050-red-branch-exterior-480w.avif 480w, /images/20-9050-red-branch-exterior.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/20-9050-red-branch-exterior-480w.webp 480w, /images/20-9050-red-branch-exterior.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "55 New Plant Court",
+  "city": "Owings Mills",
+  "state": "MD",
+  "market": "Maryland",
+  "lat": 39.411449,
+  "lng": -76.780688,
+  "sf": 34500,
+  "type": "Industrial/Flex",
+  "acquired": "2016-10",
+  "detail": {
+   "metaDescription": "55 New Plant Court: industrial/flex building in Owings Mills, MD with 20-foot ceilings, heavy power, truck-height docks and a 2.35-acre site.",
+   "summary": [
+    "55 New Plant Court is a single-tenant industrial/flex building in Owings Mills, Maryland. It is rear-loaded with standard truck-height docks, has heavy power and 20-foot ceilings, and includes 9,500 SF of office space.",
+    "The building sits on a 2.35-acre site."
+   ],
+   "highlights": [
+    "Rear-loaded with standard truck-height docks",
+    "20-foot ceilings and heavy power",
+    "2.35-acre site"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Single-tenant, rear-loaded"
+    ],
+    [
+     "Loading",
+     "Standard truck-height docks"
+    ],
+    [
+     "Office",
+     "9,500 SF"
+    ],
+    [
+     "Ceiling height",
+     "20'"
+    ],
+    [
+     "Power",
+     "Heavy"
+    ],
+    [
+     "Site",
+     "2.35 acres"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/14-aerial-55-new-plant-court.jpg",
+   "alt": "55 New Plant Court — 34,500 SF Industrial/Flex in Owings Mills, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/14-aerial-55-new-plant-court-480w.avif 480w, /images/14-aerial-55-new-plant-court.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/14-aerial-55-new-plant-court-480w.webp 480w, /images/14-aerial-55-new-plant-court.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "29000 Information Lane",
+  "city": "Easton",
+  "state": "MD",
+  "market": "Maryland",
+  "lat": 38.81341,
+  "lng": -76.06947,
+  "sf": 48000,
+  "type": "Industrial/Flex",
+  "listingSlug": "29000-information-ln",
+  "thesis": "A 48,000 SF industrial/flex property in Easton made up of five multi-tenant, rear-loaded buildings.",
+  "detail": {
+   "metaDescription": "29000 Information Lane: 48,000 SF industrial/flex property in Easton, Maryland, owned and operated by Oxford Realty Advisors with permanent proprietary capital.",
+   "summary": [
+    "29000 Information Lane is a 48,000 SF industrial/flex property in Easton, Maryland, owned and operated by Oxford.",
+    "The property is made up of five multi-tenant, rear-loaded buildings. Current availability is listed on the Available Space page."
+   ],
+   "highlights": [
+    "48,000 SF of industrial/flex space",
+    "Five multi-tenant, rear-loaded buildings",
+    "Owned and operated by Oxford"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Five multi-tenant buildings, rear-loaded"
+    ],
+    [
+     "Unit sizes",
+     "1,500 to 7,500 SF"
+    ],
+    [
+     "Loading",
+     "Rear at-grade drive-in with overhead doors"
+    ],
+    [
+     "Office",
+     "Varying levels of build-out"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/08-20161026_120215.jpg",
+   "alt": "29000 Information Lane — 48,000 SF Industrial/Flex in Easton, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/08-20161026_120215-480w.avif 480w, /images/08-20161026_120215.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/08-20161026_120215-480w.webp 480w, /images/08-20161026_120215.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "2203-2207 Northwood Dr",
+  "city": "Salisbury",
+  "state": "MD",
+  "market": "Maryland",
+  "lat": 38.39942,
+  "lng": -75.5791,
+  "sf": 53700,
+  "type": "Industrial/Flex",
+  "listingSlug": "2203-northwood-dr",
+  "image": {
+   "src": "/images/06-exterior-beauty.jpg",
+   "alt": "2203-2207 Northwood Dr — 53,700 SF Industrial/Flex in Salisbury, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/06-exterior-beauty-480w.avif 480w, /images/06-exterior-beauty.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/06-exterior-beauty-480w.webp 480w, /images/06-exterior-beauty.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "1900 North Broadway",
+  "city": "Baltimore",
+  "state": "MD",
+  "market": "Maryland",
+  "lat": 39.312522,
+  "lng": -76.596356,
+  "sf": 27650,
+  "type": "Medical Retail",
+  "acquired": "2015-08",
+  "thesis": "A 27,650 SF multi-tenant, primarily medical retail property in Baltimore, reconfigured for a national dialysis operator.",
+  "detail": {
+   "metaDescription": "1900 North Broadway: 27,650 SF medical retail property in Baltimore, MD, repositioned by Oxford Realty Advisors for a national dialysis operator.",
+   "summary": [
+    "1900 North Broadway is a 27,650 SF multi-tenant, primarily medical retail property in Baltimore, acquired by Oxford in August 2015.",
+    "Oxford negotiated a complex multi-tenant reconfiguration to accommodate a national dialysis operator."
+   ],
+   "highlights": [
+    "Primarily medical retail",
+    "Multi-tenant reconfiguration for a national dialysis operator",
+    "Held as a permanent, proprietary-capital holding"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Multi-tenant, primarily medical retail"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/03-exterior-nice-photo.jpg",
+   "alt": "1900 North Broadway — 27,650 SF Medical Retail in Baltimore, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/03-exterior-nice-photo-480w.avif 480w, /images/03-exterior-nice-photo.avif 601w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/03-exterior-nice-photo-480w.webp 480w, /images/03-exterior-nice-photo.webp 601w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "401 Sunburst Highway",
+  "city": "Cambridge",
+  "state": "MD",
+  "market": "Maryland",
+  "lat": 38.563784,
+  "lng": -76.066384,
+  "sf": 5100,
+  "type": "Auto-Service Retail",
+  "acquired": "2026-01",
+  "image": {
+   "src": "/images/18-401-sunburst-hwy-main-picture.jpg",
+   "alt": "401 Sunburst Highway — 5,100 SF Auto-Service Retail in Cambridge, MD",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/18-401-sunburst-hwy-main-picture-480w.avif 480w, /images/18-401-sunburst-hwy-main-picture.avif 784w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/18-401-sunburst-hwy-main-picture-480w.webp 480w, /images/18-401-sunburst-hwy-main-picture.webp 784w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "3540 E Fifth Avenue",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.985089,
+  "lng": -82.908909,
+  "sf": 36000,
+  "type": "Industrial",
+  "acquired": "2022-01",
+  "thesis": "A functionally obsolete truck repair facility, repositioned with a full renovation and leased long-term to a global fragrance manufacturer.",
+  "detail": {
+   "metaDescription": "3540 E Fifth Avenue: 36,000 SF industrial building in Columbus, OH, repositioned by Oxford Realty Advisors from a functionally obsolete truck repair facility.",
+   "summary": [
+    "3540 E Fifth Avenue began as a functionally obsolete truck repair facility. Oxford repositioned it with a new metal building skin, roof replacement, full asphalt milling and repaving, overhead door replacements, a complete office rebuild and upgraded HVAC systems.",
+    "The project also addressed environmental challenges, coordinating with the Ohio EPA on vapor mitigation systems. Oxford then executed a 10-year lease with a global fragrance manufacturer."
+   ],
+   "highlights": [
+    "Functionally obsolete building repositioned",
+    "Environmental work coordinated with the Ohio EPA",
+    "10-year lease with a global fragrance manufacturer"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Single-tenant industrial/flex"
+    ],
+    [
+     "Ceiling height",
+     "19'"
+    ],
+    [
+     "Power",
+     "Heavy"
+    ],
+    [
+     "Loading",
+     "Rear and side; truck-high docks and at-grade drive-in"
+    ],
+    [
+     "Site",
+     "About 6 acres, near Columbus International Airport"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/09-3540-rear-exterior-1.jpg",
+   "alt": "3540 E Fifth Avenue — 36,000 SF Industrial in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/09-3540-rear-exterior-1-480w.avif 480w, /images/09-3540-rear-exterior-1.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/09-3540-rear-exterior-1-480w.webp 480w, /images/09-3540-rear-exterior-1.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "1100 Rarig Avenue",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.99401,
+  "lng": -82.92233,
+  "sf": 21000,
+  "type": "Industrial/Flex",
+  "acquired": "2023-10",
+  "listingSlug": "1100-rarig-ave",
+  "image": {
+   "src": "/images/04-1100-rarig-exterior-2-drive-ins-dock.jpg",
+   "alt": "1100 Rarig Avenue — 21,000 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/04-1100-rarig-exterior-2-drive-ins-dock-480w.avif 480w, /images/04-1100-rarig-exterior-2-drive-ins-dock.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/04-1100-rarig-exterior-2-drive-ins-dock-480w.webp 480w, /images/04-1100-rarig-exterior-2-drive-ins-dock.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "2800-2826 Banwick Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.92593,
+  "lng": -82.92199,
+  "sf": 24000,
+  "type": "Industrial/Flex",
+  "acquired": "2021-02",
+  "listingSlug": "2800-2826-banwick-rd",
+  "detail": {
+   "metaDescription": "2800-2826 Banwick Road: multi-tenant, front-loaded industrial/flex building in Columbus, OH with 1,500 to 3,000 SF units and front at-grade drive-in doors.",
+   "summary": [
+    "2800-2826 Banwick Road is a multi-tenant, front-loaded industrial/flex building in Columbus, Ohio. Its units range from 1,500 to 3,000 SF with varying levels of office build-out.",
+    "Every unit has front at-grade drive-in loading through an overhead door."
+   ],
+   "highlights": [
+    "1,500 to 3,000 SF units",
+    "Front at-grade drive-in loading",
+    "Varying levels of office build-out"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Multi-tenant, front-loaded"
+    ],
+    [
+     "Unit sizes",
+     "1,500 to 3,000 SF"
+    ],
+    [
+     "Loading",
+     "Front at-grade drive-in with overhead doors"
+    ],
+    [
+     "Office",
+     "Varying levels of build-out"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/01-2800-2826-banwick-exterior.jpg",
+   "alt": "2800-2826 Banwick Rd — 24,000 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/01-2800-2826-banwick-exterior-480w.avif 480w, /images/01-2800-2826-banwick-exterior.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/01-2800-2826-banwick-exterior-480w.webp 480w, /images/01-2800-2826-banwick-exterior.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "2000-2002 Zettler Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.93064,
+  "lng": -82.91113,
+  "sf": 11160,
+  "type": "Industrial/Flex",
+  "acquired": "2021-02",
+  "listingSlug": "2000-2002-zettler-rd",
+  "detail": {
+   "metaDescription": "2000-2002 Zettler Road: two-unit industrial/flex building in Columbus, OH with 5,000 to 6,000 SF units, rear truck-high docks and ramps for drive-in loading.",
+   "summary": [
+    "2000-2002 Zettler Road is a two-unit industrial/flex building in Columbus, Ohio. Each unit is 5,000 to 6,000 SF with varying levels of office build-out.",
+    "Both units have rear truck-high loading docks, and ramps facilitate drive-in loading."
+   ],
+   "highlights": [
+    "Two 5,000 to 6,000 SF units",
+    "Rear truck-high loading docks",
+    "Ramps for drive-in loading"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Two-unit building"
+    ],
+    [
+     "Unit sizes",
+     "5,000 to 6,000 SF"
+    ],
+    [
+     "Loading",
+     "Rear truck-high docks; ramps for drive-in access"
+    ],
+    [
+     "Office",
+     "Varying levels of build-out"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/07-2000_2002-front.jpg",
+   "alt": "2000-2002 Zettler Rd — 11,160 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/07-2000_2002-front-480w.avif 480w, /images/07-2000_2002-front.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/07-2000_2002-front-480w.webp 480w, /images/07-2000_2002-front.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "2004-2008 Zettler Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.930507,
+  "lng": -82.911714,
+  "sf": 19096,
+  "type": "Industrial/Flex",
+  "acquired": "2021-02",
+  "detail": {
+   "metaDescription": "2004-2008 Zettler Road: industrial/flex buildings in Columbus, OH with 4,300 to 6,300 SF units, rear at-grade drive-on doors and front truck-height docks.",
+   "summary": [
+    "2004-2008 Zettler Road comprises two industrial/flex buildings in Columbus, Ohio. 2004 is a single-tenant, front-loaded building with a standard truck-height dock.",
+    "2006-2008 is a two-unit building with units of 4,300 to 6,300 SF, varying levels of office build-out and rear at-grade drive-on overhead doors. 2008 also has a truck-high loading dock in front."
+   ],
+   "highlights": [
+    "Two buildings on one frontage",
+    "Rear at-grade drive-on overhead doors",
+    "Front truck-height docks at 2004 and 2008"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "2004: single-tenant. 2006-2008: two units"
+    ],
+    [
+     "Unit sizes",
+     "4,300 to 6,300 SF (2006-2008)"
+    ],
+    [
+     "Loading",
+     "2004: front truck-height dock. 2006-2008: rear at-grade drive-on doors; 2008 also a front dock"
+    ],
+    [
+     "Office",
+     "Varying levels of build-out (2006-2008)"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/21-2004-2008-zettler-exterior.jpg",
+   "alt": "2004-2008 Zettler Rd — 19,096 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/21-2004-2008-zettler-exterior-480w.avif 480w, /images/21-2004-2008-zettler-exterior.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/21-2004-2008-zettler-exterior-480w.webp 480w, /images/21-2004-2008-zettler-exterior.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "2012-2026 Zettler Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.93096,
+  "lng": -82.90974,
+  "sf": 16800,
+  "type": "Industrial/Flex",
+  "acquired": "2021-02",
+  "listingSlug": "2012-2026-zettler-rd",
+  "detail": {
+   "metaDescription": "2012-2026 Zettler Road: multi-tenant, rear-loaded industrial/flex building in Columbus, OH with 1,800 to 2,400 SF units and rear at-grade drive-in doors.",
+   "summary": [
+    "2012-2026 Zettler Road is a multi-tenant, rear-loaded industrial/flex building in Columbus, Ohio. Its units range from 1,800 to 2,400 SF with varying levels of office build-out.",
+    "Every unit has rear at-grade drive-in loading through an overhead door."
+   ],
+   "highlights": [
+    "1,800 to 2,400 SF units",
+    "Rear at-grade drive-in loading",
+    "Varying levels of office build-out"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Multi-tenant, rear-loaded"
+    ],
+    [
+     "Unit sizes",
+     "1,800 to 2,400 SF"
+    ],
+    [
+     "Loading",
+     "Rear at-grade drive-in with overhead doors"
+    ],
+    [
+     "Office",
+     "Varying levels of build-out"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/10-zettler-2012-2026-exterior-.jpg",
+   "alt": "2012-2026 Zettler Rd — 16,800 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/10-zettler-2012-2026-exterior--480w.avif 480w, /images/10-zettler-2012-2026-exterior-.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/10-zettler-2012-2026-exterior--480w.webp 480w, /images/10-zettler-2012-2026-exterior-.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "384-398 Morrison Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.98527,
+  "lng": -82.85498,
+  "sf": 14400,
+  "type": "Industrial/Flex",
+  "acquired": "2021-02",
+  "listingSlug": "384-398-morrison-rd",
+  "detail": {
+   "metaDescription": "384-398 Morrison Road: multi-tenant industrial/flex building in Columbus, OH with 1,800 SF units, at-grade drive-in overhead doors and varying office build-out.",
+   "summary": [
+    "384-398 Morrison Road is a multi-tenant industrial/flex building in Columbus, Ohio made up of 1,800 SF units with varying levels of office build-out.",
+    "Every unit has at-grade drive-in loading through an overhead door."
+   ],
+   "highlights": [
+    "1,800 SF units",
+    "At-grade drive-in loading",
+    "Varying levels of office build-out"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Multi-tenant"
+    ],
+    [
+     "Unit sizes",
+     "1,800 SF"
+    ],
+    [
+     "Loading",
+     "At-grade drive-in with overhead doors"
+    ],
+    [
+     "Office",
+     "Varying levels of build-out"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/17-warehouse-columbus-external.jpg",
+   "alt": "384-398 Morrison Rd — 14,400 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/17-warehouse-columbus-external-480w.avif 480w, /images/17-warehouse-columbus-external.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/17-warehouse-columbus-external-480w.webp 480w, /images/17-warehouse-columbus-external.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "406-420 Morrison Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.986327,
+  "lng": -82.855568,
+  "sf": 16800,
+  "type": "Industrial/Flex",
+  "acquired": "2021-02",
+  "detail": {
+   "metaDescription": "406-420 Morrison Road: multi-tenant, front-loaded industrial/flex building in Columbus, OH with 1,800 to 2,400 SF units, drive-in doors and rear docks.",
+   "summary": [
+    "406-420 Morrison Road is a multi-tenant, front-loaded industrial/flex building in Columbus, Ohio. Its units range from 1,800 to 2,400 SF with varying levels of office build-out.",
+    "Every unit has front at-grade drive-in loading through an overhead door, as well as rear-loaded truck-height doors."
+   ],
+   "highlights": [
+    "1,800 to 2,400 SF units",
+    "Front at-grade drive-in loading",
+    "Rear truck-height doors"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Multi-tenant, front-loaded"
+    ],
+    [
+     "Unit sizes",
+     "1,800 to 2,400 SF"
+    ],
+    [
+     "Loading",
+     "Front at-grade drive-in with overhead doors; rear truck-height doors"
+    ],
+    [
+     "Office",
+     "Varying levels of build-out"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/22-406-420-morrison-exterior.jpg",
+   "alt": "406-420 Morrison Rd — 16,800 SF Industrial/Flex in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/22-406-420-morrison-exterior-480w.avif 480w, /images/22-406-420-morrison-exterior.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/22-406-420-morrison-exterior-480w.webp 480w, /images/22-406-420-morrison-exterior.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "3034 Westerville Rd",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 40.029909,
+  "lng": -82.956933,
+  "sf": 18360,
+  "type": "Industrial + IOS",
+  "image": {
+   "src": "/images/11-gate-building.jpg",
+   "alt": "3034 Westerville Rd — 18,360 SF Industrial + IOS in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/11-gate-building-480w.avif 480w, /images/11-gate-building.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/11-gate-building-480w.webp 480w, /images/11-gate-building.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "7658 Fishel Drive N",
+  "city": "Dublin",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 40.105277,
+  "lng": -83.194253,
+  "sf": 24000,
+  "type": "Industrial/Flex",
+  "acquired": "2026-01",
+  "image": {
+   "src": "/images/16-exterior-docks-2-7658-fishel.jpg",
+   "alt": "7658 Fishel Drive N — 24,000 SF Industrial/Flex in Dublin, OH",
+   "sources": [
+    {
+     "type": "image/webp",
+     "srcset": "/images/16-exterior-docks-2-7658-fishel.webp"
+    }
+   ]
+  }
+ },
+ {
+  "name": "3875-3883 E Livingston",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.944846,
+  "lng": -82.892368,
+  "sf": 10950,
+  "type": "Industrial + IOS",
+  "acquired": "2025-06",
+  "image": {
+   "src": "/images/12-aerial-view-3875-livingston.jpg",
+   "alt": "3875-3883 E Livingston — 10,950 SF Industrial + IOS in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/12-aerial-view-3875-livingston-480w.avif 480w, /images/12-aerial-view-3875-livingston.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/12-aerial-view-3875-livingston-480w.webp 480w, /images/12-aerial-view-3875-livingston.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "4601 E Fifth Avenue",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.986415,
+  "lng": -82.872382,
+  "sf": 3300,
+  "type": "Office/Retail",
+  "acquired": "2021-02",
+  "detail": {
+   "metaDescription": "4601 East Fifth Avenue: 3,300 SF free-standing single-tenant retail/office building in Columbus, OH with excellent parking, owned by Oxford Realty Advisors.",
+   "summary": [
+    "4601 East Fifth Avenue is a 3,300 SF free-standing retail/office building in Columbus, Ohio, designed for a single tenant.",
+    "The building has excellent parking."
+   ],
+   "highlights": [
+    "Free-standing building",
+    "Single-tenant design",
+    "Excellent parking"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Free-standing, single-tenant"
+    ],
+    [
+     "Use",
+     "Retail/office"
+    ],
+    [
+     "Parking",
+     "Excellent"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/19-4601-e-5th-ave-exterior-1.jpg",
+   "alt": "4601 E Fifth Avenue — 3,300 SF Office/Retail in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/19-4601-e-5th-ave-exterior-1-480w.avif 480w, /images/19-4601-e-5th-ave-exterior-1.avif 700w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/19-4601-e-5th-ave-exterior-1-480w.webp 480w, /images/19-4601-e-5th-ave-exterior-1.webp 700w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "4595 E Fifth Avenue",
+  "city": "Columbus",
+  "state": "OH",
+  "market": "Ohio",
+  "lat": 39.986415,
+  "lng": -82.872382,
+  "sf": 4100,
+  "type": "Industrial + IOS",
+  "acquired": "2021-02",
+  "detail": {
+   "metaDescription": "4595 East Fifth Avenue: 4,100 SF free-standing single-tenant industrial building in Columbus, OH with a large outdoor storage lot and side drive-in loading.",
+   "summary": [
+    "4595 East Fifth Avenue is a 4,100 SF free-standing industrial/flex building in Columbus, Ohio, designed for a single tenant.",
+    "It includes a large outdoor storage lot and side at-grade drive-in loading."
+   ],
+   "highlights": [
+    "Free-standing building",
+    "Large outdoor storage lot",
+    "Side at-grade drive-in loading"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Free-standing, single-tenant"
+    ],
+    [
+     "Loading",
+     "Side at-grade drive-in"
+    ],
+    [
+     "Yard",
+     "Large outdoor storage lot"
+    ]
+   ]
+  },
+  "image": {
+   "src": "/images/13-4595-towards-front-drive-in-door_.jpg",
+   "alt": "4595 E Fifth Avenue — 4,100 SF Industrial + IOS in Columbus, OH",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/13-4595-towards-front-drive-in-door_-480w.avif 480w, /images/13-4595-towards-front-drive-in-door_.avif 800w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/13-4595-towards-front-drive-in-door_-480w.webp 480w, /images/13-4595-towards-front-drive-in-door_.webp 800w"
+    }
+   ]
+  }
+ },
+ {
+  "name": "9620 State Route 350",
+  "city": "Raytown",
+  "state": "MO",
+  "market": "Missouri",
+  "lat": 38.99217,
+  "lng": -94.46813,
+  "sf": 34300,
+  "type": "Industrial/Flex",
+  "acquired": "2024-10",
+  "listingSlug": "9620-state-route-350",
+  "image": {
+   "src": "/images/05-exterior-front.jpg",
+   "alt": "9620 State Route 350 — 34,300 SF Industrial/Flex in Raytown, MO",
+   "sources": [
+    {
+     "type": "image/avif",
+     "srcset": "/images/05-exterior-front-480w.avif 480w, /images/05-exterior-front.avif 485w"
+    },
+    {
+     "type": "image/webp",
+     "srcset": "/images/05-exterior-front-480w.webp 480w, /images/05-exterior-front.webp 485w"
+    }
+   ]
+  }
+ }
+]

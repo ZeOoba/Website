@@ -146,6 +146,25 @@ test('generate(): write mode repairs only the drifted page and stamps its sitema
   assert.deepStrictEqual(await generate({ write: true, root, today: '2031-01-01' }), []);
 });
 
+test('generate(): each file keeps its own line endings: a CRLF working copy shows no drift and stays CRLF; an LF one stays LF', async () => {
+  const { generate } = await load();
+  for (const eol of ['\r\n', '\n']) {
+    const root = scratchRoot();
+    const files = ['portfolio.html', 'sitemap.xml', ...fs.readdirSync(path.join(root, 'properties')).map((f) => 'properties/' + f)];
+    for (const f of files) fs.writeFileSync(path.join(root, f), slurp(root, f).replace(/\r\n/g, '\n').replace(/\n/g, eol));
+    const label = JSON.stringify(eol);
+    assert.deepStrictEqual(await generate({ write: false, root }), [], 'no false drift on ' + label);
+    const file = 'properties/55-new-plant-court.html';
+    fs.writeFileSync(path.join(root, file), slurp(root, file).replace('9,500 SF', '99,000 SF'));
+    assert.deepStrictEqual(await generate({ write: true, root, today: '2030-01-01' }), [file]);
+    const fixed = slurp(root, file);
+    assert.ok(!fixed.includes('99,000 SF'), 'repaired ' + label);
+    assert.strictEqual(fixed.replace(/\r\n/g, '').includes('\n'), eol === '\n', 'a rewrite keeps ' + label);
+    assert.strictEqual(fixed.includes('\r\n'), eol === '\r\n', 'a rewrite keeps ' + label);
+    assert.strictEqual(slurp(root, 'sitemap.xml').includes('\r\n'), eol === '\r\n', 'the sitemap keeps ' + label);
+  }
+});
+
 test('generate(): a page nothing generates any more fails the run (it would ship and stay in the sitemap)', async () => {
   const { generate } = await load();
   const root = scratchRoot();

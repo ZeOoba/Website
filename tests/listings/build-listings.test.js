@@ -191,6 +191,19 @@ test('generate(): a listing that leaves listings.json drops its portfolio badge 
   assert.deepStrictEqual(await generate({ write: true, root, today: '2031-01-01' }), [], 'idempotent');
 });
 
+// The sitemap must not depend on generator order: build-listings stamps /available-space
+// only when the listings page itself changed, never for a portfolio-only drift.
+test('generate(): a portfolio-only drift stamps /portfolio but not /available-space', async () => {
+  const { generate, SITEMAP_LOC } = await load();
+  const root = scratchRoot();
+  fs.writeFileSync(path.join(root, 'portfolio.html'), slurp(root, 'portfolio.html').replace('90,000 SF</span>', '91,000 SF</span>'));
+  const before = lastmodOf(slurp(root, 'sitemap.xml'), SITEMAP_LOC);
+  assert.deepStrictEqual(await generate({ write: true, root, today: '2030-01-01' }), ['portfolio.html']);
+  const sitemap = slurp(root, 'sitemap.xml');
+  assert.strictEqual(lastmodOf(sitemap, SITEMAP_LOC), before, '/available-space did not change');
+  assert.strictEqual(lastmodOf(sitemap, 'https://oxfordra.net/portfolio'), '2030-01-01');
+});
+
 test('generate(): a listing no portfolio asset claims fails the run before any file is written', async () => {
   const { generate } = await load();
   const root = scratchRoot();

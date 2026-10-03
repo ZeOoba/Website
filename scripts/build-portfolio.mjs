@@ -504,15 +504,26 @@ export async function generate({ write = false, today = new Date().toISOString()
   // any more (asset renamed, removed, or its `detail` dropped) would ship and stay in
   // the sitemap. Never delete it for the author (archive, don't delete): fail instead.
   const onDisk = await fs.readdir(detailDir).catch(() => []);
-  const stale = onDisk.filter((f) => f.endsWith('.html') && !writes.has(path.join(detailDir, f)));
+  const stale = onDisk.filter((f) => /\.html?$/i.test(f) && !writes.has(path.join(detailDir, f)));
   if (stale.length) {
     throw new Error(`properties/ has pages data/portfolio.json no longer generates: ${stale.join(', ')} — move them to /archive/ and drop their sitemap and _redirects entries`);
   }
 
+  // Each file keeps its own line endings (CRLF in a Windows working copy, LF in the
+  // index and on Linux), like build-listings.mjs: comparing and writing in the
+  // file's own style means a CRLF checkout shows no false drift and a write does
+  // not flip its endings. A page that does not exist yet follows portfolio.html.
+  const pageEol = html.includes('\r\n') ? '\r\n' : '\n';
   const drift = [];
+  const out = [];
   for (const [file, content] of writes) {
-    const cur = await fs.readFile(file, 'utf8').then((t) => t.replace(/\r\n/g, '\n'), () => null);
-    if (cur !== content) drift.push(path.relative(root, file).replace(/\\/g, '/'));
+    const cur = await fs.readFile(file, 'utf8').catch(() => null);
+    const eol = cur === null ? pageEol : cur.includes('\r\n') ? '\r\n' : '\n';
+    const next = content.replace(/\n/g, eol);
+    if (cur !== next) {
+      drift.push(path.relative(root, file).replace(/\\/g, '/'));
+      out.push([file, next]);
+    }
   }
   if (write && drift.length) {
     const sitemap = path.join(root, 'sitemap.xml');
@@ -523,10 +534,10 @@ export async function generate({ write = false, today = new Date().toISOString()
       stamped = stampSitemapLastmod(stamped, loc, today);
     }
     await fs.mkdir(detailDir, { recursive: true });
-    for (const [file, content] of writes) {
-      if (drift.includes(path.relative(root, file).replace(/\\/g, '/'))) await fs.writeFile(file, content);
-    }
+    // Sitemap first: if a page write then fails, the sitemap is merely ahead of the
+    // page, and a rerun still rewrites the page. The other order loses the dates.
     if (stamped !== raw) await fs.writeFile(sitemap, stamped);
+    for (const [file, next] of out) await fs.writeFile(file, next);
   }
   return drift;
 }

@@ -82,8 +82,88 @@ test('two assets may share a parcel (4595/4601 E Fifth) but no other pin is a du
     const key = a.lat + ',' + a.lng;
     seen.set(key, [...(seen.get(key) || []), a.name]);
   }
-  const dupes = [...seen.values()].filter((v) => v.length > 1);
-  assert.deepStrictEqual(dupes, [['4601 E Fifth Avenue', '4595 E Fifth Avenue']]);
+  // Sorted, so reordering cards in the data file is not a failure.
+  const dupes = [...seen.values()].filter((v) => v.length > 1).map((v) => [...v].sort());
+  assert.deepStrictEqual(dupes, [['4595 E Fifth Avenue', '4601 E Fifth Avenue']]);
+});
+
+test('validateAssets rejects data that would silently drop, mangle or collide cards', async () => {
+  const { validateAssets } = await load();
+  const base = asset('9050 Red Branch Road');
+  const bad = (patch, extra = []) => () => validateAssets([{ ...base, ...patch }, ...extra]);
+  assert.throws(bad({ market: 'Maryland ' }), /market must be one of/, 'a trailing space would drop the card from the grid');
+  assert.throws(bad({ market: undefined }), /market must be one of/);
+  assert.throws(bad({ sf: '90,000' }), /positive integer/, 'a string SF would publish NaN');
+  assert.throws(bad({ sf: 0 }), /positive integer/);
+  assert.throws(bad({ sf: 1.5 }), /positive integer/);
+  assert.throws(bad({ name: '!!!' }), /empty slug/);
+  assert.throws(bad({}, [{ ...base, name: '9050 Red-Branch Road' }]), /also used by/, 'two names with one slug collide on id and page file');
+});
+
+test('JSON-LD cannot be broken out of its <script> element by a "<" in the data', async () => {
+  const { renderPortfolioPage } = await load();
+  const src = fs.readFileSync(path.join(ROOT, 'portfolio.html'), 'utf8').replace(/\r\n/g, '\n');
+  const listings = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'listings.json'), 'utf8'));
+  const hostile = ASSETS.map((a, i) => (i === 0 ? { ...a, name: '9050 Red Branch Road</script><script>alert(1)//' } : a));
+  const out = renderPortfolioPage(src, hostile, listings);
+  assert.ok(!out.includes('</script><script>alert(1)'), 'the closing tag must not survive in any JSON-LD block');
+  assert.ok(out.includes('\\u003c/script'), 'it is escaped, not dropped');
+});
+
+// The real write path on a scratch copy of the generated files (never the working tree).
+function scratchRoot() {
+  const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'build-portfolio-'));
+  fs.mkdirSync(path.join(root, 'data'));
+  fs.mkdirSync(path.join(root, 'properties'));
+  for (const f of ['data/portfolio.json', 'data/listings.json', 'portfolio.html', 'sitemap.xml']) fs.copyFileSync(path.join(ROOT, f), path.join(root, f));
+  for (const f of fs.readdirSync(path.join(ROOT, 'properties'))) fs.copyFileSync(path.join(ROOT, 'properties', f), path.join(root, 'properties', f));
+  return root;
+}
+const slurp = (root, f) => fs.readFileSync(path.join(root, f), 'utf8');
+
+test('generate(): the drift gate catches a hand-edited property page and writes nothing in check mode', async () => {
+  const { generate } = await load();
+  const root = scratchRoot();
+  assert.deepStrictEqual(await generate({ write: false, root }), [], 'the committed pages are in sync');
+  const file = 'properties/55-new-plant-court.html';
+  fs.writeFileSync(path.join(root, file), slurp(root, file).replace('9,500 SF', '99,000 SF'));
+  const edited = slurp(root, file);
+  assert.deepStrictEqual(await generate({ write: false, root }), [file]);
+  assert.strictEqual(slurp(root, file), edited, 'check mode must not rewrite it');
+});
+
+test('generate(): write mode repairs only the drifted page and stamps its sitemap <lastmod>; a rerun is a no-op', async () => {
+  const { generate } = await load();
+  const root = scratchRoot();
+  const file = 'properties/55-new-plant-court.html';
+  const good = slurp(root, file);
+  fs.writeFileSync(path.join(root, file), good.replace('9,500 SF', '99,000 SF'));
+  assert.deepStrictEqual(await generate({ write: true, root, today: '2030-01-01' }), [file]);
+  assert.strictEqual(slurp(root, file), good);
+  const lastmod = (loc) => new RegExp('<loc>' + loc + '</loc><lastmod>([^<]*)').exec(slurp(root, 'sitemap.xml'))[1];
+  assert.strictEqual(lastmod('https://oxfordra.net/properties/55-new-plant-court'), '2030-01-01');
+  assert.notStrictEqual(lastmod('https://oxfordra.net/portfolio'), '2030-01-01', 'an unchanged page keeps its date');
+  assert.deepStrictEqual(await generate({ write: true, root, today: '2031-01-01' }), []);
+});
+
+test('generate(): a page nothing generates any more fails the run (it would ship and stay in the sitemap)', async () => {
+  const { generate } = await load();
+  const root = scratchRoot();
+  const assets = JSON.parse(slurp(root, 'data/portfolio.json'));
+  delete assets.find((a) => a.name === '3540 E Fifth Avenue').detail;
+  fs.writeFileSync(path.join(root, 'data', 'portfolio.json'), JSON.stringify(assets, null, 1));
+  const before = slurp(root, 'portfolio.html');
+  await assert.rejects(() => generate({ write: true, root }), /3540-e-fifth-avenue\.html/);
+  assert.strictEqual(slurp(root, 'portfolio.html'), before, 'nothing is written when the run fails');
+});
+
+test('the sitemap date for /portfolio is stamped by this generator too, whichever generator runs first', async () => {
+  const { generate } = await load();
+  const root = scratchRoot();
+  fs.writeFileSync(path.join(root, 'portfolio.html'), slurp(root, 'portfolio.html').replace('90,000 SF</span>', '91,000 SF</span>')); // inside the generated grid
+  const drifted = await generate({ write: true, root, today: '2030-01-01' });
+  assert.ok(drifted.includes('portfolio.html'));
+  assert.match(slurp(root, 'sitemap.xml'), /<loc>https:\/\/oxfordra\.net\/portfolio<\/loc><lastmod>2030-01-01</);
 });
 
 test('publishing rules: no building count, no financials, no tenant names, no contacts on any page', () => {
@@ -91,7 +171,8 @@ test('publishing rules: no building count, no financials, no tenant names, no co
   const banned = [
     /Honeywell|Trautman|Declerq|Benson|Mangold|@krgre|@goeaston|@millerdiversified/i, // tenants / broker contacts from the source docs
     /cap rate|\bNOI\b|\bIRR\b|cash-on-cash|per square foot|\$\d/i, // financial performance (the sitewide "$1M-$10M" banner is the one allowed $)
-    /fully[- ]occupied/i, // dated occupancy claim from the 2022-era Property List
+    // Occupancy and income claims: Gabriel's rule is physical specs + acquisition years only.
+    /occupan|occupied|net operating income|waiting list|nearly doubled|lease-up|below[- ]market|market[- ]rate/i,
     /\b(?:20|twenty) (?:buildings|properties)\b/i, // a building count (Master Workbook OI-4)
   ];
   for (const f of files) {

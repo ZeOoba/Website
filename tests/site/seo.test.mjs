@@ -538,3 +538,29 @@ test('WP-27 each market snapshot figure cites a numbered source, every source is
     assert.ok(/not Oxford(?:&rsquo;|')s buildings/.test(section), `${file}: the section must say the statistics are not Oxford's own figures`);
   }
 });
+
+// ── Broker-score wording & tenant-page market wording (2026-10-03 review pass) ──
+// The portal returns an automated preliminary estimate, not a "graded
+// investment score" from a verified 100-parameter model, so public copy must
+// not claim either. The FAQ answer and its FAQPage JSON-LD must stay identical.
+
+test('public pages do not claim a "graded investment score" or a "100-parameter" scorecard', () => {
+  for (const file of htmlFiles()) {
+    const html = read(file);
+    assert.ok(!/graded investment score/i.test(html), `${file} still says "graded investment score"`);
+    assert.ok(!/100-parameter/i.test(html), `${file} still claims a "100-parameter" scorecard`);
+  }
+});
+
+test('for-brokers "How does Oxford evaluate a deal?" FAQ matches its JSON-LD answer', () => {
+  const html = read('for-brokers.html');
+  const ld = html.match(/"name": "How does Oxford evaluate a deal\?", "acceptedAnswer": \{"@type": "Answer", "text": "([^"]+)"/);
+  assert.ok(ld, 'FAQPage JSON-LD entry for the evaluation question not found');
+  assert.ok(html.includes(`<p>${ld[1]}</p>`), 'visible FAQ answer differs from the JSON-LD answer');
+});
+
+test('tenant-resources describes two core markets plus a Kansas City holding, not "three markets"', () => {
+  const html = read('tenant-resources.html');
+  assert.ok(!/three markets/i.test(html), 'tenant-resources.html still says "three markets"');
+  assert.ok(/two core markets, plus a Kansas City holding/.test(html), 'tenant-resources.html lost the two-core-markets wording');
+});

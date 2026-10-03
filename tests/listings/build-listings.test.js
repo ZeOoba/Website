@@ -173,6 +173,24 @@ test('generate(): write mode with drift stamps only the available-space <lastmod
   assert.strictEqual(slurp(root, 'sitemap.xml'), sitemap1, 'no drift, so the sitemap is not re-stamped');
 });
 
+// The sitemap is written before the pages: a page write that fails midway must leave the
+// sitemap ahead of the page (harmless), not the page ahead of a sitemap whose new
+// <lastmod> a rerun can no longer produce, because the rerun sees no drift.
+test('generate(): if a page write fails, the sitemap is already stamped and a rerun repairs the page', async (t) => {
+  const { generate, SITEMAP_LOC } = await load();
+  const root = scratchRoot();
+  drift(root);
+  const target = path.join(root, 'available-space.html');
+  fs.chmodSync(target, 0o444);
+  let failed = false;
+  try { await generate({ write: true, root, today: '2030-01-01' }); } catch { failed = true; }
+  fs.chmodSync(target, 0o666);
+  if (!failed) { t.skip('this account can write to a read-only file (root); cannot inject the failure'); return; }
+  assert.strictEqual(lastmodOf(slurp(root, 'sitemap.xml'), SITEMAP_LOC), '2030-01-01', 'the sitemap was written before the failing page');
+  assert.deepStrictEqual(await generate({ write: true, root, today: '2031-01-01' }), ['available-space.html'], 'the rerun still repairs the page that failed');
+  assert.deepStrictEqual(await generate({ write: true, root, today: '2031-01-01' }), []);
+});
+
 // The portfolio cards' "N suites available" badges derive from listings.json, so the
 // weekly sync's build-listings run has to regenerate portfolio.html as well.
 test('generate(): a listing that leaves listings.json drops its portfolio badge and stamps the /portfolio <lastmod>', async () => {

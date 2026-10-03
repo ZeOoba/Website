@@ -294,7 +294,10 @@ export async function generate({ write = false, today = new Date().toISOString()
       : raw;
     // The portfolio page changed too (availability badges): tell crawlers.
     if (drift.includes('portfolio.html')) next = stampSitemapLastmod(next, PORTFOLIO_LOC, today);
-    if (next !== raw) writes.push([file, next]);
+    // Written FIRST: if a page write then fails, the sitemap is merely ahead of the
+    // page and a rerun still rewrites the page. Last, the failed run's rerun finds no
+    // drift and the new <lastmod> is lost for good (same order as build-portfolio).
+    if (next !== raw) writes.unshift([file, next]);
   }
   if (write) for (const [file, content] of writes) await fs.writeFile(file, content);
   return drift;

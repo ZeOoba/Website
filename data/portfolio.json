@@ -159,10 +159,6 @@
      "Varying levels of build-out"
     ],
     [
-     "Year built",
-     "Built in phases, 2001-2007"
-    ],
-    [
      "Construction",
      "Pre-engineered steel; split-face block and EIFS front; standing seam metal roofs"
     ],
@@ -216,11 +212,11 @@
    "metaDescription": "2203-2207 Northwood Dr: 54,000 SF multi-tenant industrial/flex park in Salisbury, MD with three buildings of small-bay units, owned by Oxford Realty Advisors.",
    "summary": [
     "Northwood Business Center is a 54,000 SF multi-tenant industrial/flex park in Salisbury, Maryland, made up of three buildings.",
-    "Each building was originally divided into fifteen 1,200 SF units, each with an overhead door, about 15% office and a restroom. Some units have been combined for larger users."
+    "The buildings were built as small-bay units of about 1,200 SF, typically each with an overhead door, about 15% office and a restroom. Some units have been combined for larger users."
    ],
    "highlights": [
     "Three buildings of small-bay units",
-    "An overhead door in every original unit",
+    "Small-bay units, typically each with an overhead door",
     "New paving, LED lighting, entrance doors, heating units and pylon signs"
    ],
    "specs": [
@@ -230,11 +226,11 @@
     ],
     [
      "Unit sizes",
-     "Built as 1,200 SF units; some combined for larger users"
+     "Built as units of about 1,200 SF; some combined for larger users"
     ],
     [
      "Loading",
-     "An overhead door in each original unit"
+     "Typically an overhead door per bay (fewer in Building C)"
     ],
     [
      "Office",
@@ -588,15 +584,15 @@
   "type": "Industrial/Flex",
   "acquired": "2021-02",
   "detail": {
-   "metaDescription": "2004-2008 Zettler Road: industrial/flex buildings in Columbus, OH with units of 4,300 to 6,300 SF, each with a truck-height dock and a rear drive-in door.",
+   "metaDescription": "2004-2008 Zettler Road: industrial/flex space in Columbus, OH with 4,300 to 6,300 SF units, rear at-grade drive-in doors and truck-height docks.",
    "summary": [
-    "2004-2008 Zettler Road comprises two industrial/flex buildings in Columbus, Ohio. 2004 is a single-tenant building with a truck-height dock and a rear drive-in door.",
-    "2006-2008 is a two-unit building with units of 4,300 to 6,300 SF and varying levels of office build-out. Each unit has a truck-height dock and a rear at-grade drive-in door."
+    "2004-2008 Zettler Road comprises 2004 Zettler, a single-tenant space, and 2006-2008 Zettler, a two-unit space, in Columbus, Ohio. Every unit has a rear at-grade drive-in door.",
+    "2006-2008 has units of 4,300 to 6,300 SF with varying levels of office build-out. There are truck-height docks at 2004 and 2008."
    ],
    "highlights": [
-    "Two buildings on one frontage",
-    "A truck-height dock and a rear drive-in door in every unit",
-    "Varying levels of office build-out"
+    "2004 and 2006-2008 on one frontage",
+    "A rear at-grade drive-in door in every unit",
+    "Truck-height docks at 2004 and 2008"
    ],
    "specs": [
     [
@@ -609,7 +605,7 @@
     ],
     [
      "Loading",
-     "Every unit has a truck-height dock and a rear at-grade drive-in door"
+     "Every unit has a rear at-grade drive-in door; truck-height docks at 2004 and 2008"
     ],
     [
      "Office",

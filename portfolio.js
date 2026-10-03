@@ -245,7 +245,8 @@
   }
 
   function initMap() {
-    map = L.map(mapEl, { zoomControl: true, scrollWheelZoom: false, maxZoom: 19 });    var tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    map = L.map(mapEl, { zoomControl: true, scrollWheelZoom: false, maxZoom: 19 });
+    var tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19
     }).addTo(map);
@@ -311,6 +312,21 @@
       tileErrors++;
       if (tileErrors >= 4 && tilesLoaded === 0) showNote('Map tiles are unavailable right now. The pins and every property card still work.');
     });
+
+    // The first fit can run before the container has its real size (a deep link opens the
+    // map while the page is still laying out; the in-app browser sizes its pane late). Leaflet
+    // then frames the map for a zero-size box (world zoom) and nothing re-frames it. So
+    // re-frame whenever the container is resized, until the visitor touches the map: after
+    // that their own pan/zoom wins.
+    var touched = false;
+    ['pointerdown', 'wheel', 'keydown'].forEach(function (name) {
+      mapEl.addEventListener(name, function () { touched = true; }, { passive: true });
+    });
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () {
+        if (!touched && mapEl.clientWidth > 0) refreshMap();
+      }).observe(mapEl);
+    }
   }
 
   function updatePins() {
@@ -337,11 +353,14 @@
     updatePins();
     var slug = (location.hash || '').replace('#', '');
     pins.forEach(function (p) {
-      if (slug && p.card.id === slug && !refreshMap.opened) {
-        refreshMap.opened = true;
-        // A deep link to one property zooms to it and opens its popup.
+      if (slug && p.card.id === slug) {
+        // A deep link to one property zooms to it (again after a resize re-frames the map)
+        // and opens its popup once.
         map.setView(p.marker.getLatLng(), 16, { animate: false });
-        p.marker.fire('click');
+        if (!refreshMap.opened) {
+          refreshMap.opened = true;
+          p.marker.fire('click');
+        }
       }
     });
   }

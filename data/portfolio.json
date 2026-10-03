@@ -160,7 +160,7 @@
     ],
     [
      "Year built",
-     "2001 (three buildings) and 2007 (two buildings)"
+     "Built in phases, 2001-2007"
     ],
     [
      "Construction",
@@ -238,7 +238,7 @@
     ],
     [
      "Office",
-     "About 15% of each unit, with a restroom"
+     "About 15% of each original unit, with a restroom"
     ],
     [
      "Year built",
@@ -405,7 +405,7 @@
     }
    ]
   },
-  "thesis": "A one-story masonry building of small-bay units, each with a drive-in door and restroom, most with a small office, near John Glenn Columbus International Airport.",
+  "thesis": "A one-story building of small-bay units, each with a drive-in door and restroom, most with a small office, near John Glenn Columbus International Airport.",
   "detail": {
    "metaDescription": "1100 Rarig Avenue: 21,000 SF multi-tenant industrial/flex building near John Glenn Columbus International Airport, owned by Oxford Realty Advisors.",
    "summary": [
@@ -420,7 +420,7 @@
    "specs": [
     [
      "Configuration",
-     "Multi-tenant, one story, masonry"
+     "Multi-tenant, one story"
     ],
     [
      "Unit sizes",
@@ -931,7 +931,7 @@
   "detail": {
    "metaDescription": "3875-3883 E Livingston: 10,950 SF industrial property in Columbus, OH with a 22-foot clear warehouse, a separate office building and a paved, fenced yard.",
    "summary": [
-    "3875-3883 E Livingston is a 10,950 SF industrial property in Columbus, Ohio, with an 8,630 SF warehouse and a 2,320 SF office building on about 1.2 acres.",
+    "3875-3883 E Livingston is a 10,950 SF industrial property in Columbus, Ohio, with a warehouse building and a separate office building on about 1.2 acres.",
     "The warehouse has 22' clear height and two grade-level drive-in doors with drive-through capability. A paved, fenced yard provides outside storage."
    ],
    "highlights": [
@@ -942,7 +942,7 @@
    "specs": [
     [
      "Configuration",
-     "Two buildings: 8,630 SF warehouse and 2,320 SF office"
+     "Two buildings: a warehouse and a separate office building"
     ],
     [
      "Ceiling height",
@@ -1111,7 +1111,7 @@
    "metaDescription": "9620 E State Route 350: 34,560 SF multi-tenant flex building in Raytown, MO with 16-foot clear height, 12 drive-in doors and frontage on State Route 350.",
    "summary": [
     "9620 E State Route 350 is a 34,560 SF single-story multi-tenant flex building in Raytown, Missouri, on a site of about 2.5 acres fronting State Route 350.",
-    "Each suite is about 75% warehouse at 16' clear, with a small office, a private restroom and an overhead door. Units combine to suit larger users."
+    "Suites combine warehouse space at 16' clear with office areas, and most have a private restroom. Units combine to suit larger users."
    ],
    "highlights": [
     "16' clear height",
@@ -1133,11 +1133,11 @@
     ],
     [
      "Loading",
-     "12 drive-in doors; an overhead door in each suite"
+     "12 drive-in doors"
     ],
     [
      "Office",
-     "Small office or reception area and private restroom in each suite; about 75% warehouse"
+     "Office areas and private restrooms in most suites"
     ],
     [
      "Roof",

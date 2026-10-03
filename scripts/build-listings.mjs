@@ -287,7 +287,11 @@ export async function generate({ write = false, today = new Date().toISOString()
   if (write && drift.length) {
     const file = path.join(root, 'sitemap.xml');
     const raw = await fs.readFile(file, 'utf8');
-    let next = stampSitemapLastmod(raw, SITEMAP_LOC, today);
+    // Only when the listings page itself changed: a portfolio-only drift must not
+    // stamp /available-space, or the sitemap would depend on which generator ran first.
+    let next = drift.some((n) => n === 'listings.js' || n === 'available-space.html')
+      ? stampSitemapLastmod(raw, SITEMAP_LOC, today)
+      : raw;
     // The portfolio page changed too (availability badges): tell crawlers.
     if (drift.includes('portfolio.html')) next = stampSitemapLastmod(next, PORTFOLIO_LOC, today);
     if (next !== raw) writes.push([file, next]);

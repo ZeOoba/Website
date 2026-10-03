@@ -134,8 +134,11 @@ test('the real sitemap.xml has exactly one stampable <loc>/<lastmod> for SITEMAP
 });
 
 // The real write path, on a scratch copy of the repo files (never the working tree).
+const scratchRoots = [];
+test.after(() => { for (const r of scratchRoots) fs.rmSync(r, { recursive: true, force: true }); });
 function scratchRoot() {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'build-listings-'));
+  scratchRoots.push(root);
   fs.mkdirSync(path.join(root, 'data'));
   for (const f of ['data/listings.json', 'data/portfolio.json', 'listings.js', 'available-space.html', 'portfolio.html', 'sitemap.xml']) {
     fs.copyFileSync(path.join(ROOT, f), path.join(root, f));

@@ -111,8 +111,11 @@ test('JSON-LD cannot be broken out of its <script> element by a "<" in the data'
 });
 
 // The real write path on a scratch copy of the generated files (never the working tree).
+const scratchRoots = [];
+test.after(() => { for (const r of scratchRoots) fs.rmSync(r, { recursive: true, force: true }); });
 function scratchRoot() {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'build-portfolio-'));
+  scratchRoots.push(root);
   fs.mkdirSync(path.join(root, 'data'));
   fs.mkdirSync(path.join(root, 'properties'));
   for (const f of ['data/portfolio.json', 'data/listings.json', 'portfolio.html', 'sitemap.xml']) fs.copyFileSync(path.join(ROOT, f), path.join(root, f));

@@ -492,7 +492,8 @@ export async function generate({ write = false, today = new Date().toISOString()
   const assets = JSON.parse(await fs.readFile(path.join(root, 'data', 'portfolio.json'), 'utf8'));
   const listings = JSON.parse(await fs.readFile(path.join(root, 'data', 'listings.json'), 'utf8'));
   const html = await fs.readFile(page, 'utf8');
-  // The working copy is CRLF on Windows; the index is LF. Compare and write LF.
+  // Render from LF text (the working copy is CRLF on Windows, the index is LF); each
+  // output is converted back to its own file's line endings below.
   const next = renderPortfolioPage(html.replace(/\r\n/g, '\n'), assets, listings);
 
   const writes = new Map([[page, next]]);

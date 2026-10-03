@@ -203,7 +203,9 @@ test('generate(): a listing no portfolio asset claims fails the run before any f
   assert.deepStrictEqual(['listings.js', 'available-space.html', 'portfolio.html', 'sitemap.xml'].map((f) => slurp(root, f)), before);
 });
 
-test('every listing in listings.json is claimed by a portfolio asset, and every listingSlug is a plausible slug', () => {
+// (An unclaimed listing in the live data is caught by the build itself, via the
+// orphan check exercised above, so this test only covers the claims' own shape.)
+test('every portfolio listingSlug is unique and a plausible slug', () => {
   const portfolio = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'portfolio.json'), 'utf8'));
   const claimed = portfolio.map((a) => a.listingSlug).filter(Boolean);
   assert.strictEqual(new Set(claimed).size, claimed.length, 'two portfolio assets claim the same listing');

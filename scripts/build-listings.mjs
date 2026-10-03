@@ -22,7 +22,9 @@ import { promises as fs } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import url from 'node:url';
-import { renderPortfolioPage } from './build-portfolio.mjs';
+import { renderPortfolioPage, stampSitemapLastmod, PORTFOLIO_LOC } from './build-portfolio.mjs';
+
+export { stampSitemapLastmod };
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
 
@@ -258,16 +260,6 @@ export const listingsVersion = (listingsJs) =>
 // The sitemap entry for the page these generators rewrite. Search engines use
 // <lastmod> to decide when to recrawl a page marked changefreq=weekly.
 export const SITEMAP_LOC = 'https://oxfordra.net/available-space';
-const PORTFOLIO_LOC = 'https://oxfordra.net/portfolio';
-
-// Set <lastmod> for one <loc>; every other byte (and the EOL style) is untouched.
-export function stampSitemapLastmod(xml, loc, date) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`sitemap lastmod must be an ISO date (YYYY-MM-DD), got "${date}"`);
-  const re = new RegExp(`(<loc>${loc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</loc>\\s*<lastmod>)[^<]*(</lastmod>)`, 'g');
-  const hits = xml.match(re) || [];
-  if (hits.length !== 1) throw new Error(`sitemap.xml: expected exactly 1 <loc>${loc}</loc> with a <lastmod>, found ${hits.length}`);
-  return xml.replace(re, (_m, open, close) => open + date + close);
-}
 
 // Returns the files that differ from what listings.json generates; rewrites
 // them when `write` is set (and, only then, stamps the sitemap <lastmod> so the

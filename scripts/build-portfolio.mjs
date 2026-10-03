@@ -24,10 +24,6 @@ import path from 'node:path';
 import url from 'node:url';
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
-const PAGE = path.join(ROOT, 'portfolio.html');
-const DATA = path.join(ROOT, 'data', 'portfolio.json');
-const LISTINGS = path.join(ROOT, 'data', 'listings.json');
-const DETAIL_DIR = path.join(ROOT, 'properties');
 
 const GRID_RE = /<!-- portfolio:grid:begin -->[\s\S]*?<!-- portfolio:grid:end -->/;
 const LD_RE = /<!-- portfolio:jsonld:begin -->[\s\S]*?<!-- portfolio:jsonld:end -->/;
@@ -79,6 +75,9 @@ const TYPE_KEYS = {
 const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const fmtSf = (n) => n.toLocaleString('en-US');
+// JSON for an inline <script type="application/ld+json">: "<" is escaped so a name
+// containing "</script" cannot end the element early.
+const ldJson = (o, indent) => JSON.stringify(o, null, indent).replace(/</g, '\\u003c');
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const detailPath = (a) => `/properties/${slug(a.name)}`;
 const typeKey = (a) => {
@@ -103,13 +102,22 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export const fmtAcquired = (iso) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
 
 export function validateAssets(assets) {
+  const seen = new Map();
   for (const a of assets) {
     const who = `portfolio.json "${a.name}"`;
+    // A mistyped market would drop the card from the grid and JSON-LD while the mix
+    // bar still counted it; a duplicate or empty slug would collide on id and page file.
+    if (!MARKETS.some((m) => m.key === a.market)) throw new Error(`${who}: market must be one of ${MARKETS.map((m) => m.key).join(', ')} (got ${JSON.stringify(a.market)})`);
+    if (!Number.isInteger(a.sf) || a.sf <= 0) throw new Error(`${who}: sf must be a positive integer (got ${JSON.stringify(a.sf)})`);
+    const s = slug(String(a.name));
+    if (!s) throw new Error(`${who}: name produces an empty slug`);
+    if (seen.has(s)) throw new Error(`${who}: slug "${s}" is also used by "${seen.get(s)}"`);
+    seen.set(s, a.name);
     if (a.acquired !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(a.acquired)) {
       throw new Error(`${who}: acquired must be an ISO month like "2015-08" (got ${JSON.stringify(a.acquired)})`);
     }
     if (typeof a.lat !== 'number' || typeof a.lng !== 'number') throw new Error(`${who}: lat/lng required (numbers)`);
-    if (decimals(a.lat) < 4 || decimals(a.lng) < 4) throw new Error(`${who}: lat/lng need >= 4 decimals (3 decimals is ~100 m, which is how pins ended up kilometres off)`);
+    if (decimals(a.lat) < 4 || decimals(a.lng) < 4) throw new Error(`${who}: lat/lng need >= 4 decimals (3 decimals is ~100 m, which is how pins ended up kilometres off). JSON drops a trailing zero, so a real 4-decimal value like 39.2290 reads as 3: take a 5th digit from the parcel centroid, never invent one`);
     const box = STATE_BOUNDS[a.state];
     if (!box) throw new Error(`${who}: no coordinate bounds for state "${a.state}"`);
     if (a.lat < box[0] || a.lat > box[2] || a.lng < box[1] || a.lng > box[3]) throw new Error(`${who}: ${a.lat},${a.lng} is outside ${a.state}`);
@@ -229,7 +237,7 @@ function card(a, avail) {
   // data-* feed the client-side table view (portfolio.js) so it never re-parses card text.
   const href = a.detail ? ` data-href="${detailPath(a)}"` : '';
   const availAttr = suites ? ` data-avail="${suites}" data-avail-href="/available-space#${esc(a.listingSlug)}"` : '';
-  return `<article class="portfolio-card pf-card pf-card--${key} animate-on-scroll" id="${slug(a.name)}" data-market="${esc(a.market)}" data-type="${key}" data-name="${esc(a.name)}" data-location="${esc(a.city)}, ${esc(a.state)}" data-lat="${a.lat}" data-lng="${a.lng}" data-sf="${a.sf}" data-type-label="${esc(a.type)}"${href}${availAttr}>
+  return `<article class="portfolio-card pf-card pf-card--${key} animate-on-scroll" id="${slug(a.name)}" data-market="${esc(a.market)}" data-type="${key}" data-name="${esc(a.name)}" data-location="${esc(a.city)}, ${esc(a.state)}" data-lat="${a.lat}" data-lng="${a.lng}" data-sf="${esc(a.sf)}" data-type-label="${esc(a.type)}"${href}${availAttr}>
 ${picture(a.image)}
 <div class="portfolio-card__body">
 <h3>${esc(a.name)}</h3>
@@ -291,9 +299,9 @@ function renderJsonLd(assets) {
     mainEntity: FAQ.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
   };
   // One list item per line keeps the page diff and weight small.
-  const lines = items.map((it) => `    ${JSON.stringify(it)}`).join(',\n');
+  const lines = items.map((it) => `    ${ldJson(it)}`).join(',\n');
   const ld = `{\n  "@context": "https://schema.org",\n  "@type": "ItemList",\n  "name": "Oxford Realty Advisors Portfolio",\n  "itemListElement": [\n${lines}\n  ]\n}`;
-  const faqScript = `<script type="application/ld+json">\n${JSON.stringify(faq, null, 2)}\n</script>`;
+  const faqScript = `<script type="application/ld+json">\n${ldJson(faq, 2)}\n</script>`;
   return `<!-- portfolio:jsonld:begin -->\n<script type="application/ld+json">\n${ld}\n</script>\n${faqScript}\n<!-- portfolio:jsonld:end -->`;
 }
 
@@ -366,7 +374,7 @@ async function renderDetail(a, page, assets) {
     geo: { '@type': 'GeoCoordinates', latitude: a.lat, longitude: a.lng },
     floorSize: { '@type': 'QuantitativeValue', value: a.sf, unitCode: 'FTK' },
     additionalProperty: { '@type': 'PropertyValue', name: 'Property Type', value: a.type } };
-  const ld = [crumbs, place].map((o) => `<script type="application/ld+json">\n${JSON.stringify(o, null, 2)}\n</script>`).join('\n');
+  const ld = [crumbs, place].map((o) => `<script type="application/ld+json">\n${ldJson(o, 2)}\n</script>`).join('\n');
   // The portfolio page's own BreadcrumbList (Home > Portfolio) must not survive
   // next to the property's three-level one.
   head = replaceOne(head, /<script type="application\/ld\+json">\s*\{\s*"@context": "https:\/\/schema\.org",\s*"@type": "BreadcrumbList"[\s\S]*?<\/script>\n/, '', 'portfolio BreadcrumbList');
@@ -458,28 +466,74 @@ export function renderPortfolioPage(src, assets, listings) {
     .replace(FAQ_RE, () => renderFaq());
 }
 
-async function main() {
-  const check = process.argv.includes('--check');
-  const assets = JSON.parse(await fs.readFile(DATA, 'utf8'));
-  const listings = JSON.parse(await fs.readFile(LISTINGS, 'utf8'));
-  const html = await fs.readFile(PAGE, 'utf8');
-  // The working copy is CRLF on Windows; the index is LF. Compare and write LF.
-  const src = html.replace(/\r\n/g, '\n');
-  const next = renderPortfolioPage(src, assets, listings);
+export const PORTFOLIO_LOC = 'https://oxfordra.net/portfolio';
 
-  // Every output is computed before the first write. Detail pages reuse the
-  // rendered portfolio page's chrome (head, nav, footer, inline blocks), so
-  // their CSP hashes can never drift from the portfolio page's.
-  const writes = new Map([[PAGE, next]]);
+// Set <lastmod> for one <loc>; every other byte (and the EOL style) is untouched.
+// Lives here (build-listings.mjs re-exports it) so both generators stamp the sitemap
+// the same way and the result does not depend on which one runs first.
+export function stampSitemapLastmod(xml, loc, date) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`sitemap lastmod must be an ISO date (YYYY-MM-DD), got "${date}"`);
+  const re = new RegExp(`(<loc>${loc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</loc>\\s*<lastmod>)[^<]*(</lastmod>)`, 'g');
+  const hits = xml.match(re) || [];
+  if (hits.length !== 1) throw new Error(`sitemap.xml: expected exactly 1 <loc>${loc}</loc> with a <lastmod>, found ${hits.length}`);
+  return xml.replace(re, (_m, open, close) => open + date + close);
+}
+
+// Returns the files that differ from what data/portfolio.json generates; rewrites
+// them when `write` is set (and stamps each changed page's sitemap <lastmod>).
+// Every output is computed before the first write. Detail pages reuse the
+// rendered portfolio page's chrome (head, nav, footer, inline blocks), so
+// their CSP hashes can never drift from the portfolio page's.
+// `root` is injectable so tests can run the real path on a scratch copy; hero
+// images are always read from the real repo.
+export async function generate({ write = false, today = new Date().toISOString().slice(0, 10), root = ROOT } = {}) {
+  const page = path.join(root, 'portfolio.html');
+  const detailDir = path.join(root, 'properties');
+  const assets = JSON.parse(await fs.readFile(path.join(root, 'data', 'portfolio.json'), 'utf8'));
+  const listings = JSON.parse(await fs.readFile(path.join(root, 'data', 'listings.json'), 'utf8'));
+  const html = await fs.readFile(page, 'utf8');
+  // The working copy is CRLF on Windows; the index is LF. Compare and write LF.
+  const next = renderPortfolioPage(html.replace(/\r\n/g, '\n'), assets, listings);
+
+  const writes = new Map([[page, next]]);
   for (const a of assets.filter((x) => x.detail)) {
-    writes.set(path.join(DETAIL_DIR, `${slug(a.name)}.html`), await renderDetail(a, next, assets));
+    writes.set(path.join(detailDir, `${slug(a.name)}.html`), await renderDetail(a, next, assets));
+  }
+
+  // build-dist publishes the whole properties/ folder, so a page nothing generates
+  // any more (asset renamed, removed, or its `detail` dropped) would ship and stay in
+  // the sitemap. Never delete it for the author (archive, don't delete): fail instead.
+  const onDisk = await fs.readdir(detailDir).catch(() => []);
+  const stale = onDisk.filter((f) => f.endsWith('.html') && !writes.has(path.join(detailDir, f)));
+  if (stale.length) {
+    throw new Error(`properties/ has pages data/portfolio.json no longer generates: ${stale.join(', ')} — move them to /archive/ and drop their sitemap and _redirects entries`);
   }
 
   const drift = [];
   for (const [file, content] of writes) {
     const cur = await fs.readFile(file, 'utf8').then((t) => t.replace(/\r\n/g, '\n'), () => null);
-    if (cur !== content) drift.push(path.relative(ROOT, file).replace(/\\/g, '/'));
+    if (cur !== content) drift.push(path.relative(root, file).replace(/\\/g, '/'));
   }
+  if (write && drift.length) {
+    const sitemap = path.join(root, 'sitemap.xml');
+    const raw = await fs.readFile(sitemap, 'utf8');
+    let stamped = raw;
+    for (const f of drift) {
+      const loc = f === 'portfolio.html' ? PORTFOLIO_LOC : `https://oxfordra.net/${f.replace(/\.html$/, '')}`;
+      stamped = stampSitemapLastmod(stamped, loc, today);
+    }
+    await fs.mkdir(detailDir, { recursive: true });
+    for (const [file, content] of writes) {
+      if (drift.includes(path.relative(root, file).replace(/\\/g, '/'))) await fs.writeFile(file, content);
+    }
+    if (stamped !== raw) await fs.writeFile(sitemap, stamped);
+  }
+  return drift;
+}
+
+async function main() {
+  const check = process.argv.includes('--check');
+  const drift = await generate({ write: !check });
   if (!drift.length) {
     console.log('build-portfolio: portfolio.html and property pages are up to date');
     return;
@@ -488,8 +542,6 @@ async function main() {
     console.error(`build-portfolio: out of sync with data/portfolio.json: ${drift.join(', ')} — run \`node scripts/build-portfolio.mjs\``);
     process.exit(1);
   }
-  await fs.mkdir(DETAIL_DIR, { recursive: true });
-  for (const [file, content] of writes) await fs.writeFile(file, content);
   console.log(`build-portfolio: updated ${drift.join(', ')}`);
 }
 

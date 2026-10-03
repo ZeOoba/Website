@@ -405,7 +405,7 @@
     }
    ]
   },
-  "thesis": "A one-story concrete-block building of small-bay units, each with a drive-in door, office and restroom, near John Glenn Columbus International Airport.",
+  "thesis": "A one-story masonry building of small-bay units, each with a drive-in door, office and restroom, near John Glenn Columbus International Airport.",
   "detail": {
    "metaDescription": "1100 Rarig Avenue: 21,000 SF multi-tenant industrial/flex building near John Glenn Columbus International Airport, owned by Oxford Realty Advisors.",
    "summary": [
@@ -420,7 +420,7 @@
    "specs": [
     [
      "Configuration",
-     "Multi-tenant, one story, concrete block"
+     "Multi-tenant, one story, masonry"
     ],
     [
      "Unit sizes",
@@ -478,7 +478,7 @@
     ],
     [
      "Loading",
-     "16 front at-grade drive-in doors, each with a 10' x 10' overhead door"
+     "16 front at-grade drive-in doors, each with an overhead door"
     ],
     [
      "Office",
@@ -525,7 +525,7 @@
   "acquired": "2021-02",
   "listingSlug": "2000-2002-zettler-rd",
   "detail": {
-   "metaDescription": "2000-2002 Zettler Road: two-unit industrial/flex building in Columbus, OH with 5,000 to 6,000 SF units, rear truck-high docks and ramps for drive-in loading.",
+   "metaDescription": "2000-2002 Zettler Road: two-unit industrial/flex building in Columbus, OH with units of about 5,000 and 6,200 SF, two docks and two drive-in doors.",
    "summary": [
     "2000-2002 Zettler Road is a two-unit industrial/flex building in Columbus, Ohio. The two units are about 5,000 and 6,200 SF with varying levels of office build-out.",
     "The building has two dock doors and two drive-in doors, and it has frontage on I-70 with signage opportunity."
@@ -774,7 +774,7 @@
    "metaDescription": "406-420 Morrison Road: multi-tenant, front-loaded industrial/flex building in Columbus, OH with 1,800 to 2,400 SF units, drive-in doors and rear docks.",
    "summary": [
     "406-420 Morrison Road is a multi-tenant, front-loaded industrial/flex building in Columbus, Ohio. Its units range from 1,800 to 2,400 SF with varying levels of office build-out.",
-    "Every unit has front at-grade drive-in loading through an overhead door, as well as rear-loaded truck-height doors."
+    "Every unit has front at-grade drive-in loading through an overhead door, and many also have rear-loaded truck-height doors."
    ],
    "highlights": [
     "1,800 to 2,400 SF units",
@@ -844,9 +844,9 @@
   },
   "thesis": "A clear-span building on 3.26 acres with about 1.5 acres of paved, secured and lit outdoor storage.",
   "detail": {
-   "metaDescription": "3034 Westerville Rd: 18,360 SF clear-span industrial building on 3.26 acres with about 1.5 acres of paved, secured and lit outdoor storage in Columbus, OH.",
+   "metaDescription": "3034 Westerville Rd: clear-span industrial building on 3.26 acres in Columbus, OH with about 1.5 acres of paved, secured and lit outdoor storage.",
    "summary": [
-    "3034 Westerville Road is an 18,360 SF clear-span industrial building on 3.26 acres in Columbus, Ohio, with about 2,500 SF of office space plus a second-floor office.",
+    "3034 Westerville Road is a clear-span industrial property on 3.26 acres in Columbus, Ohio, with about 2,500 SF of office space plus a second-floor office.",
     "About 1.5 acres of the site is paved, secured and lit outdoor storage. Eight grade-level drive-in doors serve the warehouse."
    ],
    "highlights": [
@@ -857,7 +857,7 @@
    "specs": [
     [
      "Configuration",
-     "Standalone clear-span building"
+     "Clear-span warehouse"
     ],
     [
      "Loading",
@@ -876,12 +876,8 @@
      "3.26 acres"
     ],
     [
-     "Year built",
-     "1991"
-    ],
-    [
      "Construction",
-     "Masonry and metal"
+     "Masonry"
     ]
    ]
   }
@@ -1114,7 +1110,7 @@
   "detail": {
    "metaDescription": "9620 E State Route 350: 34,560 SF multi-tenant flex building in Raytown, MO with 16-foot clear height, 12 drive-in doors and frontage on State Route 350.",
    "summary": [
-    "9620 E State Route 350 is a 34,560 SF single-story multi-tenant flex building in Raytown, Missouri, on a 2.54-acre site fronting State Route 350.",
+    "9620 E State Route 350 is a 34,560 SF single-story multi-tenant flex building in Raytown, Missouri, on a site of about 2.5 acres fronting State Route 350.",
     "Each suite is mostly warehouse at 16' clear, with a small office, a private restroom and an overhead door. Units combine to suit larger users."
    ],
    "highlights": [
@@ -1137,7 +1133,7 @@
     ],
     [
      "Loading",
-     "12 drive-in doors; a 13'5\" x 9'4\" overhead door in each suite"
+     "12 drive-in doors; an overhead door in each suite"
     ],
     [
      "Office",
@@ -1145,11 +1141,11 @@
     ],
     [
      "Roof",
-     "Replaced in 2020"
+     "Recently replaced"
     ],
     [
      "Site",
-     "2.54 acres on State Route 350; recently repaved lot, new exterior lighting and a new sign fronting Route 350"
+     "About 2.5 acres on State Route 350; recently repaved lot, new exterior lighting and a new sign fronting Route 350"
     ]
    ]
   }

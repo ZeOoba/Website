@@ -204,6 +204,17 @@ test('publishing rules: no building count, no financials, no tenant names, no co
   }
 });
 
+// styles.css colours links with `.section:not(.section--navy) a:not(.btn)` (dark gold, for light backgrounds).
+// A bare `.pf-card__avail` rule loses to it, which left the navy "N suites available" badge at 2.55:1 contrast.
+test('the availability badge rule out-ranks the global section-link colour and keeps light text on navy', () => {
+  const css = fs.readFileSync(path.join(ROOT, 'portfolio.css'), 'utf8');
+  const rule = css.match(/(\.section:not\(\.section--navy\) \.pf-card a\.pf-card__avail)\s*\{([^}]*)\}/);
+  assert.ok(rule, 'badge rule must repeat the .section ancestry (specificity above the global link rule)');
+  assert.match(rule[2], /background:\s*var\(--navy\)/);
+  assert.match(rule[2], /color:\s*var\(--white/);
+  assert.ok(!/^\.pf-card__avail\s*\{/m.test(css), 'a bare .pf-card__avail colour rule would lose to the global link rule');
+});
+
 test('FAQ answers are mirrored exactly in the FAQPage JSON-LD', () => {
   const html = fs.readFileSync(path.join(ROOT, 'portfolio.html'), 'utf8');
   const ld = [...html.matchAll(/<script type="application\/ld\+json">\s*([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1])).find((o) => o['@type'] === 'FAQPage');

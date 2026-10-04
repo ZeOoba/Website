@@ -520,7 +520,15 @@ body{padding-top:36px}.nav{top:36px!important}
 </div>
 </footer>
 
-<script defer src="/script.js?v=17"></script>
+<div class="cookie-banner" id="cookieBanner" role="alert" style="display:none;">
+<p>We use Google Analytics to understand how visitors use this site. Accept to allow analytics cookies; Decline keeps measurement cookieless. See our <a href="/privacy">Privacy Policy</a>.</p>
+<div class="cookie-banner__actions">
+<button class="btn btn--gold btn--sm" id="cookieAccept">Accept</button>
+<button class="btn btn--outline btn--sm" id="cookieDecline">Decline</button>
+</div>
+</div>
+
+<script defer src="/script.js?v=18"></script>
 
 <!-- FAQ Accordion -->
 <script>
@@ -551,6 +559,7 @@ body{padding-top:36px}.nav{top:36px!important}
      scripts on the main thread instead. -->
 <script>partytown={lib:'/assets/partytown/',forward:['dataLayer.push','gtag']};</script>
 <script defer src="/assets/partytown/partytown.js?v=0.14.4"></script>
+<script type="text/partytown" src="/assets/consent-default.js?v=1"></script>
 <script type="text/partytown" src="https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC"></script>
 <script type="text/partytown">
 window.dataLayer=window.dataLayer||[];

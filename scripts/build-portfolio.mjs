@@ -408,6 +408,17 @@ ${heroSources}
   const specs = d.specs && d.specs.length
     ? `\n<h2 class="pf-detail__specs-title">Specifications</h2>\n<dl class="pf-detail__specs">\n${d.specs.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('\n')}\n</dl>`
     : '';
+  // Owner photographs for the detail page only (the card image is separate). Each entry
+  // names an image set `<base>.{avif,webp,jpg}` plus `<base>-600w.{avif,webp}`, with its
+  // real pixel size so the layout never shifts as it loads.
+  const gallery = d.gallery && d.gallery.length
+    ? `\n<div class="pf-gallery">\n${d.gallery.map((g) => {
+      if (!g.base || !g.alt || !Number.isInteger(g.width) || !Number.isInteger(g.height)) throw new Error(`gallery entry on "${a.name}" needs base, alt, width, height`);
+      const sizes = '(min-width: 900px) 700px, calc(100vw - 32px)';
+      const set = (ext) => `${g.base}-600w.${ext} 600w, ${g.base}.${ext} ${g.width}w`;
+      return `<figure class="pf-gallery__item">\n<picture>\n<source type="image/avif" srcset="${esc(set('avif'))}" sizes="${sizes}">\n<source type="image/webp" srcset="${esc(set('webp'))}" sizes="${sizes}">\n<img src="${esc(g.base)}.jpg" alt="${esc(g.alt)}" width="${g.width}" height="${g.height}" loading="lazy" decoding="async">\n</picture>\n</figure>`;
+    }).join('\n')}\n</div>`
+    : '';
   const body = `<!-- ═══ PROPERTY DETAIL ═══ -->
 <section class="section" aria-label="Property detail">
 <div class="container pf-detail">
@@ -418,7 +429,7 @@ ${heroSources}
 ${d.summary.map((p) => `<p>${esc(p)}</p>`).join('\n')}
 <ul class="pf-detail__highlights">
 ${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
-</ul>${specs}${relatedHtml}
+</ul>${gallery}${specs}${relatedHtml}
 <p class="pf-detail__more"><a href="/track-record">See how Oxford creates value across the portfolio &rarr;</a></p>
 </div>
 <aside class="pf-detail__facts" aria-label="Property facts">

@@ -63,8 +63,10 @@ after(async () => {
   if (server) await server.close();
 });
 
-async function open(pagePath, { stored } = {}) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+async function open(pagePath, { stored, serviceWorkers } = {}) {
+  // serviceWorkers: 'block' stops Partytown's service worker, which triggers its 10s
+  // main-thread fallback (text/partytown scripts are re-inserted as normal scripts).
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, ...(serviceWorkers ? { serviceWorkers } : {}) });
   await context.route('**/*', (route) => {
     const url = route.request().url();
     if (url.startsWith(server.url)) return route.continue();
@@ -142,6 +144,37 @@ test('main-thread window.gtag() calls (conversion events, consent updates) reach
   await context.close();
 });
 
+test('phone, email, PDF and CTA clicks each emit one GA4 event through the worker', { timeout: 90_000 }, async () => {
+  const { context, page } = await open('/for-brokers');
+  await waitForConfig(page);
+  // Keep the browser on the page: a tel:/mailto:/PDF navigation would leave it. This
+  // listener is added after script.js's, so the tracking handler has already run.
+  await page.evaluate(() => document.addEventListener('click', (e) => { if (e.target.closest('a[href]')) e.preventDefault(); }));
+  const expectEvent = (name) =>
+    page.waitForFunction(
+      (n) => document.documentElement.getAttributeNames().some((a) => a.startsWith('data-ga-') && document.documentElement.getAttribute(a).startsWith(`event-${n}:`)),
+      name,
+      { timeout: 15_000 },
+    );
+  await page.locator('.subpage-hero a.btn--gold[href="#broker-network"]').click();
+  await expectEvent('cta_click');
+  await page.locator('a[href^="tel:"]').first().click({ force: true });
+  await expectEvent('phone_click');
+  await page.locator('a[href^="mailto:"]').first().click({ force: true });
+  await expectEvent('email_click');
+  await context.close();
+  const home = await open('/');
+  await waitForConfig(home.page);
+  await home.page.evaluate(() => document.addEventListener('click', (e) => { if (e.target.closest('a[href]')) e.preventDefault(); }));
+  await home.page.locator('a[href$=".pdf"]').first().click({ force: true });
+  await home.page.waitForFunction(
+    () => document.documentElement.getAttributeNames().some((a) => a.startsWith('data-ga-') && document.documentElement.getAttribute(a).startsWith('event-pdf_download:')),
+    null,
+    { timeout: 15_000 },
+  );
+  await home.context.close();
+});
+
 test('Decline never grants anything', { timeout: 60_000 }, async () => {
   const { context, page } = await open('/');
   await waitForConfig(page);
@@ -159,8 +192,46 @@ test('a returning visitor who accepted ends up granted for analytics only, and s
   await waitForConfig(page);
   await page.waitForTimeout(1_000);
   const log = await readLog(page);
-  assert.match(log[log.length - 1], /^(config|consent-update|consent-default):granted:denied$/, `a stored Accept must end granted: ${JSON.stringify(log)}`);
+  assert.equal(log[0], 'consent-default:granted:denied', `a stored Accept must start granted at the first hit, not just eventually: ${JSON.stringify(log)}`);
+  assert.equal(log.find((l) => l.startsWith('config:')), 'config:granted:denied');
   assert.ok(!log.some((l) => /:granted$/.test(l)), `advertising storage must never be granted: ${JSON.stringify(log)}`);
   assert.equal(await page.locator('#cookieBanner').isVisible(), false);
+  await context.close();
+});
+
+// Partytown falls back to the main thread when its service worker cannot start (SW blocked,
+// privacy modes, enterprise policy). There it re-inserts external text/partytown scripts
+// asynchronously but runs inline ones at once, so the consent default has to be inline
+// with config. This is the exact failure the independent review reproduced.
+test('fallback mode (no service worker): a first-time visitor is still denied before config', { timeout: 90_000 }, async () => {
+  const { context, page } = await open('/privacy', { serviceWorkers: 'block' });
+  await page.waitForFunction(
+    () => document.documentElement.getAttributeNames().some((n) => n.startsWith('data-ga-') && document.documentElement.getAttribute(n).startsWith('config:')),
+    null,
+    { timeout: 45_000 },
+  );
+  const log = await readLog(page);
+  const iDefault = log.findIndex((l) => l.startsWith('consent-default:'));
+  const iConfig = log.findIndex((l) => l.startsWith('config:'));
+  assert.ok(iDefault >= 0 && iDefault < iConfig, `consent default must precede config in fallback mode: ${JSON.stringify(log)}`);
+  assert.equal(log[iConfig], 'config:denied:denied');
+  assert.ok(!log.some((l) => /:granted:/.test(l)), JSON.stringify(log));
+  await context.close();
+});
+
+test('fallback mode (no service worker): a stored Accept starts granted', { timeout: 90_000 }, async () => {
+  const { context, page } = await open('/', { stored: 'oxford-cookies-accepted', serviceWorkers: 'block' });
+  await page.waitForFunction(
+    () => document.documentElement.getAttributeNames().some((n) => n.startsWith('data-ga-') && document.documentElement.getAttribute(n).startsWith('config:')),
+    null,
+    { timeout: 45_000 },
+  );
+  const log = await readLog(page);
+  const iDefault = log.findIndex((l) => l.startsWith('consent-default:'));
+  const iConfig = log.findIndex((l) => l.startsWith('config:'));
+  assert.ok(iDefault >= 0 && iDefault < iConfig, `consent default must precede config in fallback mode: ${JSON.stringify(log)}`);
+  assert.equal(log[iDefault], 'consent-default:granted:denied', JSON.stringify(log));
+  assert.equal(log[iConfig], 'config:granted:denied', `config must see the stored Accept: ${JSON.stringify(log)}`);
+  assert.ok(!log.some((l) => /:granted$/.test(l)), `advertising storage must never be granted: ${JSON.stringify(log)}`);
   await context.close();
 });

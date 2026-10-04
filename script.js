@@ -608,20 +608,16 @@
             localStorage.setItem(key, value);
           } catch (error) {}
         },
-        // Google Consent Mode v2: assets/consent-default.js denies analytics storage
-        // before gtag.js loads. Accept grants it; Decline never calls this, so the
-        // default (denied, cookieless measurement) stands. window.gtag is the
-        // Partytown forwarding stub, so the call reaches the GA4 worker.
+        // Google Consent Mode v2: the inline gtag script on each page denies analytics
+        // storage (or starts granted for a stored Accept) before gtag('config'). Accept
+        // grants it; Decline never calls this, so the default (denied, cookieless
+        // measurement) stands. window.gtag is the Partytown forwarding stub, so the
+        // call reaches the GA4 worker.
         grantAnalyticsConsent = function () {
           if (window.gtag) {
             window.gtag("consent", "update", { analytics_storage: "granted" });
           }
         };
-      // A returning visitor who accepted earlier: re-assert it (consent-default.js
-      // already starts them granted; this covers a worker that couldn't read storage).
-      if (getItem("oxford-cookies-accepted") === "true") {
-        grantAnalyticsConsent();
-      }
       if (!getItem("oxford-cookies-accepted") && !getItem("oxford-cookies-declined")) {
         var banner = qs("#cookieBanner");
         if (banner) {
@@ -748,4 +744,70 @@
     current = (current + 1) % items.length;
     items[current].classList.add("is-active");
   }, 4000);
+})();
+// GA4 click events: one delegated listener for phone, email, PDF downloads and the
+// primary calls to action. Calls go through the Partytown gtag stub. With analytics
+// consent denied GA4 sends cookieless pings, so counts stay useful without storing
+// anything on the visitor's device.
+(function () {
+  var CTA_PATHS = {
+      "/for-brokers": "submit_deal",
+      "/sell-your-building": "get_offer",
+      "/tenant-application": "apply_now",
+      "/contact": "contact",
+    },
+    send = function (name, params) {
+      if (window.gtag) {
+        window.gtag("event", name, params);
+      }
+    },
+    placement = function (el) {
+      if (el.closest("header, nav")) {
+        return "header";
+      }
+      if (el.closest("footer")) {
+        return "footer";
+      }
+      if (el.closest(".subpage-hero, .hero")) {
+        return "hero";
+      }
+      return "body";
+    };
+  document.addEventListener("click", function (e) {
+    var link = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+    if (!link) {
+      return;
+    }
+    var href = link.getAttribute("href") || "",
+      where = placement(link),
+      url;
+    if (/^tel:/i.test(href)) {
+      send("phone_click", { event_category: "contact", event_label: href.slice(4), link_location: where });
+      return;
+    }
+    if (/^mailto:/i.test(href)) {
+      // Only the firm's own mailboxes are named; any other address (for example one a
+      // visitor typed into the chat) is reported as "external" so no personal email
+      // reaches analytics.
+      var address = href.slice(7).split("?")[0];
+      send("email_click", { event_category: "contact", event_label: /@oxfordra\.net$/i.test(address) ? address : "external", link_location: where });
+      return;
+    }
+    try {
+      url = new URL(link.href, window.location.href);
+    } catch (error) {
+      return;
+    }
+    if (url.origin !== window.location.origin) {
+      return;
+    }
+    if (/\.pdf$/i.test(url.pathname)) {
+      send("pdf_download", { event_category: "download", event_label: url.pathname, link_location: where });
+      return;
+    }
+    var cta = CTA_PATHS[url.pathname.replace(/\/$/, "")];
+    if (cta && link.matches(".btn, .nav__link--cta")) {
+      send("cta_click", { event_category: "cta", event_label: cta, link_location: where, page_path: window.location.pathname });
+    }
+  });
 })();

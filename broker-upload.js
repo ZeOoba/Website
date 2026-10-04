@@ -15,7 +15,7 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         name: fields.name, company: fields.company, email: fields.email, phone: fields.phone,
-        market: fields.market, message: fields.message, website: fields.website,
+        market: fields.market, referralSource: fields.referralSource, message: fields.message, website: fields.website,
         fileName: file.name, fileSize: file.size, contentType: file.type,
         recaptchaToken: fields.recaptchaToken,
       }),
@@ -90,6 +90,7 @@
       email: formEl.querySelector('[name="email"]').value,
       phone: formEl.querySelector('[name="phone"]').value,
       market: formEl.querySelector('[name="market"]').value,
+      referralSource: (formEl.querySelector('[name="referral-source"]') || {}).value || '',
       message: formEl.querySelector('[name="message"]').value,
       website: formEl.querySelector('[name="website"]').value,
       recaptchaToken: (window.grecaptcha && window.grecaptcha.enterprise && window.grecaptcha.enterprise.getResponse && window.ORA_RECAPTCHA_WIDGET_ID !== null) ? window.grecaptcha.enterprise.getResponse(window.ORA_RECAPTCHA_WIDGET_ID) : '',

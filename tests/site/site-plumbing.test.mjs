@@ -54,6 +54,17 @@ test('P2 markets/index states two core markets plus a Kansas City holding', () =
   assert.match(html, /two core markets/i);
   assert.match(html, /Kansas City holding/i);
   assert.match(html, /href="\/properties\/9620-state-route-350"/, 'Kansas City card should link to its property page');
+  // The same canonical wording (2 core + a Kansas City holding) holds wherever the firm's
+  // market count is stated, including the chatbot prompt and the About timeline.
+  for (const f of ['about.html', 'index.html', 'portfolio.html', 'netlify/edge-functions/chat.ts', 'llms.txt', 'scripts/overview-pdf/overview.html']) {
+    const text = read(f);
+    assert.doesNotMatch(text, /three core markets|three markets/i, `${f} must not say three markets`);
+  }
+  const chat = read('netlify/edge-functions/chat.ts');
+  assert.match(chat, /two core markets, Maryland and Columbus OH, plus a Kansas City MO holding/);
+  assert.match(chat, /two core markets, Maryland and Columbus, plus a Kansas City holding/, 'broker buy-box line must keep Kansas City');
+  assert.match(read('about.html'), /513,000\+ SF, 138\+ tenants, two core markets, plus a Kansas City holding/);
+  assert.doesNotMatch(read('llms.txt'), /single-building/i, 'a "single-building" holding is a building count');
 });
 
 test('P3 before/after slider containers are role=group, never role=img', () => {
@@ -89,8 +100,9 @@ test('P5 resources breadcrumb links are underlined (not colour-only)', () => {
   assert.ok(files.length >= 5);
   for (const f of files) {
     const html = read(`resources/${f}`);
+    if (!html.includes('breadcrumb-nav')) continue;
     const rule = html.match(/\.breadcrumb-nav a\{[^}]*\}/)?.[0];
-    if (!rule) continue;
+    assert.ok(rule, `resources/${f}: a breadcrumb-nav with no link style rule would silently pass`);
     assert.match(rule, /text-decoration:underline/, `resources/${f}: breadcrumb link relies on colour alone`);
   }
 });
@@ -125,6 +137,47 @@ test('P7 every property page is linked from outside /portfolio; Track Record lin
   const tr = read('track-record.html');
   const linked = new Set([...tr.matchAll(/href="\/properties\/([a-z0-9-]+)"/g)].map((m) => m[1]));
   assert.ok(linked.size >= 6, `track-record should link its case studies to property pages, found ${linked.size}`);
+});
+
+// W4 — /what-we-see ("What We See That Other Buyers Don't"). Supported claims only: every
+// figure and project fact on it already appears on the Track Record / property pages. The
+// unsupported replacement-cost range and margin-of-safety figures (audit C-09), ownership
+// structure, lender wording, occupancy and building counts must not creep in.
+test('P9 /what-we-see is built from supported claims only and is linked from the pages that matter', () => {
+  const html = read('what-we-see.html');
+  // Only the page's own copy: nav, announcement bar and footer are shared chrome governed elsewhere.
+  const main = html.match(/<main[\s\S]*<\/main>/)?.[0] ?? '';
+  assert.ok(main.length > 2000, 'what-we-see.html has no <main> content');
+  const text = main.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ');
+  assert.equal((html.match(/<h1[\s>]/g) || []).length, 1);
+  for (const h of ['Basis matters', 'Function matters', 'Vacancy is priced, not feared', 'Complexity can create mispricing', 'We do not need aggressive rent growth', 'We own and operate']) {
+    assert.ok(html.includes(h), `missing section: ${h}`);
+  }
+  const banned = [
+    [/\$1[38]0|\b40\s*[–-]\s*65\s*%|margin of safety/i, 'unsupported replacement-cost / margin-of-safety figures (audit C-09)'],
+    [/joint venture|partnership|co-invest/i, 'ownership structure'],
+    [/lender|\bloan\b|mortgage|non-recourse|\bLTV\b/i, 'lender wording'],
+    [/\d+\s*%\s*(occupied|occupancy|leased)|occupancy (of|at) \d/i, 'an occupancy figure'],
+    [/\b\d+\s+(buildings|properties|assets)\b/i, 'a building / property count'],
+    [/\bNOI\b|\bIRR\b|equity multiple|yield on cost|cash-on-cash/i, 'return metrics Track Record already governs'],
+    [/permanent|30[- ]day|best-in-class|world-class|unparalleled/i, 'banned or unsupported wording'],
+    [/no broker required|never failed to close/i, 'claims the audit struck'],
+  ];
+  for (const [re, why] of banned) assert.doesNotMatch(text, re, `what-we-see.html contains ${why}`);
+  // Dollar figures: only the $36-$85 per-SF basis range already supported by Track Record.
+  const dollars = [...text.matchAll(/\$\s?[\d,.]+\s?[MK]?/g)].map((m) => m[0].trim());
+  assert.deepEqual(dollars.sort(), ['$36', '$85'].sort(), `unexpected dollar figures: ${JSON.stringify(dollars)}`);
+  // Property facts it cites exist on the property / Track Record pages it links to.
+  const tr = read('track-record.html').replace(/<[^>]+>/g, ' ');
+  for (const fact of ['vapor mitigation', 'truck-height docks', 'one year remaining', '9,500 SF of office', 'purchased vacant', 'acquired largely vacant']) {
+    assert.match(tr, new RegExp(fact), `Track Record no longer supports: ${fact}`);
+  }
+  for (const [file, label] of [['for-brokers.html', 'for-brokers'], ['index.html', 'home'], ['about.html', 'about']]) {
+    assert.match(read(file), /href="\/what-we-see"/, `${label} must link to /what-we-see`);
+  }
+  assert.match(read('llms.txt'), /oxfordra\.net\/what-we-see/);
+  assert.match(read('scripts/build-kb.mjs'), /what-we-see\.html/);
+  assert.match(read('scripts/build-dist.mjs'), /'what-we-see\.html'/);
 });
 
 // W3 — case-study facts (Gabriel's 2026-10-04 rulings): 3540's ~12% is yield on

@@ -117,6 +117,9 @@
 .pf-detail__highlights li { position: relative; padding-left: 22px; }
 .pf-detail__highlights li::before { content: ""; position: absolute; left: 0; top: .6em; width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); }
 .pf-detail__more a { font-weight: 500; }
+.pf-gallery { display: grid; gap: 16px; margin: 0 0 8px; }
+.pf-gallery__item { margin: 0; border-radius: var(--radius-card, 8px); overflow: hidden; box-shadow: var(--shadow-card); background: var(--light-gray); }
+.pf-gallery__item img { display: block; width: 100%; height: auto; }
 .pf-detail__main .pf-detail__specs-title { font-size: 22px; margin: 32px 0 8px; }
 .pf-detail__specs { margin: 0 0 24px; max-width: 62ch; }
 .pf-detail__specs > div { display: grid; grid-template-columns: 9em 1fr; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--light-gray); font-size: 15px; }

@@ -410,6 +410,14 @@
      "Site",
      "About 6 acres, near Columbus International Airport"
     ]
+   ],
+   "gallery": [
+    {
+     "base": "/images/26-gallery-3540-e-fifth-front",
+     "alt": "Front entrance of the 3540 E Fifth Avenue building",
+     "width": 1200,
+     "height": 900
+    }
    ]
   },
   "image": {
@@ -489,6 +497,14 @@
      "Site",
      "Near John Glenn Columbus International Airport"
     ]
+   ],
+   "gallery": [
+    {
+     "base": "/images/25-gallery-1100-rarig-bay",
+     "alt": "A drive-in door and entry at 1100 Rarig Avenue",
+     "width": 1200,
+     "height": 900
+    }
    ]
   }
  },
@@ -930,6 +946,14 @@
      "Construction",
      "Masonry (main building)"
     ]
+   ],
+   "gallery": [
+    {
+     "base": "/images/27-gallery-3034-westerville-front",
+     "alt": "Front of the 3034 Westerville Road building",
+     "width": 1200,
+     "height": 900
+    }
    ]
   }
  },
@@ -994,6 +1018,14 @@
      "Site",
      "2.48 acres in Fishel Industrial Park"
     ]
+   ],
+   "gallery": [
+    {
+     "base": "/images/24-gallery-7658-fishel-docks",
+     "alt": "Overhead doors on the 7658 Fishel Drive N building",
+     "width": 1200,
+     "height": 900
+    }
    ]
   }
  },
@@ -1245,6 +1277,14 @@
      "Site",
      "About 2.5 acres on State Route 350; recently repaved lot, new exterior lighting and a new sign fronting Route 350"
     ]
+   ],
+   "gallery": [
+    {
+     "base": "/images/23-gallery-9620-state-route-350",
+     "alt": "Aerial view of the 9620 State Route 350 building in Raytown, Missouri",
+     "width": 1103,
+     "height": 618
+    }
    ]
   }
  }

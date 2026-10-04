@@ -564,3 +564,41 @@ test('tenant-resources describes two core markets plus a Kansas City holding, no
   assert.ok(!/three markets/i.test(html), 'tenant-resources.html still says "three markets"');
   assert.ok(/two core markets, plus a Kansas City holding/.test(html), 'tenant-resources.html lost the two-core-markets wording');
 });
+
+// ── Track Record case studies + broker "don't buy" / "why Oxford" (2026-10-03, PR B) ──
+// Publishing rules (Gabriel): basis per SF only, no absolute NOI or estimated-value dollars,
+// no ownership structure, no lender/loan wording, no tenant names. Broadway is medical
+// retail at $49/SF per the settlement register ($1,350,000 / 27,650 SF).
+
+test('track-record: five studies each carry Situation / What we saw / What we did / Result', () => {
+  const html = read('track-record.html');
+  for (const label of ['Situation', 'What we saw', 'What we did', 'Result']) {
+    const n = (html.match(new RegExp(`<strong>${label}\.</strong>`, 'g')) || []).length;
+    assert.equal(n, 5, `expected 5 "${label}." lead-ins (3540 + four cards), found ${n}`);
+  }
+});
+
+test('track-record: no ownership structure, lender wording, tenant names or absolute value tiles', () => {
+  const html = read('track-record.html');
+  assert.ok(!/joint venture|partnership/i.test(html), 'ownership structure wording on Track Record');
+  assert.ok(!/\b(?:lender|loan|mortgage|LTV|non-recourse)\b/i.test(html), 'lender/loan wording on Track Record');
+  assert.ok(!/honeywell/i.test(html), 'tenant name on Track Record');
+  assert.ok(!/Est\. Current Value/i.test(html), 'absolute estimated-value tile is back');
+  assert.ok(!/\$613K|\$175K/.test(html), 'absolute NOI dollar figure is back');
+});
+
+test('track-record: Broadway is $49/SF and labeled medical retail; New Plant Court and Fishel cards exist', () => {
+  const html = read('track-record.html');
+  assert.ok(/Baltimore, MD · 27,650 SF · Medical Retail/.test(html), 'Broadway must be labeled Medical Retail');
+  const broadway = html.slice(html.indexOf('<h3>1900 North Broadway</h3>'), html.indexOf('<h3>55 New Plant Court</h3>'));
+  assert.ok(broadway.includes('>$49</span>') && !broadway.includes('>$48</span>'), 'Broadway basis must be $49/SF');
+  assert.ok(html.includes('<h3>55 New Plant Court</h3>') && html.includes('<h3>7658 Fishel Drive N</h3>'));
+});
+
+test('for-brokers: don\'t-buy block, "send it anyway" line and six why-Oxford cards', () => {
+  const html = read('for-brokers.html');
+  assert.ok(html.includes('What We Generally Don&rsquo;t Buy'), 'missing the don\'t-buy heading');
+  assert.ok(html.includes('Not sure whether it fits? Send it anyway.'));
+  assert.ok(html.includes('<h2>Why Brokers Send Us Deals</h2>'));
+  assert.equal((html.match(/class="incentive-card animate-on-scroll"/g) || []).length, 6, 'expected six incentive cards');
+});

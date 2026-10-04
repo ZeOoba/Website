@@ -148,15 +148,23 @@
     ],
     [
      "Unit sizes",
-     "1,500 to 7,500 SF"
+     "From 1,500 SF"
     ],
     [
      "Loading",
-     "Rear at-grade drive-in with overhead doors"
+     "Rear at-grade drive-in doors, typically 10' x 12', with a personnel door beside each"
     ],
     [
      "Office",
      "Varying levels of build-out"
+    ],
+    [
+     "Construction",
+     "Pre-engineered steel; split-face block and EIFS front; standing seam metal roofs"
+    ],
+    [
+     "Site",
+     "Surface parking and two site entrances"
     ]
    ]
   },
@@ -182,12 +190,12 @@
   "market": "Maryland",
   "lat": 38.39942,
   "lng": -75.5791,
-  "sf": 53700,
+  "sf": 54000,
   "type": "Industrial/Flex",
   "listingSlug": "2203-northwood-dr",
   "image": {
    "src": "/images/06-exterior-beauty.jpg",
-   "alt": "2203-2207 Northwood Dr — 53,700 SF Industrial/Flex in Salisbury, MD",
+   "alt": "2203-2207 Northwood Dr — 54,000 SF Industrial/Flex in Salisbury, MD",
    "sources": [
     {
      "type": "image/avif",
@@ -197,6 +205,45 @@
      "type": "image/webp",
      "srcset": "/images/06-exterior-beauty-480w.webp 480w, /images/06-exterior-beauty.webp 700w"
     }
+   ]
+  },
+  "thesis": "Three buildings of small-bay units, renovated with new paving, lighting, doors, heating units and pylon signs.",
+  "detail": {
+   "metaDescription": "2203-2207 Northwood Dr: 54,000 SF multi-tenant industrial/flex park in Salisbury, MD with three buildings of small-bay units, owned by Oxford Realty Advisors.",
+   "summary": [
+    "Northwood Business Center is a 54,000 SF multi-tenant industrial/flex park in Salisbury, Maryland, made up of three buildings.",
+    "The buildings were built as small-bay units of about 1,200 SF, typically each with an overhead door, about 15% office and a restroom. Some units have been combined for larger users."
+   ],
+   "highlights": [
+    "Three buildings of small-bay units",
+    "Small-bay units, typically each with an overhead door",
+    "New paving, LED lighting, entrance doors, heating units and pylon signs"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Three multi-tenant buildings"
+    ],
+    [
+     "Unit sizes",
+     "Built as units of about 1,200 SF; some combined for larger users"
+    ],
+    [
+     "Loading",
+     "Typically an overhead door per bay (fewer in Building C)"
+    ],
+    [
+     "Office",
+     "About 15% of each original unit, with a restroom"
+    ],
+    [
+     "Year built",
+     "1972-73"
+    ],
+    [
+     "Upgrades",
+     "New paving, exterior LED lighting, fire-rated entrance and exit doors, heating units, exterior paint and two LED pylon signs"
+    ]
    ]
   }
  },
@@ -276,12 +323,12 @@
   "market": "Ohio",
   "lat": 39.985089,
   "lng": -82.908909,
-  "sf": 36000,
+  "sf": 35886,
   "type": "Industrial",
   "acquired": "2022-01",
   "thesis": "A functionally obsolete truck repair facility, repositioned with a full renovation and leased long-term to a global fragrance manufacturer.",
   "detail": {
-   "metaDescription": "3540 E Fifth Avenue: 36,000 SF industrial building in Columbus, OH, repositioned by Oxford Realty Advisors from a functionally obsolete truck repair facility.",
+   "metaDescription": "3540 E Fifth Avenue: 35,886 SF industrial building in Columbus, OH, repositioned by Oxford Realty Advisors from a functionally obsolete truck repair facility.",
    "summary": [
     "3540 E Fifth Avenue began as a functionally obsolete truck repair facility. Oxford repositioned it with a new metal building skin, roof replacement, full asphalt milling and repaving, overhead door replacements, a complete office rebuild and upgraded HVAC systems.",
     "The project also addressed environmental challenges, coordinating with the Ohio EPA on vapor mitigation systems. Oxford then executed a 10-year lease with a global fragrance manufacturer."
@@ -298,7 +345,7 @@
     ],
     [
      "Ceiling height",
-     "19'"
+     "15' to 19'"
     ],
     [
      "Power",
@@ -310,13 +357,13 @@
     ],
     [
      "Site",
-     "About 6 acres, near Columbus International Airport"
+     "Near Columbus International Airport"
     ]
    ]
   },
   "image": {
    "src": "/images/09-3540-rear-exterior-1.jpg",
-   "alt": "3540 E Fifth Avenue — 36,000 SF Industrial in Columbus, OH",
+   "alt": "3540 E Fifth Avenue — 35,886 SF Industrial in Columbus, OH",
    "sources": [
     {
      "type": "image/avif",
@@ -353,6 +400,45 @@
      "srcset": "/images/04-1100-rarig-exterior-2-drive-ins-dock-480w.webp 480w, /images/04-1100-rarig-exterior-2-drive-ins-dock.webp 800w"
     }
    ]
+  },
+  "thesis": "A one-story building of small-bay units, each with a drive-in door and restroom, most with a small office, near John Glenn Columbus International Airport.",
+  "detail": {
+   "metaDescription": "1100 Rarig Avenue: 21,000 SF multi-tenant industrial/flex building near John Glenn Columbus International Airport, owned by Oxford Realty Advisors.",
+   "summary": [
+    "1100 Rarig Avenue is a 21,000 SF multi-tenant industrial/flex building in Columbus, Ohio, built in 1978 and located near John Glenn Columbus International Airport.",
+    "Each unit is mostly warehouse with a private restroom and a 10' x 10' drive-in overhead door, and most units have a small office. Some units also have a dock."
+   ],
+   "highlights": [
+    "A drive-in door and restroom in every unit",
+    "Units combine into larger spaces",
+    "Near John Glenn Columbus International Airport"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Multi-tenant, one story"
+    ],
+    [
+     "Unit sizes",
+     "Small-bay units from about 1,200 SF, combinable into larger spaces"
+    ],
+    [
+     "Loading",
+     "10' x 10' drive-in overhead door in every unit; 2 dock-high doors on select units"
+    ],
+    [
+     "Office",
+     "Most units have a small office; every unit has a restroom"
+    ],
+    [
+     "Year built",
+     "1978"
+    ],
+    [
+     "Site",
+     "Near John Glenn Columbus International Airport"
+    ]
+   ]
   }
  },
  {
@@ -367,20 +453,20 @@
   "acquired": "2021-02",
   "listingSlug": "2800-2826-banwick-rd",
   "detail": {
-   "metaDescription": "2800-2826 Banwick Road: multi-tenant, front-loaded industrial/flex building in Columbus, OH with 1,500 to 3,000 SF units and front at-grade drive-in doors.",
+   "metaDescription": "2800-2826 Banwick Road: multi-tenant industrial/flex building in Columbus, OH with 1,500 to 3,000 SF units and 16 at-grade drive-in doors, eight on each side.",
    "summary": [
-    "2800-2826 Banwick Road is a multi-tenant, front-loaded industrial/flex building in Columbus, Ohio. Its units range from 1,500 to 3,000 SF with varying levels of office build-out.",
-    "Every unit has front at-grade drive-in loading through an overhead door."
+    "2800-2826 Banwick Road is a multi-tenant industrial/flex building in Columbus, Ohio. Its units range from 1,500 to 3,000 SF with varying levels of office build-out.",
+    "Every unit has at-grade drive-in loading through an overhead door, with eight doors on each side of the building."
    ],
    "highlights": [
     "1,500 to 3,000 SF units",
-    "Front at-grade drive-in loading",
+    "At-grade drive-in loading on both sides",
     "Varying levels of office build-out"
    ],
    "specs": [
     [
      "Configuration",
-     "Multi-tenant, front-loaded"
+     "Multi-tenant"
     ],
     [
      "Unit sizes",
@@ -388,11 +474,23 @@
     ],
     [
      "Loading",
-     "Front at-grade drive-in with overhead doors"
+     "16 at-grade drive-in doors, eight on each side of the building, each with an overhead door"
     ],
     [
      "Office",
      "Varying levels of build-out"
+    ],
+    [
+     "Year built",
+     "1981"
+    ],
+    [
+     "Construction",
+     "Masonry"
+    ],
+    [
+     "Site",
+     "About 1.4 acres"
     ]
    ]
   },
@@ -423,15 +521,15 @@
   "acquired": "2021-02",
   "listingSlug": "2000-2002-zettler-rd",
   "detail": {
-   "metaDescription": "2000-2002 Zettler Road: two-unit industrial/flex building in Columbus, OH with 5,000 to 6,000 SF units, rear truck-high docks and ramps for drive-in loading.",
+   "metaDescription": "2000-2002 Zettler Road: two-unit industrial/flex building in Columbus, OH with units of about 5,000 and 6,200 SF, two docks and two drive-in doors.",
    "summary": [
-    "2000-2002 Zettler Road is a two-unit industrial/flex building in Columbus, Ohio. Each unit is 5,000 to 6,000 SF with varying levels of office build-out.",
-    "Both units have rear truck-high loading docks, and ramps facilitate drive-in loading."
+    "2000-2002 Zettler Road is a two-unit industrial/flex building in Columbus, Ohio. The two units are about 5,000 and 6,200 SF with varying levels of office build-out.",
+    "The building has two dock doors and two drive-in doors, and it has frontage on I-70 with signage opportunity."
    ],
    "highlights": [
-    "Two 5,000 to 6,000 SF units",
-    "Rear truck-high loading docks",
-    "Ramps for drive-in loading"
+    "Two units of about 5,000 and 6,200 SF",
+    "Two dock doors and two drive-in doors",
+    "Frontage and signage opportunity on I-70"
    ],
    "specs": [
     [
@@ -440,15 +538,23 @@
     ],
     [
      "Unit sizes",
-     "5,000 to 6,000 SF"
+     "About 5,000 and 6,200 SF"
     ],
     [
      "Loading",
-     "Rear truck-high docks; ramps for drive-in access"
+     "Rear truck-high docks (2 dock doors) and 2 drive-in doors; a ramp for drive-in access"
     ],
     [
      "Office",
      "Varying levels of build-out"
+    ],
+    [
+     "Year built",
+     "1965"
+    ],
+    [
+     "Site",
+     "0.92 acre with frontage and signage opportunity on I-70"
     ]
    ]
   },
@@ -478,20 +584,20 @@
   "type": "Industrial/Flex",
   "acquired": "2021-02",
   "detail": {
-   "metaDescription": "2004-2008 Zettler Road: industrial/flex buildings in Columbus, OH with 4,300 to 6,300 SF units, rear at-grade drive-on doors and front truck-height docks.",
+   "metaDescription": "2004-2008 Zettler Road: industrial/flex space in Columbus, OH with 2006-2008 units of 4,300 to 6,300 SF, rear at-grade drive-in doors and truck-height docks.",
    "summary": [
-    "2004-2008 Zettler Road comprises two industrial/flex buildings in Columbus, Ohio. 2004 is a single-tenant, front-loaded building with a standard truck-height dock.",
-    "2006-2008 is a two-unit building with units of 4,300 to 6,300 SF, varying levels of office build-out and rear at-grade drive-on overhead doors. 2008 also has a truck-high loading dock in front."
+    "2004-2008 Zettler Road comprises 2004 Zettler, a single-tenant space, and 2006-2008 Zettler, a two-unit space, in Columbus, Ohio. Every unit has a rear at-grade drive-in door.",
+    "2006-2008 has units of 4,300 to 6,300 SF with varying levels of office build-out. There are truck-height docks at 2004 and 2008."
    ],
    "highlights": [
-    "Two buildings on one frontage",
-    "Rear at-grade drive-on overhead doors",
-    "Front truck-height docks at 2004 and 2008"
+    "2004 and 2006-2008 on one frontage",
+    "A rear at-grade drive-in door in every unit",
+    "Truck-height docks at 2004 and 2008"
    ],
    "specs": [
     [
      "Configuration",
-     "2004: single-tenant. 2006-2008: two units"
+     "2004: one unit. 2006-2008: two units"
     ],
     [
      "Unit sizes",
@@ -499,11 +605,15 @@
     ],
     [
      "Loading",
-     "2004: front truck-height dock. 2006-2008: rear at-grade drive-on doors; 2008 also a front dock"
+     "Every unit has a rear at-grade drive-in door; truck-height docks at 2004 and 2008"
     ],
     [
      "Office",
      "Varying levels of build-out (2006-2008)"
+    ],
+    [
+     "Ceiling height",
+     "14'-18'"
     ]
    ]
   },
@@ -551,15 +661,23 @@
     ],
     [
      "Unit sizes",
-     "1,800 to 2,400 SF"
+     "8 units of 1,800 to 2,400 SF"
     ],
     [
      "Loading",
-     "Rear at-grade drive-in with overhead doors"
+     "Rear at-grade drive-in with a 10' x 10' overhead door on each unit (8 in all)"
     ],
     [
      "Office",
      "Varying levels of build-out"
+    ],
+    [
+     "Year built",
+     "1978"
+    ],
+    [
+     "Site",
+     "Visible from I-70, with signage opportunity"
     ]
    ]
   },
@@ -611,11 +729,15 @@
     ],
     [
      "Loading",
-     "At-grade drive-in with overhead doors"
+     "At-grade drive-in with a 10' x 10' overhead door on every unit"
     ],
     [
      "Office",
      "Varying levels of build-out"
+    ],
+    [
+     "Site",
+     "Visible from I-270 and Morrison Road, with signage opportunity"
     ]
    ]
   },
@@ -648,7 +770,7 @@
    "metaDescription": "406-420 Morrison Road: multi-tenant, front-loaded industrial/flex building in Columbus, OH with 1,800 to 2,400 SF units, drive-in doors and rear docks.",
    "summary": [
     "406-420 Morrison Road is a multi-tenant, front-loaded industrial/flex building in Columbus, Ohio. Its units range from 1,800 to 2,400 SF with varying levels of office build-out.",
-    "Every unit has front at-grade drive-in loading through an overhead door, as well as rear-loaded truck-height doors."
+    "Units have front at-grade drive-in loading through an overhead door, with rear-loaded truck-height doors."
    ],
    "highlights": [
     "1,800 to 2,400 SF units",
@@ -666,11 +788,15 @@
     ],
     [
      "Loading",
-     "Front at-grade drive-in with overhead doors; rear truck-height doors"
+     "Front at-grade drive-in with a 10' x 10' overhead door on every unit; rear truck-height doors"
     ],
     [
      "Office",
      "Varying levels of build-out"
+    ],
+    [
+     "Site",
+     "Visible from I-270 and Morrison Road, with signage opportunity"
     ]
    ]
   },
@@ -710,6 +836,45 @@
      "type": "image/webp",
      "srcset": "/images/11-gate-building-480w.webp 480w, /images/11-gate-building.webp 800w"
     }
+   ]
+  },
+  "thesis": "A clear-span warehouse on 3.26 acres with about 1.5 acres of paved, secured and lit outdoor storage.",
+  "detail": {
+   "metaDescription": "3034 Westerville Rd: clear-span industrial warehouse on 3.26 acres in Columbus, OH with about 1.5 acres of paved, secured and lit outdoor storage.",
+   "summary": [
+    "3034 Westerville Road is a clear-span industrial property on 3.26 acres in Columbus, Ohio, with ground-floor office space plus a second-floor office.",
+    "About 1.5 acres of the site is paved, secured and lit outdoor storage. Eight grade-level drive-in doors serve the warehouse."
+   ],
+   "highlights": [
+    "About 1.5 acres of paved, secured and lit outdoor storage",
+    "Eight grade-level drive-in doors",
+    "Clear-span warehouse on 3.26 acres"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Clear-span warehouse"
+    ],
+    [
+     "Loading",
+     "Eight grade-level drive-in doors"
+    ],
+    [
+     "Office",
+     "Ground-floor office plus a second-floor office"
+    ],
+    [
+     "Yard",
+     "About 1.5 acres of paved, secured and lit outdoor storage"
+    ],
+    [
+     "Site",
+     "3.26 acres"
+    ],
+    [
+     "Construction",
+     "Masonry (main building)"
+    ]
    ]
   }
  },
@@ -757,6 +922,57 @@
      "srcset": "/images/12-aerial-view-3875-livingston-480w.webp 480w, /images/12-aerial-view-3875-livingston.webp 700w"
     }
    ]
+  },
+  "thesis": "A 22' clear warehouse with drive-in doors and a paved, fenced yard, plus a separate office building, on about 1.2 acres.",
+  "detail": {
+   "metaDescription": "3875-3883 E Livingston: 10,950 SF industrial property in Columbus, OH with a 22-foot clear warehouse, a separate office building and a paved, fenced yard.",
+   "summary": [
+    "3875-3883 E Livingston is a 10,950 SF industrial property in Columbus, Ohio, with a warehouse building and a separate office building on about 1.2 acres.",
+    "The warehouse has 22' clear height and two grade-level drive-in doors with drive-through capability. A paved, fenced yard provides outside storage."
+   ],
+   "highlights": [
+    "22' clear height",
+    "Paved, fenced yard with outside storage",
+    "Generator system and floor drains"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Two buildings: a warehouse and a separate office building"
+    ],
+    [
+     "Ceiling height",
+     "22'"
+    ],
+    [
+     "Loading",
+     "Two grade-level drive-in doors; drive-through capability"
+    ],
+    [
+     "Yard",
+     "Paved, fenced outside storage yard"
+    ],
+    [
+     "Power",
+     "Generac generator system"
+    ],
+    [
+     "Other",
+     "Floor drains"
+    ],
+    [
+     "Site",
+     "About 1.2 acres, with signage on Livingston Ave"
+    ],
+    [
+     "Utilities",
+     "City of Columbus water, sewer and natural gas"
+    ],
+    [
+     "Year built",
+     "Warehouse 1984; office building 1969"
+    ]
+   ]
   }
  },
  {
@@ -766,28 +982,28 @@
   "market": "Ohio",
   "lat": 39.986415,
   "lng": -82.872382,
-  "sf": 3300,
+  "sf": 3261,
   "type": "Office/Retail",
   "acquired": "2021-02",
   "detail": {
-   "metaDescription": "4601 East Fifth Avenue: 3,300 SF free-standing single-tenant retail/office building in Columbus, OH with excellent parking, owned by Oxford Realty Advisors.",
+   "metaDescription": "4601 East Fifth Avenue: 3,261 SF free-standing two-level office building in Columbus, OH with excellent parking, owned by Oxford Realty Advisors.",
    "summary": [
-    "4601 East Fifth Avenue is a 3,300 SF free-standing retail/office building in Columbus, Ohio, designed for a single tenant.",
+    "4601 East Fifth Avenue is a 3,261 SF free-standing two-level office building in Columbus, Ohio.",
     "The building has excellent parking."
    ],
    "highlights": [
     "Free-standing building",
-    "Single-tenant design",
+    "Two levels",
     "Excellent parking"
    ],
    "specs": [
     [
      "Configuration",
-     "Free-standing, single-tenant"
+     "Free-standing, two-level"
     ],
     [
      "Use",
-     "Retail/office"
+     "Office"
     ],
     [
      "Parking",
@@ -797,7 +1013,7 @@
   },
   "image": {
    "src": "/images/19-4601-e-5th-ave-exterior-1.jpg",
-   "alt": "4601 E Fifth Avenue — 3,300 SF Office/Retail in Columbus, OH",
+   "alt": "4601 E Fifth Avenue — 3,261 SF Office/Retail in Columbus, OH",
    "sources": [
     {
      "type": "image/avif",
@@ -817,19 +1033,19 @@
   "market": "Ohio",
   "lat": 39.986415,
   "lng": -82.872382,
-  "sf": 4100,
+  "sf": 4140,
   "type": "Industrial + IOS",
   "acquired": "2021-02",
   "detail": {
-   "metaDescription": "4595 East Fifth Avenue: 4,100 SF free-standing single-tenant industrial building in Columbus, OH with a large outdoor storage lot and side drive-in loading.",
+   "metaDescription": "4595 East Fifth Avenue: 4,140 SF free-standing industrial building in Columbus, OH with a large outdoor storage lot and side and rear drive-in loading.",
    "summary": [
-    "4595 East Fifth Avenue is a 4,100 SF free-standing industrial/flex building in Columbus, Ohio, designed for a single tenant.",
-    "It includes a large outdoor storage lot and side at-grade drive-in loading."
+    "4595 East Fifth Avenue is a 4,140 SF free-standing industrial/flex building in Columbus, Ohio, designed for a single tenant.",
+    "It includes a large outdoor storage lot and side and rear at-grade drive-in loading."
    ],
    "highlights": [
     "Free-standing building",
     "Large outdoor storage lot",
-    "Side at-grade drive-in loading"
+    "Side and rear at-grade drive-in loading"
    ],
    "specs": [
     [
@@ -838,7 +1054,7 @@
     ],
     [
      "Loading",
-     "Side at-grade drive-in"
+     "Side and rear at-grade drive-in bays"
     ],
     [
      "Yard",
@@ -848,7 +1064,7 @@
   },
   "image": {
    "src": "/images/13-4595-towards-front-drive-in-door_.jpg",
-   "alt": "4595 E Fifth Avenue — 4,100 SF Industrial + IOS in Columbus, OH",
+   "alt": "4595 E Fifth Avenue — 4,140 SF Industrial + IOS in Columbus, OH",
    "sources": [
     {
      "type": "image/avif",
@@ -868,13 +1084,13 @@
   "market": "Missouri",
   "lat": 38.99217,
   "lng": -94.46813,
-  "sf": 34300,
+  "sf": 34560,
   "type": "Industrial/Flex",
   "acquired": "2024-10",
   "listingSlug": "9620-state-route-350",
   "image": {
    "src": "/images/05-exterior-front.jpg",
-   "alt": "9620 State Route 350 — 34,300 SF Industrial/Flex in Raytown, MO",
+   "alt": "9620 State Route 350 — 34,560 SF Industrial/Flex in Raytown, MO",
    "sources": [
     {
      "type": "image/avif",
@@ -884,6 +1100,49 @@
      "type": "image/webp",
      "srcset": "/images/05-exterior-front-480w.webp 480w, /images/05-exterior-front.webp 485w"
     }
+   ]
+  },
+  "thesis": "A single-story multi-tenant building on State Route 350 with 16' clear height, 12 drive-in doors and a recently repaved lot.",
+  "detail": {
+   "metaDescription": "9620 E State Route 350: 34,560 SF multi-tenant flex building in Raytown, MO with 16-foot clear height, 12 drive-in doors and frontage on State Route 350.",
+   "summary": [
+    "9620 E State Route 350 is a 34,560 SF single-story multi-tenant flex building in Raytown, Missouri, on a site of about 2.5 acres fronting State Route 350.",
+    "Suites combine warehouse space at 16' clear with office areas, and most have a private restroom. Units combine to suit larger users."
+   ],
+   "highlights": [
+    "16' clear height",
+    "12 drive-in doors",
+    "Recently repaved lot, new exterior lighting and a new sign on Route 350"
+   ],
+   "specs": [
+    [
+     "Configuration",
+     "Multi-tenant, single story"
+    ],
+    [
+     "Unit sizes",
+     "Suites from about 1,400 to 5,800 SF; typical units about 2,900 SF, combinable"
+    ],
+    [
+     "Ceiling height",
+     "16'"
+    ],
+    [
+     "Loading",
+     "12 drive-in doors"
+    ],
+    [
+     "Office",
+     "Office areas and private restrooms in most suites"
+    ],
+    [
+     "Roof",
+     "Recently replaced"
+    ],
+    [
+     "Site",
+     "About 2.5 acres on State Route 350; recently repaved lot, new exterior lighting and a new sign fronting Route 350"
+    ]
    ]
   }
  }

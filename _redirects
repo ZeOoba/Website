@@ -16,6 +16,10 @@ https://www.oxfordra.net/* https://oxfordra.net/:splat 301!
 # Legacy Wix paths (pre-2026 rebuild)
 /portfolio-1        /portfolio      301
 /about-us/our-agents /about         301
+/about-us           /about          301
+/gallery-3          /portfolio      301
+/sell               /sell-your-building 301
+/portfolio-1/4595-east-fifth-pbabg /properties/4595-e-fifth-avenue 301
 
 # Broker OM upload pipeline (Task 9/10) — clean paths over the raw function URLs
 /api/broker-upload-session  /.netlify/functions/broker-upload-session  200

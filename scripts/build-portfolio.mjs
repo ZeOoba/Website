@@ -401,7 +401,7 @@ ${heroSources}
   // Physical specifications only (loading, unit sizes, ceiling, site). Never prices,
   // NOI, debt, occupancy, tenant names or leasing contacts: those stay off the page.
   // Internal links to the other property pages in the same market.
-  const related = assets.filter((x) => x.detail && x.market === a.market && x.name !== a.name).slice(0, 6);
+  const related = assets.filter((x) => x.detail && x.market === a.market && x.name !== a.name);
   const relatedHtml = related.length
     ? `\n<h2 class="pf-detail__specs-title">More in ${esc(marketLabel)}</h2>\n<ul class="pf-related">\n${related.map((r) => `<li><a href="${detailPath(r)}">${esc(r.name)}</a><span>${fmtSf(r.sf)} SF &middot; ${esc(r.type)}</span></li>`).join('\n')}\n</ul>`
     : '';

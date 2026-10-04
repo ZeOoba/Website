@@ -180,21 +180,23 @@ test('P9 /what-we-see is built from supported claims only and is linked from the
   assert.match(read('scripts/build-dist.mjs'), /'what-we-see\.html'/);
 });
 
-// W3 — case-study facts (Gabriel's 2026-10-04 rulings): 3540's ~12% is yield on
-// total cost (price + renovation), not a going-in cap; Fairground's equity
-// multiple / IRR are unverifiable and are not published or quotable by the chatbot.
-test('P8 3540 ~12% is labeled yield on cost; Fairground shows no unverifiable multiple or IRR', () => {
+// W3 — case-study facts (Gabriel's rulings, 2026-10-04): 3540's ~12% is yield on total
+// cost (price + renovation), not a going-in cap. Gabriel then put Fairground's 4.5x
+// equity multiple and 63%+ IRR tiles BACK (and the "cap-rate expansion" meta wording),
+// so those are pinned as published; the chatbot may quote them like any other
+// Track Record figure.
+test('P8 3540 ~12% is labeled yield on cost; Fairground keeps its published multiple and IRR', () => {
   const home = read('index.html');
   const tr = read('track-record.html');
   for (const [name, html] of [['index.html', home], ['track-record.html', tr]]) {
     assert.doesNotMatch(html, /going-in cap/i, `${name}: "going-in cap" mislabels a yield on cost`);
-    assert.doesNotMatch(html, /cap-rate expansion/i, `${name}: "cap-rate expansion" reads as a value loss`);
   }
   assert.match(home, /~12%<\/span><span class="metric-tile__label">Yield on Cost</);
   assert.match(tr, /~12%<\/span>\s*<span class="metric__label">Yield on Cost</);
   const fair = tr.slice(tr.indexOf('<h3>Fairground Village Center</h3>'));
-  assert.ok(fair.length > 100, 'Fairground card must exist');
-  assert.doesNotMatch(fair, /Equity Multiple|>IRR</i, 'Fairground must not publish an equity multiple or IRR');
-  assert.doesNotMatch(read('netlify/edge-functions/chat.ts'), /cap rate, IRR|equity multiple/i);
-  assert.doesNotMatch(read('scripts/meta.md'), /equity multiple, IRR/i);
+  assert.match(fair, /4\.5×<\/span><span class="metric__label">Equity Multiple</, 'Fairground 4.5x equity multiple tile was restored at Gabriel\'s direction');
+  assert.match(fair, /63%\+<\/span><span class="metric__label">IRR</, 'Fairground 63%+ IRR tile was restored at Gabriel\'s direction');
+  assert.match(tr, /cap-rate expansion on generational holds/, 'Track Record meta wording was restored at Gabriel\'s direction');
+  assert.match(read('netlify/edge-functions/chat.ts'), /cap rate, yield on cost, IRR, and sale-price figures/);
+  assert.match(read('scripts/meta.md'), /equity multiple, IRR, and sale-price figures/);
 });

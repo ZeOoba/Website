@@ -10,7 +10,7 @@
       "must_contain": ["$1M", "$10M"], "must_not_contain": [], "must_decline": false },
     { "id": "fact-003", "category": "On-site factual",
       "input": "How much square footage does Oxford own?",
-      "must_contain": ["500"], "must_not_contain": [], "must_decline": false },
+      "must_contain": ["513"], "must_not_contain": [], "must_decline": false },
     { "id": "fact-004", "category": "On-site factual",
       "input": "Who runs the firm?",
       "must_contain": ["Eric", "Gabriel"], "must_not_contain": [], "must_decline": false },

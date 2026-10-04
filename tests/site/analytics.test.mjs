@@ -145,3 +145,70 @@ test('WP-19 contact.html has a wired AJAX success handler (was dead markup — #
   assert.match(successBlock, /gtag\('event',\s*'contact_form_submit'/, 'contact.html success handler does not fire contact_form_submit');
   assert.ok(successBlock.indexOf("success.style.display = ''") < successBlock.indexOf('contact_form_submit'), 'contact_form_submit fires before the success state is shown');
 });
+
+// ── 2026-10-04 Consent Mode v2 (ChatGPT "10/10" review adjudication) ────────
+// Before: GA4 loaded and configured on every page with NO consent default, and
+// the cookie banner's Accept/Decline only wrote a localStorage flag, so Decline
+// did nothing to analytics. Now analytics_storage is denied before gtag.js
+// loads (assets/consent-default.js, a same-origin text/partytown script, so no
+// CSP hash changes), Accept grants it, Decline never does.
+
+test('C1 every GA page loads /assets/consent-default.js as text/partytown after the Partytown snippet and BEFORE gtag.js', () => {
+  const bad = [];
+  for (const f of GA_PAGES) {
+    const s = scripts(read(f));
+    const consent = s.filter((x) => /^\/assets\/consent-default\.js\?v=\d+$/.test(x.attrs.src || ''));
+    const gtag = s.find((x) => /googletagmanager\.com\/gtag\/js/.test(x.attrs.src || ''));
+    const snip = s.find((x) => /^\/assets\/partytown\/partytown\.js\?v=/.test(x.attrs.src || ''));
+    if (consent.length !== 1) { bad.push(`${f}: ${consent.length} consent-default.js tags (want exactly 1)`); continue; }
+    if (consent[0].attrs.type !== 'text/partytown') bad.push(`${f}: consent-default.js is type="${consent[0].attrs.type || ''}", not text/partytown (it must run in the same worker as gtag)`);
+    if (!gtag || consent[0].index > gtag.index) bad.push(`${f}: consent-default.js must come before gtag.js`);
+    if (!snip || consent[0].index < snip.index) bad.push(`${f}: consent-default.js must come after the Partytown snippet`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+test('C2 consent-default.js denies all four Consent Mode v2 signals by default; only a stored Accept can start granted', () => {
+  const js = read('assets/consent-default.js');
+  assert.match(js, /gtag\('consent',\s*'default'/);
+  for (const k of ['ad_storage', 'ad_user_data', 'ad_personalization']) {
+    assert.match(js, new RegExp(`${k}:\\s*'denied'`), `${k} must stay denied`);
+  }
+  assert.match(js, /analytics_storage:\s*oxfordConsentGranted \? 'granted' : 'denied'/);
+  assert.match(js, /localStorage\.getItem\('oxford-cookies-accepted'\)\s*===\s*'true'/);
+  assert.doesNotMatch(js, /oxford-cookies-declined/, 'a stored Decline must never be read as consent');
+  // Partytown forwards main-thread window.gtag(...) to the worker's global gtag. A bare
+  // `function gtag(){}` is private to its worker script, so the forwarded call throws.
+  assert.match(js, /window\.gtag\s*=\s*function/, 'consent-default.js must assign window.gtag so forwarded calls resolve');
+});
+
+test('C3 the cookie banner grants analytics only on Accept (and for a stored Accept); Decline never grants', () => {
+  const js = read('script.js');
+  const grant = js.match(/grantAnalyticsConsent = function \(\) \{[\s\S]*?\n {8}\};/)?.[0] ?? '';
+  assert.match(grant, /window\.gtag\("consent", "update", \{ analytics_storage: "granted" \}\)/);
+  assert.doesNotMatch(grant, /ad_storage|ad_user_data|ad_personalization/, 'only analytics_storage may ever be granted');
+  const accept = js.match(/acceptButton\.addEventListener\("click", function \(\) \{[\s\S]*?\}\);/)?.[0] ?? '';
+  assert.match(accept, /grantAnalyticsConsent\(\)/, 'Accept must grant analytics consent');
+  const decline = js.match(/declineButton\.addEventListener\("click", function \(\) \{[\s\S]*?\}\);/)?.[0] ?? '';
+  assert.doesNotMatch(decline, /grantAnalyticsConsent|consent/, 'Decline must not grant anything');
+  assert.match(js, /getItem\("oxford-cookies-accepted"\) === "true"\) \{\s*grantAnalyticsConsent\(\);/, 'a stored Accept must be re-asserted on load');
+});
+
+test('C4 every GA page carries a cookie banner that names analytics cookies, so a visitor on any landing page can choose', () => {
+  const bad = [];
+  for (const f of GA_PAGES) {
+    const html = read(f);
+    for (const id of ['cookieBanner', 'cookieAccept', 'cookieDecline']) {
+      if (!html.includes(`id="${id}"`)) bad.push(`${f}: missing #${id}`);
+    }
+    if (!/Decline keeps measurement cookieless/.test(html)) bad.push(`${f}: banner copy does not explain the analytics choice`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+test('C5 the privacy policy describes the real analytics (GA4 with a consent choice) and no longer names Umami, which is not loaded', () => {
+  for (const f of GA_PAGES) assert.doesNotMatch(read(f), /umami/i, `${f} mentions Umami, which this site does not load`);
+  const p = read('privacy.html');
+  assert.match(p, /only after you click Accept on our cookie notice/);
+  assert.match(p, /if you click Decline/i);
+});

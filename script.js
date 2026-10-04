@@ -607,7 +607,21 @@
           try {
             localStorage.setItem(key, value);
           } catch (error) {}
+        },
+        // Google Consent Mode v2: assets/consent-default.js denies analytics storage
+        // before gtag.js loads. Accept grants it; Decline never calls this, so the
+        // default (denied, cookieless measurement) stands. window.gtag is the
+        // Partytown forwarding stub, so the call reaches the GA4 worker.
+        grantAnalyticsConsent = function () {
+          if (window.gtag) {
+            window.gtag("consent", "update", { analytics_storage: "granted" });
+          }
         };
+      // A returning visitor who accepted earlier: re-assert it (consent-default.js
+      // already starts them granted; this covers a worker that couldn't read storage).
+      if (getItem("oxford-cookies-accepted") === "true") {
+        grantAnalyticsConsent();
+      }
       if (!getItem("oxford-cookies-accepted") && !getItem("oxford-cookies-declined")) {
         var banner = qs("#cookieBanner");
         if (banner) {
@@ -637,6 +651,7 @@
           if (acceptButton) {
             acceptButton.addEventListener("click", function () {
               setItem("oxford-cookies-accepted", "true");
+              grantAnalyticsConsent();
               hideBanner();
             });
           }

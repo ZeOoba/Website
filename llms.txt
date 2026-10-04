@@ -1,8 +1,8 @@
 # Oxford Realty Advisors
 
-> Private, family-owned industrial real estate investment firm. Acquires Class B/C shallow-bay industrial, flex, and IOS properties ($1M-$10M, under 50,000 SF) across the Mid-Atlantic and Midwest with 100% family capital and all-cash closings in 30-45 days. Owns and operates 513,000+ SF with 138+ tenants — core markets Maryland and Columbus (OH), plus a single-building Kansas City (MO) holding.
+> Private, family-owned industrial real estate investment firm. Acquires Class B/C shallow-bay industrial, flex, and IOS properties ($1M-$10M, under 50,000 SF) across the Mid-Atlantic and Midwest with 100% family capital and all-cash closings in 30-45 days. Owns and operates 513,000+ SF with 138+ tenants — core markets Maryland and Columbus (OH), plus a Kansas City (MO) holding.
 
-Oxford Realty Advisors (founded 2005) is a principal investor and operator — not a fund — targeting the structural undersupply of functional Class B/C industrial space in secondary markets. Properties are acquired below replacement cost and held for the long term with no outside investors, no capital calls, and no investment committee. Core markets are Maryland (Columbia, Owings Mills, Eastern Shore, Baltimore) and Columbus, OH; Kansas City, MO is a single-building holding.
+Oxford Realty Advisors (founded 2005) is a principal investor and operator — not a fund — targeting the structural undersupply of functional Class B/C industrial space in secondary markets. Properties are acquired below replacement cost and held for the long term with no outside investors, no capital calls, and no investment committee. Core markets are Maryland (Columbia, Owings Mills, Eastern Shore, Baltimore) and Columbus, OH; Kansas City, MO is a holding.
 
 ## Key Pages
 
@@ -13,6 +13,7 @@ Oxford Realty Advisors (founded 2005) is a principal investor and operator — n
 - [Columbus, OH Market](https://oxfordra.net/markets/columbus-oh): Columbus-specific portfolio and market data
 - [Maryland Market](https://oxfordra.net/markets/maryland): Maryland-specific portfolio and market data
 - [Track Record](https://oxfordra.net/track-record): Case studies and investment performance
+- [How Oxford Sees Small Industrial](https://oxfordra.net/what-we-see): How Oxford underwrites small industrial: basis, function, vacancy, complexity and rent growth, with the case studies behind each point
 - [For Brokers](https://oxfordra.net/for-brokers): Deal submission, investment criteria, and broker incentives
 - [Sell Your Building](https://oxfordra.net/sell-your-building): Direct-to-owner sale process, all-cash offer terms, and seller FAQ
 - [Seller Resources](https://oxfordra.net/resources/): Guides on 1031 exchanges, industrial building valuation, sale document checklists, and selling without a broker

@@ -572,19 +572,22 @@ body{padding-top:36px}.nav{top:36px!important}
 </div>
 </div>
 
-<script defer src="/script.js?v=18"></script>
+<script defer src="/script.js?v=19"></script>
 <script defer src="/application-script.js?v=12"></script>
 <!-- Analytics: GA4 runs in a Partytown web worker (/assets/partytown/, @qwik.dev/partytown 0.14.4, MIT), so
      gtag.js never parses or executes on the main thread. page_view still comes solely from
      gtag('config'). If the service worker can't start, Partytown's fallbackTimeout (10s) runs both
-     scripts on the main thread instead. -->
+     scripts on the main thread instead.
+     Consent Mode v2: the denied-by-default consent call is in the SAME inline script, ahead of
+     gtag('config'), so the order holds in both modes (a separate async script would not). -->
 <script>partytown={lib:'/assets/partytown/',forward:['dataLayer.push','gtag']};</script>
 <script defer src="/assets/partytown/partytown.js?v=0.14.4"></script>
-<script type="text/partytown" src="/assets/consent-default.js?v=1"></script>
 <script type="text/partytown" src="https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC"></script>
 <script type="text/partytown">
 window.dataLayer=window.dataLayer||[];
-function gtag(){dataLayer.push(arguments)}
+window.gtag=function(){dataLayer.push(arguments)};
+var oraConsentGranted=false;try{oraConsentGranted=localStorage.getItem('oxford-cookies-accepted')==='true'}catch(e){}
+gtag('consent','default',{analytics_storage:oraConsentGranted?'granted':'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied'});
 gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
 </script>
 <script defer src="/assets/chat.js?v=2"></script>

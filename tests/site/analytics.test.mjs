@@ -149,40 +149,47 @@ test('WP-19 contact.html has a wired AJAX success handler (was dead markup — #
 // ── 2026-10-04 Consent Mode v2 (ChatGPT "10/10" review adjudication) ────────
 // Before: GA4 loaded and configured on every page with NO consent default, and
 // the cookie banner's Accept/Decline only wrote a localStorage flag, so Decline
-// did nothing to analytics. Now analytics_storage is denied before gtag.js
-// loads (assets/consent-default.js, a same-origin text/partytown script, so no
-// CSP hash changes), Accept grants it, Decline never does.
+// did nothing to analytics. Now analytics_storage is denied in the SAME inline
+// text/partytown script that configures GA4, ahead of gtag('config'). It must be
+// inline: Partytown's 10s main-thread fallback re-inserts external text/partytown
+// scripts asynchronously but runs inline ones immediately, so a separate
+// consent script lets 'config' win the race (found by the independent review).
+// Accept grants analytics only, Decline never does.
 
-test('C1 every GA page loads /assets/consent-default.js as text/partytown after the Partytown snippet and BEFORE gtag.js', () => {
+test('C1 on every GA page the Consent Mode default sits in the same inline text/partytown script as gtag("config"), before it', () => {
   const bad = [];
   for (const f of GA_PAGES) {
     const s = scripts(read(f));
-    const consent = s.filter((x) => /^\/assets\/consent-default\.js\?v=\d+$/.test(x.attrs.src || ''));
-    const gtag = s.find((x) => /googletagmanager\.com\/gtag\/js/.test(x.attrs.src || ''));
-    const snip = s.find((x) => /^\/assets\/partytown\/partytown\.js\?v=/.test(x.attrs.src || ''));
-    if (consent.length !== 1) { bad.push(`${f}: ${consent.length} consent-default.js tags (want exactly 1)`); continue; }
-    if (consent[0].attrs.type !== 'text/partytown') bad.push(`${f}: consent-default.js is type="${consent[0].attrs.type || ''}", not text/partytown (it must run in the same worker as gtag)`);
-    if (!gtag || consent[0].index > gtag.index) bad.push(`${f}: consent-default.js must come before gtag.js`);
-    if (!snip || consent[0].index < snip.index) bad.push(`${f}: consent-default.js must come after the Partytown snippet`);
+    const cfg = s.filter((x) => x.body.includes(`gtag('config','${GA_ID}')`));
+    if (cfg.length !== 1) { bad.push(`${f}: want exactly one script with gtag('config') (found ${cfg.length})`); continue; }
+    const { attrs, body } = cfg[0];
+    if (attrs.type !== 'text/partytown' || attrs.src) bad.push(`${f}: the config script must be inline text/partytown`);
+    const iDefault = body.indexOf("gtag('consent','default'");
+    if (iDefault < 0) bad.push(`${f}: no gtag('consent','default') in the config script`);
+    else if (iDefault > body.indexOf(`gtag('config','${GA_ID}')`)) bad.push(`${f}: consent default must come BEFORE gtag('config')`);
+    if (s.some((x) => /consent-default\.js/.test(x.attrs.src || ''))) bad.push(`${f}: a separate async consent script races config in Partytown's fallback mode`);
   }
   assert.deepEqual(bad, []);
+  assert.ok(!existsSync(path.join(ROOT, 'assets/consent-default.js')), 'assets/consent-default.js is obsolete');
 });
 
-test('C2 consent-default.js denies all four Consent Mode v2 signals by default; only a stored Accept can start granted', () => {
-  const js = read('assets/consent-default.js');
-  assert.match(js, /gtag\('consent',\s*'default'/);
+test('C2 the inline default denies all four Consent Mode v2 signals; only a stored Accept can start granted; window.gtag is assigned', () => {
+  const bodies = new Set(GA_PAGES.map((f) => scripts(read(f)).find((x) => x.body.includes(`gtag('config','${GA_ID}')`)).body.replace(/gtag\('event','tenant_application_submitted'\);?\s*/, '')));
+  assert.equal(bodies.size, 1, `the inline GA script should be byte-identical on every page (apart from the tenant event), found ${bodies.size} variants`);
+  const js = [...bodies][0];
   for (const k of ['ad_storage', 'ad_user_data', 'ad_personalization']) {
-    assert.match(js, new RegExp(`${k}:\\s*'denied'`), `${k} must stay denied`);
+    assert.match(js, new RegExp(`${k}:'denied'`), `${k} must stay denied`);
   }
-  assert.match(js, /analytics_storage:\s*oxfordConsentGranted \? 'granted' : 'denied'/);
-  assert.match(js, /localStorage\.getItem\('oxford-cookies-accepted'\)\s*===\s*'true'/);
+  assert.match(js, /analytics_storage:oraConsentGranted\?'granted':'denied'/);
+  assert.match(js, /localStorage\.getItem\('oxford-cookies-accepted'\)==='true'/);
   assert.doesNotMatch(js, /oxford-cookies-declined/, 'a stored Decline must never be read as consent');
   // Partytown forwards main-thread window.gtag(...) to the worker's global gtag. A bare
   // `function gtag(){}` is private to its worker script, so the forwarded call throws.
-  assert.match(js, /window\.gtag\s*=\s*function/, 'consent-default.js must assign window.gtag so forwarded calls resolve');
+  assert.match(js, /window\.gtag=function/, 'the inline script must assign window.gtag so forwarded calls resolve');
+  assert.doesNotMatch(js, /function gtag\(\)/, 'a bare function declaration is private to the Partytown worker script');
 });
 
-test('C3 the cookie banner grants analytics only on Accept (and for a stored Accept); Decline never grants', () => {
+test('C3 the cookie banner grants analytics only on Accept; Decline never grants', () => {
   const js = read('script.js');
   const grant = js.match(/grantAnalyticsConsent = function \(\) \{[\s\S]*?\n {8}\};/)?.[0] ?? '';
   assert.match(grant, /window\.gtag\("consent", "update", \{ analytics_storage: "granted" \}\)/);
@@ -191,7 +198,6 @@ test('C3 the cookie banner grants analytics only on Accept (and for a stored Acc
   assert.match(accept, /grantAnalyticsConsent\(\)/, 'Accept must grant analytics consent');
   const decline = js.match(/declineButton\.addEventListener\("click", function \(\) \{[\s\S]*?\}\);/)?.[0] ?? '';
   assert.doesNotMatch(decline, /grantAnalyticsConsent|consent/, 'Decline must not grant anything');
-  assert.match(js, /getItem\("oxford-cookies-accepted"\) === "true"\) \{\s*grantAnalyticsConsent\(\);/, 'a stored Accept must be re-asserted on load');
 });
 
 test('C4 every GA page carries a cookie banner that names analytics cookies, so a visitor on any landing page can choose', () => {
@@ -204,6 +210,47 @@ test('C4 every GA page carries a cookie banner that names analytics cookies, so 
     if (!/Decline keeps measurement cookieless/.test(html)) bad.push(`${f}: banner copy does not explain the analytics choice`);
   }
   assert.deepEqual(bad, []);
+});
+
+// ── 2026-10-04 click events + "how did you hear about us" ───────────────────
+
+test('E1 script.js has one delegated click listener for phone, email, PDF and primary CTA events, all guarded by window.gtag', () => {
+  const js = read('script.js');
+  for (const name of ['phone_click', 'email_click', 'pdf_download', 'cta_click']) {
+    assert.match(js, new RegExp(`send\\("${name}"`), `script.js does not send ${name}`);
+  }
+  assert.match(js, /if \(window\.gtag\) \{\s*window\.gtag\("event", name, params\);/, 'events must be guarded by window.gtag');
+  for (const [p, cta] of [['/for-brokers', 'submit_deal'], ['/sell-your-building', 'get_offer'], ['/tenant-application', 'apply_now'], ['/contact', 'contact']]) {
+    assert.ok(js.includes(`"${p}": "${cta}"`), `CTA path map is missing ${p} -> ${cta}`);
+  }
+  assert.equal((js.match(/document\.addEventListener\("click", function \(e\) \{\s*var link =/g) || []).length, 1, 'exactly one delegated click-tracking listener');
+});
+
+test('E2 the owner form fires owner_form_submit after its success state, carrying referral_source', () => {
+  const html = read('sell-your-building.html');
+  const block = html.match(/\.then\(function\(res\)\{[\s\S]*?\}\)\.catch/)?.[0] ?? '';
+  assert.match(block, /gtag\('event',\s*'owner_form_submit'/);
+  assert.match(block, /referral_source:/);
+  assert.ok(block.indexOf("success.style.display = ''") < block.indexOf('owner_form_submit'), 'owner_form_submit fires before the success state is shown');
+});
+
+test('E3 contact, owner and broker forms ask an optional "How did you hear about us?" named referral-source, and it is carried through', () => {
+  for (const f of ['contact.html', 'sell-your-building.html', 'for-brokers.html']) {
+    const html = read(f);
+    const sel = html.match(/<select id="[a-z-]+" name="referral-source">[\s\S]*?<\/select>/)?.[0] ?? '';
+    assert.ok(sel, `${f}: no referral-source <select>`);
+    assert.match(sel, /<option value="">Select\.\.\.<\/option>/, `${f}: the question must stay optional (blank default)`);
+    assert.match(sel, /AI assistant/, `${f}: include an AI-assistant source so answer-engine referrals are measurable`);
+    assert.doesNotMatch(sel.match(/<select[^>]*>/)[0], /\brequired\b/, `${f}: must not be required`);
+  }
+  assert.match(read('broker-intake-form.html'), /name="referral-source"/, 'the broker intake stub form must declare the field or Netlify drops it');
+  assert.match(read('broker-upload.js'), /referralSource: \(formEl\.querySelector\('\[name="referral-source"\]'\) \|\| \{\}\)\.value \|\| ''/);
+  assert.match(read('broker-upload.js'), /referralSource: fields\.referralSource/);
+  assert.match(read('netlify/functions/broker-upload-session.js'), /'referral-source': referralSource \|\| ''/);
+  assert.match(read('netlify/functions/broker-upload-session.js'), /referralSource: sanitizeField\(body\.referralSource, 60\)/);
+  for (const f of ['contact-notify.js', 'owner-lead-notify.js']) {
+    assert.match(read(`netlify/functions/${f}`), /'referral-source': 'How They Heard About Us'/, `${f}: unlabeled field would show raw in the email`);
+  }
 });
 
 test('C5 the privacy policy describes the real analytics (GA4 with a consent choice) and no longer names Umami, which is not loaded', () => {

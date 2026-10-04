@@ -126,3 +126,22 @@ test('P7 every property page is linked from outside /portfolio; Track Record lin
   const linked = new Set([...tr.matchAll(/href="\/properties\/([a-z0-9-]+)"/g)].map((m) => m[1]));
   assert.ok(linked.size >= 6, `track-record should link its case studies to property pages, found ${linked.size}`);
 });
+
+// W3 — case-study facts (Gabriel's 2026-10-04 rulings): 3540's ~12% is yield on
+// total cost (price + renovation), not a going-in cap; Fairground's equity
+// multiple / IRR are unverifiable and are not published or quotable by the chatbot.
+test('P8 3540 ~12% is labeled yield on cost; Fairground shows no unverifiable multiple or IRR', () => {
+  const home = read('index.html');
+  const tr = read('track-record.html');
+  for (const [name, html] of [['index.html', home], ['track-record.html', tr]]) {
+    assert.doesNotMatch(html, /going-in cap/i, `${name}: "going-in cap" mislabels a yield on cost`);
+    assert.doesNotMatch(html, /cap-rate expansion/i, `${name}: "cap-rate expansion" reads as a value loss`);
+  }
+  assert.match(home, /~12%<\/span><span class="metric-tile__label">Yield on Cost</);
+  assert.match(tr, /~12%<\/span>\s*<span class="metric__label">Yield on Cost</);
+  const fair = tr.slice(tr.indexOf('<h3>Fairground Village Center</h3>'));
+  assert.ok(fair.length > 100, 'Fairground card must exist');
+  assert.doesNotMatch(fair, /Equity Multiple|>IRR</i, 'Fairground must not publish an equity multiple or IRR');
+  assert.doesNotMatch(read('netlify/edge-functions/chat.ts'), /cap rate, IRR|equity multiple/i);
+  assert.doesNotMatch(read('scripts/meta.md'), /equity multiple, IRR/i);
+});

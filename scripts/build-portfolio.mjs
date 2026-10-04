@@ -35,7 +35,7 @@ const FAQ_RE = /<!-- portfolio:faq:begin -->[\s\S]*?<!-- portfolio:faq:end -->/;
 const FAQ = [
   {
     q: 'What does Oxford Realty Advisors own?',
-    a: 'Oxford owns 513,000+ SF of shallow-bay industrial, flex and light industrial outdoor storage (IOS) space, plus a small share of retail and office, across Maryland, Columbus (Ohio) and Kansas City (Missouri).',
+    a: 'Oxford owns 513,000+ SF of shallow-bay industrial, flex and light industrial outdoor storage (IOS) space, plus a small share of retail and office, in two core markets, Maryland and Columbus (Ohio), plus a Kansas City (Missouri) holding.',
   },
   {
     q: 'What is shallow-bay industrial?',

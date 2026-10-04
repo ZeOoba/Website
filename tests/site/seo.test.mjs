@@ -570,11 +570,11 @@ test('tenant-resources describes two core markets plus a Kansas City holding, no
 // no ownership structure, no lender/loan wording, no tenant names. Broadway is medical
 // retail at $49/SF per the settlement register ($1,350,000 / 27,650 SF).
 
-test('track-record: five studies each carry Situation / What we saw / What we did / Result', () => {
+test('track-record: seven studies each carry Situation / What we saw / What we did / Result', () => {
   const html = read('track-record.html');
   for (const label of ['Situation', 'What we saw', 'What we did', 'Result']) {
     const n = (html.match(new RegExp(`<strong>${label}\.</strong>`, 'g')) || []).length;
-    assert.equal(n, 5, `expected 5 "${label}." lead-ins (3540 + four cards), found ${n}`);
+    assert.equal(n, 7, `expected 7 "${label}." lead-ins (3540 + four cards + 55 New Plant Ct + 7658 Fishel), found ${n}`);
   }
 });
 

@@ -139,6 +139,7 @@ const EXPECTED_JSONLD_TYPES = {
   'properties/3034-westerville-rd.html': ['BreadcrumbList', 'Place'],
   'properties/3875-3883-e-livingston.html': ['BreadcrumbList', 'Place'],
   'properties/9620-state-route-350.html': ['BreadcrumbList', 'Place'],
+  'properties/7658-fishel-drive-n.html': ['BreadcrumbList', 'Place'],
   'markets/index.html': ['BreadcrumbList', 'ItemList'],
   'markets/columbus-oh.html': ['BreadcrumbList', 'FAQPage'],
   'markets/maryland.html': ['BreadcrumbList', 'FAQPage'],

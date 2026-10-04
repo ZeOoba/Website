@@ -34,7 +34,7 @@ test('chips come only from sourced specs, never hand-typed, and cap at three', a
   const { chipsFor } = await load();
   assert.deepStrictEqual(chipsFor(asset('55 New Plant Court')), ['Single-tenant', 'Truck docks', "20' ceilings"]);
   assert.deepStrictEqual(chipsFor(asset('2012-2026 Zettler Rd')), ['Multi-tenant', 'Drive-in doors']);
-  assert.deepStrictEqual(chipsFor(asset('2203-2207 Northwood Dr')), [], 'an asset with no sourced specs gets no chips');
+  assert.deepStrictEqual(chipsFor(asset('401 Sunburst Highway')), [], 'an asset with no sourced specs gets no chips');
   for (const a of ASSETS) assert.ok(chipsFor(a).length <= 3, a.name);
 });
 

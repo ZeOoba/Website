@@ -196,7 +196,9 @@ test('P8 3540 ~12% is labeled yield on cost; Fairground keeps its published mult
   const fair = tr.slice(tr.indexOf('<h3>Fairground Village Center</h3>'));
   assert.match(fair, /4\.5×<\/span><span class="metric__label">Equity Multiple</, 'Fairground 4.5x equity multiple tile was restored at Gabriel\'s direction');
   assert.match(fair, /63%\+<\/span><span class="metric__label">IRR</, 'Fairground 63%+ IRR tile was restored at Gabriel\'s direction');
-  assert.match(tr, /cap-rate expansion on generational holds/, 'Track Record meta wording was restored at Gabriel\'s direction');
+  // Meta says NOI growth, not "cap-rate expansion" (which reads as a value loss): Gabriel's wording.
+  assert.match(tr, /proven NOI growth on generational holds/);
+  assert.doesNotMatch(tr, /cap-rate expansion/i);
   assert.match(read('netlify/edge-functions/chat.ts'), /cap rate, yield on cost, IRR, and sale-price figures/);
   assert.match(read('scripts/meta.md'), /equity multiple, IRR, and sale-price figures/);
 });

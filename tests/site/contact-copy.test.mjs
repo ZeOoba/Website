@@ -18,9 +18,10 @@ const section = (main.match(/<section[^>]*aria-label="What happens next"[\s\S]*?
 test('the header is casual and still makes the one-business-day promise', () => {
   assert.match(main, /<h1[^>]*>Say hello<\/h1>/);
   const intro = main.match(/<p class="section__intro[^"]*">([\s\S]*?)<\/p>/)[1];
-  assert.match(intro, /real person reads every message/i);
-  assert.match(intro, /Gabriel/);
+  assert.match(intro, /friendly/i);
+  assert.match(intro, /don(?:'|&rsquo;|’)t bite/i);
   assert.match(intro, /one business day/i, 'the response promise must stay in the header');
+  assert.doesNotMatch(intro, /real (?:person|human)/i, 'who reads it is said once, in the What happens section');
 });
 
 test('"What happens when you hit send" is a single sentence', () => {
@@ -41,7 +42,6 @@ test('"What happens when you hit send" is a single sentence', () => {
 
 test('the voice is dry: the nerd line, the aside and the form copy are in place', () => {
   assert.match(main, /genuinely excited about loading docks, drive-in doors and clear heights\. Consider yourself warned\./);
-  assert.match(main, /usually Gabriel, sometimes Eric \(we checked\)/);
   assert.match(main, /placeholder="Tell us about the building\. Leaky roofs and deferred maintenance welcome\."/);
   assert.match(main, /<option value="Just saying hi">Not sure, just saying hi<\/option>/);
 });

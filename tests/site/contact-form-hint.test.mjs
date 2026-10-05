@@ -119,7 +119,44 @@ test('a visitor can still change the subject after a deep link', { timeout: 120_
   }
 });
 
-test('every subject option has a unique data-key, and Available Space links to the leasing deep link', { timeout: 120_000 }, async () => {
+// After a successful send, the While you wait panel shows only the links that fit the subject
+// (all of them for General / just saying hi). The POST to / is simulated; nothing is sent.
+const ALL = ['/resources/', '/for-brokers#broker-network', '/available-space', '/tenant-resources'];
+const AFTER_SEND = [
+  ['Acquisition Opportunity', ['/resources/', '/for-brokers#broker-network']],
+  ['Leasing Inquiry', ['/available-space']],
+  ['Tenant Support', ['/tenant-resources']],
+  ['General', ALL],
+  ['Just saying hi', ALL],
+];
+for (const [subject, want] of AFTER_SEND) {
+  test(`after sending as "${subject}" the While you wait panel shows the matching links`, { timeout: 120_000 }, async () => {
+    const { context, page, errors } = await openContact({ width: 1280, height: 900 });
+    try {
+      let posts = 0;
+      await context.route(`${server.url}/`, (route) => {
+        if (route.request().method() === 'POST') { posts += 1; return route.fulfill({ status: 200, body: 'ok' }); }
+        return route.continue();
+      });
+      await page.selectOption('#contact-subject', subject);
+      await page.fill('#contact-name', 'Test Person');
+      await page.fill('#contact-email', 'test@example.com');
+      await page.fill('#contact-message', 'Automated test, nothing is sent.');
+      await page.click('#contactForm button[type="submit"]');
+      await page.waitForSelector('#contactSuccess', { state: 'visible' });
+      assert.equal(posts, 1, 'exactly one simulated POST');
+      assert.match(await page.$eval('#contactSuccess p[role="alert"]', (el) => el.textContent), /real person.*one business day/);
+      const hrefs = await page.$$eval('.contact-wait__item', (els) => els.filter((e) => e.offsetParent !== null).flatMap((e) => [...e.querySelectorAll('a')].map((a) => a.getAttribute('href'))));
+      assert.deepEqual(hrefs, want);
+      assert.equal(await page.isVisible('#contact-name'), false, 'fields are hidden after a successful send');
+      assert.deepEqual(errors, []);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test('every subject option has a unique data-key, and Available Space links to the leasing deep link',{ timeout: 120_000 }, async () => {
   const { context, page } = await openContact({ width: 1280, height: 900 });
   try {
     const keys = await page.$$eval('#contact-subject option', (os) => os.map((o) => o.getAttribute('data-key')));

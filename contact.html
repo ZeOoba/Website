@@ -205,6 +205,19 @@ body{padding-top:36px}.nav{top:36px!important}
 .contact-lede__punch{font-style:italic;color:var(--gold-accessible)}
 .contact-aside{max-width:640px;text-wrap:balance;margin:8px auto 0;font-family:var(--font-display);font-style:italic;font-size:20px;line-height:1.5;color:var(--gold-light);text-align:center}
 .contact-nowrap{white-space:nowrap}
+.contact-wait{margin-top:16px;padding-top:16px;border-top:1px solid var(--divider);color:var(--navy)}
+.contact-wait__title{font-family:var(--font-body);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--gold-accessible);margin-bottom:8px}
+.contact-wait__item{font-size:15px;line-height:1.6;margin:6px 0}
+#contactSuccess .contact-wait a{color:var(--navy);text-decoration:underline;text-underline-offset:3px}
+#contactSuccess .contact-wait a:hover{color:var(--gold-accessible)}
+/* Show only the items that fit the chosen subject; browsers without :has() show all three. */
+@supports selector(:has(*)){
+#contactForm:has(#contact-subject option[data-key="acquisition"]:checked) .contact-wait__item:not([data-for~="acquisition"]),
+#contactForm:has(#contact-subject option[data-key="leasing"]:checked) .contact-wait__item:not([data-for~="leasing"]),
+#contactForm:has(#contact-subject option[data-key="tenant"]:checked) .contact-wait__item:not([data-for~="tenant"]),
+#contactForm:has(#contact-subject option[data-key="general"]:checked) .contact-wait__item:not([data-for~="general"]),
+#contactForm:has(#contact-subject option[data-key="hi"]:checked) .contact-wait__item:not([data-for~="hi"]){display:none}
+}
 .contact-sign{max-width:720px;margin:16px auto 0;font-family:var(--font-display);font-style:italic;font-size:20px;color:var(--gold-accessible);text-align:center}
 .contact-header{padding-top:120px;padding-bottom:56px}
 .contact-header .section__header{margin-bottom:0}
@@ -297,7 +310,15 @@ body{padding-top:36px}.nav{top:36px!important}
 </div>
 <button type="submit" class="btn btn--gold btn--full">Send it our way</button>
 <p class="contact-promise"><strong>We reply within one business day.</strong></p>
-<div class="form-success" id="contactSuccess" role="alert" style="display:none;">Got it. A real person will read this and respond within one business day. Carry on.</div>
+<div class="form-success" id="contactSuccess" style="display:none;">
+<p role="alert">Got it. A real person will read this and respond within one business day. Carry on.</p>
+<div class="contact-wait" role="group" aria-label="While you wait">
+<h3 class="contact-wait__title">While you wait</h3>
+<p class="contact-wait__item" data-for="acquisition general hi">Thinking of selling? <a href="/resources/">Read the owner guides</a>, or <a href="/for-brokers#broker-network">upload an OM or rent roll</a>.</p>
+<p class="contact-wait__item" data-for="leasing general hi">Looking for space? <a href="/available-space">See what is available now</a>.</p>
+<p class="contact-wait__item" data-for="tenant general hi">Current tenant? <a href="/tenant-resources">Open tenant resources</a>.</p>
+</div>
+</div>
 <div class="form-error" id="contactError" role="alert" style="display:none;color:#B0432F;margin-top:12px;"></div>
 </form>
 <script>

@@ -22,10 +22,23 @@ test('the header is casual', () => {
   assert.doesNotMatch(intro, /real (?:person|human)/i, 'who reads it is said once, in the What happens section');
 });
 
-test('the one-business-day promise moved into the main sentence, so it is still visible before submitting', () => {
-  const lede = section.match(/<p class="contact-lede[^"]*">([\s\S]*?)<\/p>/)[1];
-  assert.match(lede, /within one business day/i);
+test('the loading-docks line sits in the header, where more people see it', () => {
+  const header = main.match(/<section[^>]*aria-label="Page header"[\s\S]*?<\/section>/)[0];
+  assert.match(header, /<p class="contact-aside">We get genuinely excited about loading docks, drive-in doors and clear heights\. Consider yourself warned\.<\/p>/);
+  assert.doesNotMatch(section, /loading docks/i, 'said once: it moved up out of the bottom section');
   assert.doesNotMatch(section, /class="section__label"/, 'the eyebrow label is removed on purpose');
+});
+
+test('the one-business-day promise sits right under the submit button (and not in the lede)', () => {
+  assert.match(main, /<button type="submit"[^>]*>Send it our way<\/button>\s*<p class="contact-promise"><strong>We reply within one business day\.<\/strong><\/p>/);
+  const lede = section.match(/<p class="contact-lede[^"]*">([\s\S]*?)<\/p>/)[1];
+  assert.doesNotMatch(lede, /one business day/i, 'the promise is next to the form now; do not repeat it in the lede');
+});
+
+test('the new styles use the site color tokens only (no raw hex)', () => {
+  const rules = (main.match(/\.contact-[a-z_-]+[^{]*\{[^}]*\}/g) || []).filter((r) => /^\.contact-(lede|aside|promise)/.test(r));
+  assert.ok(rules.length >= 3, 'expected rules for contact-lede, contact-aside and contact-promise');
+  for (const r of rules) assert.doesNotMatch(r, /#[0-9a-f]{3,8}\b/i, `raw hex color in: ${r}`);
 });
 
 test('"What happens when you hit send" is a single sentence', () => {
@@ -36,13 +49,13 @@ test('"What happens when you hit send" is a single sentence', () => {
   assert.ok(lede, 'p.contact-lede missing');
   const plain = lede.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').trim();
   assert.match(plain, /^[^.!?]+[.]$/, `must be exactly one sentence ending in a period: "${plain}"`);
-  assert.match(plain, /^Gabriel or Eric, a real human and not a bot, reads it within one business day, writes back with next steps, and if the numbers work, tells you directly,/);
+  assert.match(plain, /^Gabriel or Eric, a real human and not a bot, reads it, writes back with next steps, and if the numbers work, tells you directly,/);
+  assert.match(lede, /<em class="contact-lede__punch">suspense is not part of our process<\/em>/);
   assert.ok(plain.split(/\s+/).length <= 45, `keep it short enough that the punchline lands (${plain.split(/\s+/).length} words)`);
   assert.match(plain, /suspense is not part of our process/i);
 });
 
 test('the voice is dry: the nerd line, the aside and the form copy are in place', () => {
-  assert.match(main, /genuinely excited about loading docks, drive-in doors and clear heights\. Consider yourself warned\./);
   assert.match(main, /placeholder="Tell us about the building\. Leaky roofs and deferred maintenance welcome\."/);
   assert.match(main, /<option value="Just saying hi">Not sure, just saying hi<\/option>/);
 });

@@ -190,6 +190,7 @@ body{padding-top:36px}.nav{top:36px!important}
 <div class="section__header">
 <h1 class="text-white">Say hello</h1>
 <p class="section__intro text-white-muted">We&rsquo;re the opposite of intimidating and always down to talk industrial real estate.</p>
+<p class="contact-aside">We get genuinely excited about loading docks, drive-in doors and clear heights. Consider yourself warned.</p>
 </div>
 </div>
 </section>
@@ -201,8 +202,11 @@ body{padding-top:36px}.nav{top:36px!important}
 .contact-routes a{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--light-gray);color:var(--navy);font-size:15px}
 .contact-routes a span{color:var(--slate);font-size:13px}
 .contact-routes a:hover{color:var(--gold-accessible);text-decoration:none}
-.contact-lede{max-width:720px;margin:0 auto;font-family:var(--font-display);font-size:22px;line-height:1.6;color:var(--navy);text-align:center}
-.contact-nerd{max-width:720px;margin:36px auto 0;padding-top:24px;border-top:1px solid var(--divider);font-family:var(--font-display);font-style:italic;font-size:18px;color:var(--slate);text-align:center}
+.contact-lede{max-width:720px;text-wrap:balance;margin:0 auto;font-family:var(--font-display);font-size:22px;line-height:1.6;color:var(--navy);text-align:center}
+.contact-lede__punch{font-style:italic;color:var(--gold-accessible)}
+.contact-aside{max-width:640px;text-wrap:balance;margin:20px auto 0;padding-top:20px;border-top:1px solid var(--divider);font-family:var(--font-display);font-style:italic;font-size:18px;line-height:1.5;color:var(--gold-light);text-align:center}
+.contact-promise{margin-top:12px;font-size:13px;line-height:1.5;text-align:center;color:var(--slate)}
+.contact-promise strong{font-weight:500;color:var(--gold-accessible)}
 </style>
 <section class="section" aria-label="Contact form and information">
 <div class="container">
@@ -289,6 +293,7 @@ body{padding-top:36px}.nav{top:36px!important}
 <div data-netlify-recaptcha="true"></div>
 </div>
 <button type="submit" class="btn btn--gold btn--full">Send it our way</button>
+<p class="contact-promise"><strong>We reply within one business day.</strong></p>
 <div class="form-success" id="contactSuccess" role="alert" style="display:none;">Got it. A real person will read this and respond within one business day. Carry on.</div>
 <div class="form-error" id="contactError" role="alert" style="display:none;color:#B0432F;margin-top:12px;"></div>
 </form>
@@ -347,8 +352,7 @@ body{padding-top:36px}.nav{top:36px!important}
 <div class="section__header animate-on-scroll">
 <h2>What happens when you hit send</h2>
 </div>
-<p class="contact-lede animate-on-scroll">Gabriel or Eric, a real human and not a bot, reads it within one business day, writes back with next steps, and if the numbers work, tells you directly, because suspense is not part of our process.</p>
-<p class="contact-nerd animate-on-scroll">We get genuinely excited about loading docks, drive-in doors and clear heights. Consider yourself warned.</p>
+<p class="contact-lede animate-on-scroll">Gabriel or Eric, a real human and not a bot, reads it, writes back with next steps, and if the numbers work, tells you directly, because <em class="contact-lede__punch">suspense is not part of our process</em>.</p>
 </div>
 </section>
 

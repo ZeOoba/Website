@@ -38,7 +38,7 @@ const FAKE_GTAG = `(function () {
     } else if (a[0] === 'config') {
       log('config');
     } else if (a[0] === 'event') {
-      log('event-' + a[1]);
+      log('event-' + a[1] + (a[2] && a[2].event_label ? '[' + a[2].event_label + ']' : ''));
     }
   }
   var dl = window.dataLayer = window.dataLayer || [];
@@ -150,25 +150,41 @@ test('phone, email, PDF and CTA clicks each emit one GA4 event through the worke
   // Keep the browser on the page: a tel:/mailto:/PDF navigation would leave it. This
   // listener is added after script.js's, so the tracking handler has already run.
   await page.evaluate(() => document.addEventListener('click', (e) => { if (e.target.closest('a[href]')) e.preventDefault(); }));
-  const expectEvent = (name) =>
+  // Log entries look like "event-<name>[<label>]:<analytics>:<ads>"; pass a label to pin it.
+  const expectEvent = (name, label) =>
     page.waitForFunction(
-      (n) => document.documentElement.getAttributeNames().some((a) => a.startsWith('data-ga-') && document.documentElement.getAttribute(a).startsWith(`event-${n}:`)),
-      name,
+      (want) => document.documentElement.getAttributeNames().some((a) => a.startsWith('data-ga-') && document.documentElement.getAttribute(a).startsWith(want)),
+      `event-${name}${label ? `[${label}]` : ''}`,
       { timeout: 15_000 },
-    );
+    ).catch(async (err) => {
+      throw new Error(`expected event-${name}${label ? `[${label}]` : ''} but the log is ${JSON.stringify(await readLog(page))}: ${err.message.split('\n')[0]}`);
+    });
   await page.locator('.subpage-hero a.btn--gold[href="#broker-network"]').click();
-  await expectEvent('cta_click');
+  await expectEvent('cta_click', 'submit_deal');
   await page.locator('a[href^="tel:"]').first().click({ force: true });
   await expectEvent('phone_click');
-  await page.locator('a[href^="mailto:"]').first().click({ force: true });
-  await expectEvent('email_click');
+  // GA4 auto-redacts email-shaped values to "(redacted)", so a firm mailbox is labeled by
+  // its name only (info), and any other address is never named (external).
+  await page.locator('a[href="mailto:info@oxfordra.net"]').first().click({ force: true });
+  await expectEvent('email_click', 'info');
+  await page.evaluate(() => {
+    const a = document.createElement('a');
+    a.href = 'mailto:visitor@example.com';
+    a.textContent = 'visitor';
+    document.body.appendChild(a);
+  });
+  // dispatchEvent rather than a coordinate click: the fixed cookie banner covers the page bottom.
+  await page.locator('a[href="mailto:visitor@example.com"]').dispatchEvent('click');
+  await expectEvent('email_click', 'external');
+  const log = await readLog(page);
+  assert.ok(!log.some((l) => /@/.test(l)), `an email address reached the analytics layer: ${JSON.stringify(log)}`);
   await context.close();
   const home = await open('/');
   await waitForConfig(home.page);
   await home.page.evaluate(() => document.addEventListener('click', (e) => { if (e.target.closest('a[href]')) e.preventDefault(); }));
   await home.page.locator('a[href$=".pdf"]').first().click({ force: true });
   await home.page.waitForFunction(
-    () => document.documentElement.getAttributeNames().some((a) => a.startsWith('data-ga-') && document.documentElement.getAttribute(a).startsWith('event-pdf_download:')),
+    () => document.documentElement.getAttributeNames().some((a) => a.startsWith('data-ga-') && document.documentElement.getAttribute(a).startsWith('event-pdf_download')),
     null,
     { timeout: 15_000 },
   );

@@ -35,14 +35,14 @@ const HINTS = {
   'Just saying hi': 'Say hi. We will say hi back.',
 };
 
-async function openContact(viewport) {
+async function openContact(viewport, search = '') {
   const context = await browser.newContext({ viewport });
   // Same-origin only: analytics, chat, maps and reCAPTCHA must not make this flaky.
   await context.route('**/*', (route) => (route.request().url().startsWith(server.url) ? route.continue() : route.abort()));
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${server.url}/contact`, { waitUntil: 'load' });
+  await page.goto(`${server.url}/contact${search}`, { waitUntil: 'load' });
   return { context, page, errors };
 }
 
@@ -81,6 +81,55 @@ test('after Back, the browser restores the chosen subject and the placeholder fo
   } finally {
     await context.close();
   }
+});
+
+// Deep links: /contact?subject=<key> preselects the subject (and so the placeholder).
+// Only the keys below are honoured; anything else falls back to the default.
+const DEEP_LINKS = [
+  ['?subject=leasing', 'Leasing Inquiry'],
+  ['?subject=TENANT', 'Tenant Support'],
+  ['?subject=acquisition', 'Acquisition Opportunity'],
+  ['?subject=general', 'General'],
+  ['?subject=hi', 'Just saying hi'],
+  ['?subject=nonsense', 'Acquisition Opportunity'],
+  ['?subject=', 'Acquisition Opportunity'],
+  ['?subject=%3Cscript%3Ealert(1)%3C%2Fscript%3E', 'Acquisition Opportunity'],
+  ['?subject=Leasing%20Inquiry', 'Acquisition Opportunity'], // keys only, not display values
+];
+for (const [search, want] of DEEP_LINKS) {
+  test(`deep link ${search || '(empty)'} selects "${want}" and the matching placeholder`, { timeout: 120_000 }, async () => {
+    const { context, page, errors } = await openContact({ width: 1280, height: 900 }, search);
+    try {
+      assert.equal(await page.$eval('#contact-subject', (el) => el.value), want);
+      assert.equal(await page.$eval('#contact-message', (el) => el.placeholder), HINTS[want]);
+      assert.deepEqual(errors, []);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test('a visitor can still change the subject after a deep link', { timeout: 120_000 }, async () => {
+  const { context, page } = await openContact({ width: 1280, height: 900 }, '?subject=leasing');
+  try {
+    await page.selectOption('#contact-subject', 'General');
+    assert.equal(await page.$eval('#contact-message', (el) => el.placeholder), HINTS.General);
+  } finally {
+    await context.close();
+  }
+});
+
+test('every subject option has a unique data-key, and Available Space links to the leasing deep link', { timeout: 120_000 }, async () => {
+  const { context, page } = await openContact({ width: 1280, height: 900 });
+  try {
+    const keys = await page.$$eval('#contact-subject option', (os) => os.map((o) => o.getAttribute('data-key')));
+    assert.deepEqual(keys, ['acquisition', 'leasing', 'tenant', 'general', 'hi']);
+  } finally {
+    await context.close();
+  }
+  const fs = await import('node:fs');
+  const avail = fs.readFileSync(new URL('../../available-space.html', import.meta.url), 'utf8');
+  assert.ok(avail.includes('<a href="/contact?subject=leasing" class="btn btn--gold">Tell Us What You Need</a>'), 'Available Space CTA must use the leasing deep link');
 });
 
 test('every subject option carries its own distinct hint, and every hint is tested here',{ timeout: 120_000 }, async () => {

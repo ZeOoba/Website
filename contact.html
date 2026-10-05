@@ -205,6 +205,7 @@ body{padding-top:36px}.nav{top:36px!important}
 .contact-lede__punch{font-style:italic;color:var(--gold-accessible)}
 .contact-aside{max-width:640px;text-wrap:balance;margin:8px auto 0;font-family:var(--font-display);font-style:italic;font-size:20px;line-height:1.5;color:var(--gold-light);text-align:center}
 .contact-nowrap{white-space:nowrap}
+.contact-sign{max-width:720px;margin:16px auto 0;font-family:var(--font-display);font-style:italic;font-size:20px;color:var(--gold-accessible);text-align:center}
 .contact-header{padding-top:120px;padding-bottom:56px}
 .contact-header .section__header{margin-bottom:0}
 .contact-promise{margin-top:12px;font-size:13px;line-height:1.5;text-align:center;color:var(--slate)}
@@ -266,11 +267,11 @@ body{padding-top:36px}.nav{top:36px!important}
 <div class="form-group">
 <label for="contact-subject">Subject</label>
 <select id="contact-subject" name="subject">
-<option value="Acquisition Opportunity" data-hint="Tell us about the building. Leaky roofs and deferred maintenance welcome.">Acquisition Opportunity</option>
-<option value="Leasing Inquiry" data-hint="Tell us about the space you need: size, timing and what it will be used for.">Leasing Inquiry</option>
-<option value="Tenant Support" data-hint="Tell us what is going on and which suite or property you are in.">Tenant Support</option>
-<option value="General" data-hint="Ask us anything. Industrial real estate questions are our favorite kind.">General</option>
-<option value="Just saying hi" data-hint="Say hi. We will say hi back.">Not sure, just saying hi</option>
+<option value="Acquisition Opportunity" data-key="acquisition" data-hint="Tell us about the building. Leaky roofs and deferred maintenance welcome.">Acquisition Opportunity</option>
+<option value="Leasing Inquiry" data-key="leasing" data-hint="Tell us about the space you need: size, timing and what it will be used for.">Leasing Inquiry</option>
+<option value="Tenant Support" data-key="tenant" data-hint="Tell us what is going on and which suite or property you are in.">Tenant Support</option>
+<option value="General" data-key="general" data-hint="Ask us anything. Industrial real estate questions are our favorite kind.">General</option>
+<option value="Just saying hi" data-key="hi" data-hint="Say hi. We will say hi back.">Not sure, just saying hi</option>
 </select>
 </div>
 </div>
@@ -310,6 +311,12 @@ body{padding-top:36px}.nav{top:36px!important}
       var hint = opt && opt.getAttribute('data-hint');
       if (hint) message.placeholder = hint;
     };
+    // Deep link: /contact?subject=leasing|tenant|acquisition|general|hi preselects the subject.
+    // Only the data-key values are honoured; anything else leaves the default alone.
+    var wanted = (new URLSearchParams(window.location.search).get('subject') || '').toLowerCase();
+    for (var i = 0; i < subject.options.length; i++) {
+      if (wanted && subject.options[i].getAttribute('data-key') === wanted) { subject.selectedIndex = i; break; }
+    }
     subject.addEventListener('change', syncHint);
     // Back/forward: the browser restores the select at pageshow, with no change event.
     window.addEventListener('pageshow', syncHint);
@@ -369,6 +376,7 @@ body{padding-top:36px}.nav{top:36px!important}
 <h2>What happens when you hit send</h2>
 </div>
 <p class="contact-lede animate-on-scroll">Gabriel or Eric, a real human and not a bot, reads it, writes back with next steps, and if the numbers work, tells you directly, because <em class="contact-lede__punch">suspense is not part of our process</em>.</p>
+<p class="contact-sign animate-on-scroll">&mdash; Gabriel &amp; Eric</p>
 </div>
 </section>
 

@@ -36,9 +36,13 @@ test('the one-business-day promise sits right under the submit button (and not i
   assert.doesNotMatch(lede, /one business day/i, 'the promise is next to the form now; do not repeat it in the lede');
 });
 
+test('the main sentence is signed by the two people it names', () => {
+  assert.match(section, /<p class="contact-lede[^"]*">[\s\S]*?<\/p>\s*<p class="contact-sign[^"]*">&mdash; Gabriel &amp; Eric<\/p>/);
+});
+
 test('the new styles use the site color tokens only (no raw hex)', () => {
-  const rules = (main.match(/\.contact-[a-z_-]+[^{]*\{[^}]*\}/g) || []).filter((r) => /^\.contact-(lede|aside|promise)/.test(r));
-  assert.ok(rules.length >= 3, 'expected rules for contact-lede, contact-aside and contact-promise');
+  const rules = (main.match(/\.contact-[a-z_-]+[^{]*\{[^}]*\}/g) || []).filter((r) => /^\.contact-(lede|aside|promise|sign)/.test(r));
+  assert.ok(rules.length >= 4, 'expected rules for contact-lede, contact-aside, contact-promise and contact-sign');
   for (const r of rules) assert.doesNotMatch(r, /#[0-9a-f]{3,8}\b/i, `raw hex color in: ${r}`);
 });
 

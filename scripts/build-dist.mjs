@@ -44,6 +44,7 @@ const SITE_FILES = [
   'tenant-resources.html',
   'terms.html',
   'track-record.html',
+  'what-we-see.html',
   // styles
   'application-style.css',
   'available-space.css',

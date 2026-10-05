@@ -163,7 +163,7 @@ test('logs a pipeline-failures row when verifyRecaptcha itself throws (e.g. RECA
 }));
 
 test('mints a session and a verifiable intake token for a valid request, logging intake first', () => withEnv(ENV, async () => {
-  const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.9' }, body: JSON.stringify({ name: 'Bob', company: 'Acme', email: 'b@acme.com', market: 'Columbus', message: 'hi', fileName: 'om.pdf', fileSize: 30_000_000, contentType: 'application/pdf', recaptchaToken: 'good-token' }) };
+  const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.9' }, body: JSON.stringify({ name: 'Bob', company: 'Acme', email: 'b@acme.com', market: 'Columbus', referralSource: 'LinkedIn', message: 'hi', fileName: 'om.pdf', fileSize: 30_000_000, contentType: 'application/pdf', recaptchaToken: 'good-token' }) };
   let loggedIntake = null;
   const fetchImpl = withRecaptchaPass(async (url, opts = {}) => {
     if (url === 'https://oxfordra.net/' && String(opts.body || '').includes('broker-submission-intake')) { loggedIntake = opts.body; return { ok: true, status: 200 }; }
@@ -178,6 +178,7 @@ test('mints a session and a verifiable intake token for a valid request, logging
   assert.ok(parsed.intakeToken.split('.').length === 2, 'intakeToken must be payload.signature');
   assert.ok(loggedIntake, 'a broker-submission-intake row must be logged for every validated attempt');
   assert.ok(loggedIntake.includes('company=Acme'), 'intake row must carry the contact/deal fields');
+  assert.ok(loggedIntake.includes('referral-source=LinkedIn'), 'intake row must carry the optional "how did you hear about us" answer');
 }));
 
 test('logs the submission intake even when minting the Graph upload session fails', () => withEnv(ENV, async () => {

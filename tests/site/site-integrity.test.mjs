@@ -145,6 +145,7 @@ const EXPECTED_JSONLD_TYPES = {
   'markets/columbus-oh.html': ['BreadcrumbList', 'FAQPage'],
   'markets/maryland.html': ['BreadcrumbList', 'FAQPage'],
   'track-record.html': ['BreadcrumbList'],
+  'what-we-see.html': ['BreadcrumbList'],
   'for-brokers.html': ['BreadcrumbList', 'FAQPage'],
   'sell-your-building.html': ['BreadcrumbList', 'FAQPage', 'Service'],
   'resources/index.html': ['BreadcrumbList', 'ItemList'],

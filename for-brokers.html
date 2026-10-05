@@ -201,6 +201,7 @@ body{padding-top:36px}.nav{top:36px!important}
 <h1>Partner With Oxford</h1>
 <p class="hero-motto" style="margin-top:20px;font-family:var(--font-display);font-size:20px;font-style:italic;color:var(--gold);letter-spacing:.02em"><span style="margin-right:4px">—</span> Broker-first. Relationship-driven. No exceptions.</p>
 <p>One call. One decision-maker. All-cash closings in 30–45 days.</p>
+<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:28px"><a href="#broker-network" class="btn btn--gold">Submit a Deal</a></div>
 </div>
 </section>
 
@@ -350,6 +351,19 @@ body{padding-top:36px}.nav{top:36px!important}
 <option value="Columbus">Columbus</option>
 <option value="Kansas City">Kansas City</option>
 <option value="Other Midwest / Mid-Atlantic">Other Midwest / Mid-Atlantic</option>
+<option value="Other">Other</option>
+</select>
+</div>
+<div class="form-group">
+<label for="broker-source">How did you hear about us? <span class="optional">(Optional)</span></label>
+<select id="broker-source" name="referral-source">
+<option value="">Select...</option>
+<option value="Search (Google, Bing)">Search (Google, Bing)</option>
+<option value="AI assistant (ChatGPT, Claude, etc.)">AI assistant (ChatGPT, Claude, etc.)</option>
+<option value="Broker or colleague referral">Broker or colleague referral</option>
+<option value="LinkedIn">LinkedIn</option>
+<option value="Letter or mailer">Letter or mailer</option>
+<option value="Industry event">Industry event</option>
 <option value="Other">Other</option>
 </select>
 </div>
@@ -524,6 +538,7 @@ body{padding-top:36px}.nav{top:36px!important}
 </div>
 <h3>Complexity Is Priced, Not Avoided</h3>
 <p>Vacancy, deferred maintenance, environmental findings and short leases reduce a property&rsquo;s financeable value, not necessarily its intrinsic value. We underwrite the real estate, not just the rent roll.</p>
+<p style="margin-top:12px"><a href="/what-we-see">How we underwrite it &rarr;</a></p>
 </div>
 
 <div class="incentive-card animate-on-scroll">
@@ -749,14 +764,14 @@ info@oxfordra.net
 
 <!-- Cookie Consent -->
 <div class="cookie-banner" id="cookieBanner" role="alert" style="display:none;">
-<p>This site uses cookies to improve your experience. See our <a href="/privacy">Privacy Policy</a>.</p>
+<p>We use Google Analytics to understand how visitors use this site. Accept to allow analytics cookies; Decline keeps measurement cookieless. See our <a href="/privacy">Privacy Policy</a>.</p>
 <div class="cookie-banner__actions">
 <button class="btn btn--gold btn--sm" id="cookieAccept">Accept</button>
 <button class="btn btn--outline btn--sm" id="cookieDecline">Decline</button>
 </div>
 </div>
 
-<script defer src="/script.js?v=17"></script>
+<script defer src="/script.js?v=19"></script>
 
 <!-- FAQ Accordion -->
 <script>
@@ -786,13 +801,17 @@ info@oxfordra.net
 <!-- Analytics: GA4 runs in a Partytown web worker (/assets/partytown/, @qwik.dev/partytown 0.14.4, MIT), so
      gtag.js never parses or executes on the main thread. page_view still comes solely from
      gtag('config'). If the service worker can't start, Partytown's fallbackTimeout (10s) runs both
-     scripts on the main thread instead. -->
+     scripts on the main thread instead.
+     Consent Mode v2: the denied-by-default consent call is in the SAME inline script, ahead of
+     gtag('config'), so the order holds in both modes (a separate async script would not). -->
 <script>partytown={lib:'/assets/partytown/',forward:['dataLayer.push','gtag']};</script>
 <script defer src="/assets/partytown/partytown.js?v=0.14.4"></script>
 <script type="text/partytown" src="https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC"></script>
 <script type="text/partytown">
 window.dataLayer=window.dataLayer||[];
-function gtag(){dataLayer.push(arguments)}
+window.gtag=function(){dataLayer.push(arguments)};
+var oraConsentGranted=false;try{oraConsentGranted=localStorage.getItem('oxford-cookies-accepted')==='true'}catch(e){}
+gtag('consent','default',{analytics_storage:oraConsentGranted?'granted':'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied'});
 gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
 </script>
 <script defer src="/assets/chat.js?v=2"></script>
@@ -844,6 +863,6 @@ gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
   }
 })();
 </script>
-<script defer src="/broker-upload.js?v=2"></script>
+<script defer src="/broker-upload.js?v=3"></script>
 </body>
 </html>

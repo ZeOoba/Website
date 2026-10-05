@@ -32,7 +32,7 @@ test('"What happens when you hit send" is a single sentence', () => {
   const plain = lede.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').trim();
   assert.match(plain, /^[^.!?]+[.]$/, `must be exactly one sentence ending in a period: "${plain}"`);
   assert.match(plain, /Gabriel or Eric/);
-  assert.match(plain, /not an autoresponder/);
+  assert.match(plain, /^Gabriel or Eric, a real human and not a bot, reads it/);
   assert.match(plain, /call/);
   assert.match(plain, /preliminary indication of interest/);
   assert.match(plain, /if the numbers work, we tell you directly/i);

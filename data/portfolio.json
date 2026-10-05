@@ -1055,6 +1055,21 @@
   },
   "thesis": "A 22' clear warehouse with drive-in doors and a paved, fenced yard, plus a separate office building, on about 1.2 acres.",
   "detail": {
+   "hero": {
+    "src": "/images/28-hero-3875-3883-livingston.jpg",
+    "alt": "White industrial building with a large drive-in door and an open paved lot at 3875-3883 E Livingston in Columbus, OH",
+    "position": "50% 40%",
+    "sources": [
+     {
+      "type": "image/avif",
+      "srcset": "/images/28-hero-3875-3883-livingston-480w.avif 480w, /images/28-hero-3875-3883-livingston-900w.avif 900w, /images/28-hero-3875-3883-livingston.avif 1600w"
+     },
+     {
+      "type": "image/webp",
+      "srcset": "/images/28-hero-3875-3883-livingston-480w.webp 480w, /images/28-hero-3875-3883-livingston-900w.webp 900w, /images/28-hero-3875-3883-livingston.webp 1600w"
+     }
+    ]
+   },
    "metaDescription": "3875-3883 E Livingston: 10,950 SF industrial property in Columbus, OH with a 22-foot clear warehouse, a separate office building and a paved, fenced yard.",
    "summary": [
     "3875-3883 E Livingston is a 10,950 SF industrial property in Columbus, Ohio, with a warehouse building and a separate office building on about 1.2 acres.",

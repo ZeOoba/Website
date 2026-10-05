@@ -432,7 +432,7 @@ ${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
 </ul>${gallery}${specs}${relatedHtml}
 <p class="pf-detail__more"><a href="/track-record">See how Oxford creates value across the portfolio &rarr;</a></p>
 </div>
-<aside class="pf-detail__facts" aria-label="Property facts">
+<section class="pf-detail__facts" aria-label="Property facts">
 <h2>At a glance</h2>
 <dl>
 <div><dt>Location</dt><dd>${esc(a.city)}, ${esc(a.state)}</dd></div>
@@ -443,7 +443,7 @@ ${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
 </dl>
 <a class="btn btn--outline btn--full" href="/portfolio?view=map#${s}">View on portfolio map</a>
 <a class="pf-detail__back" href="/portfolio#${s}">Back to portfolio</a>
-</aside>
+</section>
 </div>
 </div>
 </section>

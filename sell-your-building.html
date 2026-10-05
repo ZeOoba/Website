@@ -418,6 +418,19 @@ body{padding-top:36px}.nav{top:36px!important}
 <label for="owner-price">Asking Price Expectation <span class="optional">(Optional)</span></label>
 <input type="text" id="owner-price" name="asking-price-expectation" placeholder="e.g. $2.5M, or 'not sure yet'">
 </div>
+<div class="form-group">
+<label for="owner-source">How did you hear about us? <span class="optional">(Optional)</span></label>
+<select id="owner-source" name="referral-source">
+<option value="">Select...</option>
+<option value="Search (Google, Bing)">Search (Google, Bing)</option>
+<option value="AI assistant (ChatGPT, Claude, etc.)">AI assistant (ChatGPT, Claude, etc.)</option>
+<option value="Letter or mailer">Letter or mailer</option>
+<option value="Broker or colleague referral">Broker or colleague referral</option>
+<option value="LinkedIn">LinkedIn</option>
+<option value="Industry event">Industry event</option>
+<option value="Other">Other</option>
+</select>
+</div>
 </div>
 
 <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;margin-top:8px;">
@@ -485,6 +498,7 @@ body{padding-top:36px}.nav{top:36px!important}
       success.style.display = '';
       // The form collapses to one line, so bring the message into view.
       success.scrollIntoView({ block: 'center' });
+      if(window.gtag){ window.gtag('event', 'owner_form_submit', { event_category: 'lead', event_label: 'owner', referral_source: form.querySelector('[name="referral-source"]') ? form.querySelector('[name="referral-source"]').value : '' }); }
     }).catch(function(err){
       errorBox.textContent = 'Something went wrong submitting your property. Please email info@oxfordra.net directly, or try again. (' + (err && err.message ? err.message : 'unknown error') + ')';
       errorBox.style.display = '';
@@ -598,10 +612,10 @@ body{padding-top:36px}.nav{top:36px!important}
 <span class="section__label">The Difference</span>
 <h2>Listing With a Broker vs. Selling Directly to Oxford</h2>
 </div>
-<div class="owner-compare-wrap animate-on-scroll">
+<div class="owner-compare-wrap animate-on-scroll" tabindex="0" role="region" aria-label="Broker listing versus direct sale comparison">
 <table class="owner-compare">
 <thead>
-<tr><th>&nbsp;</th><th>Broker Listing</th><th class="owner-compare--oxford">Direct to Oxford</th></tr>
+<tr><th scope="col"><span class="sr-only">Factor</span></th><th>Broker Listing</th><th class="owner-compare--oxford">Direct to Oxford</th></tr>
 </thead>
 <tbody>
 <tr><td>Commission</td><td>Typically 4&ndash;6% of sale price</td><td class="owner-compare--oxford">None &mdash; no commissions</td></tr>
@@ -881,14 +895,14 @@ info@oxfordra.net
 
 <!-- Cookie Consent -->
 <div class="cookie-banner" id="cookieBanner" role="alert" style="display:none;">
-<p>This site uses cookies to improve your experience. See our <a href="/privacy">Privacy Policy</a>.</p>
+<p>We use Google Analytics to understand how visitors use this site. Accept to allow analytics cookies; Decline keeps measurement cookieless. See our <a href="/privacy">Privacy Policy</a>.</p>
 <div class="cookie-banner__actions">
 <button class="btn btn--gold btn--sm" id="cookieAccept">Accept</button>
 <button class="btn btn--outline btn--sm" id="cookieDecline">Decline</button>
 </div>
 </div>
 
-<script defer src="/script.js?v=17"></script>
+<script defer src="/script.js?v=19"></script>
 
 <!-- FAQ Accordion -->
 <script>
@@ -918,13 +932,17 @@ info@oxfordra.net
 <!-- Analytics: GA4 runs in a Partytown web worker (/assets/partytown/, @qwik.dev/partytown 0.14.4, MIT), so
      gtag.js never parses or executes on the main thread. page_view still comes solely from
      gtag('config'). If the service worker can't start, Partytown's fallbackTimeout (10s) runs both
-     scripts on the main thread instead. -->
+     scripts on the main thread instead.
+     Consent Mode v2: the denied-by-default consent call is in the SAME inline script, ahead of
+     gtag('config'), so the order holds in both modes (a separate async script would not). -->
 <script>partytown={lib:'/assets/partytown/',forward:['dataLayer.push','gtag']};</script>
 <script defer src="/assets/partytown/partytown.js?v=0.14.4"></script>
 <script type="text/partytown" src="https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC"></script>
 <script type="text/partytown">
 window.dataLayer=window.dataLayer||[];
-function gtag(){dataLayer.push(arguments)}
+window.gtag=function(){dataLayer.push(arguments)};
+var oraConsentGranted=false;try{oraConsentGranted=localStorage.getItem('oxford-cookies-accepted')==='true'}catch(e){}
+gtag('consent','default',{analytics_storage:oraConsentGranted?'granted':'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied'});
 gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
 </script>
 <!-- LinkedIn Insight Tag removed 2026-09-25: it shipped with the placeholder partner id

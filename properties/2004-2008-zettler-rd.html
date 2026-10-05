@@ -262,6 +262,12 @@ body{padding-top:36px}.nav{top:36px!important}
 <li><a href="/properties/2000-2002-zettler-rd">2000-2002 Zettler Rd</a><span>11,160 SF &middot; Industrial/Flex</span></li>
 <li><a href="/properties/2012-2026-zettler-rd">2012-2026 Zettler Rd</a><span>16,800 SF &middot; Industrial/Flex</span></li>
 <li><a href="/properties/384-398-morrison-rd">384-398 Morrison Rd</a><span>14,400 SF &middot; Industrial/Flex</span></li>
+<li><a href="/properties/406-420-morrison-rd">406-420 Morrison Rd</a><span>16,800 SF &middot; Industrial/Flex</span></li>
+<li><a href="/properties/3034-westerville-rd">3034 Westerville Rd</a><span>18,360 SF &middot; Industrial + IOS</span></li>
+<li><a href="/properties/7658-fishel-drive-n">7658 Fishel Drive N</a><span>24,000 SF &middot; Industrial/Flex</span></li>
+<li><a href="/properties/3875-3883-e-livingston">3875-3883 E Livingston</a><span>10,950 SF &middot; Industrial + IOS</span></li>
+<li><a href="/properties/4601-e-fifth-avenue">4601 E Fifth Avenue</a><span>3,261 SF &middot; Office/Retail</span></li>
+<li><a href="/properties/4595-e-fifth-avenue">4595 E Fifth Avenue</a><span>4,140 SF &middot; Industrial + IOS</span></li>
 </ul>
 <p class="pf-detail__more"><a href="/track-record">See how Oxford creates value across the portfolio &rarr;</a></p>
 </div>
@@ -347,24 +353,28 @@ body{padding-top:36px}.nav{top:36px!important}
 </footer>
 
 <div class="cookie-banner" id="cookieBanner" role="alert" style="display:none;">
-<p>This site uses cookies to improve your experience. See our <a href="/privacy">Privacy Policy</a>.</p>
+<p>We use Google Analytics to understand how visitors use this site. Accept to allow analytics cookies; Decline keeps measurement cookieless. See our <a href="/privacy">Privacy Policy</a>.</p>
 <div class="cookie-banner__actions">
 <button class="btn btn--gold btn--sm" id="cookieAccept">Accept</button>
 <button class="btn btn--outline btn--sm" id="cookieDecline">Decline</button>
 </div>
 </div>
 
-<script defer src="/script.js?v=17"></script>
+<script defer src="/script.js?v=19"></script>
 <!-- Analytics: GA4 runs in a Partytown web worker (/assets/partytown/, @qwik.dev/partytown 0.14.4, MIT), so
      gtag.js never parses or executes on the main thread. page_view still comes solely from
      gtag('config'). If the service worker can't start, Partytown's fallbackTimeout (10s) runs both
-     scripts on the main thread instead. -->
+     scripts on the main thread instead.
+     Consent Mode v2: the denied-by-default consent call is in the SAME inline script, ahead of
+     gtag('config'), so the order holds in both modes (a separate async script would not). -->
 <script>partytown={lib:'/assets/partytown/',forward:['dataLayer.push','gtag']};</script>
 <script defer src="/assets/partytown/partytown.js?v=0.14.4"></script>
 <script type="text/partytown" src="https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC"></script>
 <script type="text/partytown">
 window.dataLayer=window.dataLayer||[];
-function gtag(){dataLayer.push(arguments)}
+window.gtag=function(){dataLayer.push(arguments)};
+var oraConsentGranted=false;try{oraConsentGranted=localStorage.getItem('oxford-cookies-accepted')==='true'}catch(e){}
+gtag('consent','default',{analytics_storage:oraConsentGranted?'granted':'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied'});
 gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
 </script>
 <script defer src="/assets/chat.js?v=2"></script>

@@ -71,9 +71,9 @@ function logFailure(fetchImpl, { errorCode, detail }) {
 // without this, a dropped connection or a Graph outage between here and
 // finalize loses the broker's contact/deal context entirely, leaving (at
 // best) an orphaned, unlabeled file in SharePoint.
-function logIntake(fetchImpl, { name, company, email, phone, market, message, fileName }) {
+function logIntake(fetchImpl, { name, company, email, phone, market, referralSource, message, fileName }) {
   const siteUrl = process.env.URL || 'https://oxfordra.net';
-  return forwardToNetlifyForm(siteUrl, 'broker-submission-intake', { name, company, email, phone, market, message, 'file-name': fileName, 'occurred-at': new Date().toISOString() }, { fetchImpl });
+  return forwardToNetlifyForm(siteUrl, 'broker-submission-intake', { name, company, email, phone, market, 'referral-source': referralSource || '', message, 'file-name': fileName, 'occurred-at': new Date().toISOString() }, { fetchImpl });
 }
 
 function ok(body) { return { statusCode: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }; }
@@ -166,6 +166,7 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     email: sanitizeField(body.email, 200),
     phone: sanitizeField(body.phone, 40),
     market: sanitizeField(body.market, 60),
+    referralSource: sanitizeField(body.referralSource, 60),
     message: sanitizeField(body.message, 2000),
     fileName,
   });

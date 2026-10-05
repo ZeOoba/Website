@@ -55,7 +55,7 @@
   "url": "https://oxfordra.net",
   "logo": "https://oxfordra.net/images/oxford-logo-512.png",
   "image": "https://oxfordra.net/images/og-image.png",
-  "description": "Private industrial real estate investment firm specializing in value-add shallow-bay flex properties across Maryland, Columbus OH, and Kansas City MO.",
+  "description": "Private industrial real estate investment firm specializing in value-add shallow-bay flex properties across two core markets, Maryland and Columbus OH, plus a Kansas City holding.",
   "foundingDate": "2005",
   "founder": {"@type": "Person", "name": "Eric Goldberg", "jobTitle": "Founder"},
   "address": {
@@ -415,6 +415,7 @@ body{padding-top:36px}.nav{top:36px!important}
 </div>
 </li>
 </ul>
+<p class="animate-on-scroll" style="text-align:center;margin-top:32px"><a href="/what-we-see">What we see that other buyers don&rsquo;t &rarr;</a></p>
 </div>
 </section>
 
@@ -449,7 +450,7 @@ body{padding-top:36px}.nav{top:36px!important}
 
 <!-- 3540 E. Fifth Avenue -->
 <div class="featured-card">
-<div class="ba-slider" data-before="/images/3540-rear-before.webp" data-after="/images/3540-rear-after.webp" role="img" aria-label="Before and after comparison of 3540 E Fifth Avenue rear view" style="aspect-ratio:8/5">
+<div class="ba-slider" data-before="/images/3540-rear-before.webp" data-after="/images/3540-rear-after.webp" role="group" aria-label="Before and after comparison of 3540 E Fifth Avenue rear view" style="aspect-ratio:8/5">
 <div class="ba-slider__after">
 <img src="/images/3540-rear-after.webp" alt="3540 E. Fifth Avenue rear view after renovation" width="800" height="500" loading="lazy" decoding="async">
 </div>
@@ -469,7 +470,7 @@ body{padding-top:36px}.nav{top:36px!important}
 <h3 class="featured-card__title">3540 E. Fifth Avenue</h3>
 <p class="featured-card__sub">Columbus, OH &middot; 35,886 SF &middot; Value-Add Repositioning</p>
 <div class="metric-tile-grid">
-<div><span class="metric-tile__value">~12%</span><span class="metric-tile__label">Going-In Cap</span></div>
+<div><span class="metric-tile__value">~12%</span><span class="metric-tile__label">Yield on Cost</span></div>
 <div><span class="metric-tile__value">~2&times;</span><span class="metric-tile__label">Value Created</span></div>
 <div><span class="metric-tile__value">10-Yr</span><span class="metric-tile__label">Global Tenant Lease</span></div>
 <div><span class="metric-tile__value">$1.3M</span><span class="metric-tile__label">Acquisition</span></div>
@@ -751,7 +752,7 @@ body{padding-top:36px}.nav{top:36px!important}
 
 <!-- Cookie Banner -->
 <div class="cookie-banner" id="cookieBanner" role="alert" style="display:none;">
-<p>This site uses cookies to improve your experience. See our <a href="/privacy">Privacy Policy</a>.</p>
+<p>We use Google Analytics to understand how visitors use this site. Accept to allow analytics cookies; Decline keeps measurement cookieless. See our <a href="/privacy">Privacy Policy</a>.</p>
 <div class="cookie-banner__actions">
 <button class="btn btn--gold btn--sm" id="cookieAccept">Accept</button>
 <button class="btn btn--outline btn--sm" id="cookieDecline">Decline</button>
@@ -772,7 +773,7 @@ body{padding-top:36px}.nav{top:36px!important}
 <a href="tel:+13015126125" class="mobile-cta-bar__btn mobile-cta-bar__btn--secondary">Call</a>
 </div>
 
-<script defer src="/script.js?v=17"></script>
+<script defer src="/script.js?v=19"></script>
 <!-- FAQ Accordion -->
 <script>
 (function(){
@@ -963,13 +964,17 @@ body{padding-top:36px}.nav{top:36px!important}
 <!-- Analytics: GA4 runs in a Partytown web worker (/assets/partytown/, @qwik.dev/partytown 0.14.4, MIT), so
      gtag.js never parses or executes on the main thread. page_view still comes solely from
      gtag('config'). If the service worker can't start, Partytown's fallbackTimeout (10s) runs both
-     scripts on the main thread instead. -->
+     scripts on the main thread instead.
+     Consent Mode v2: the denied-by-default consent call is in the SAME inline script, ahead of
+     gtag('config'), so the order holds in both modes (a separate async script would not). -->
 <script>partytown={lib:'/assets/partytown/',forward:['dataLayer.push','gtag']};</script>
 <script defer src="/assets/partytown/partytown.js?v=0.14.4"></script>
 <script type="text/partytown" src="https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC"></script>
 <script type="text/partytown">
 window.dataLayer=window.dataLayer||[];
-function gtag(){dataLayer.push(arguments)}
+window.gtag=function(){dataLayer.push(arguments)};
+var oraConsentGranted=false;try{oraConsentGranted=localStorage.getItem('oxford-cookies-accepted')==='true'}catch(e){}
+gtag('consent','default',{analytics_storage:oraConsentGranted?'granted':'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied'});
 gtag('js',new Date());gtag('config','G-YDSX0RW5HC');
 </script>
 <script defer src="/assets/chat.js?v=2"></script>

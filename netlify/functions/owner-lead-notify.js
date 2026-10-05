@@ -31,6 +31,7 @@ const LABELS = {
   timeline: 'Timeline',
   'occupancy-status': 'Occupancy Status',
   'asking-price-expectation': 'Asking Price Expectation',
+  'referral-source': 'How They Heard About Us',
   'tcpa-consent': 'TCPA/SMS Consent',
 };
 

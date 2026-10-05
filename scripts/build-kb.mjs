@@ -24,6 +24,7 @@ const PAGES = [
   { file: 'about.html',            url: 'https://oxfordra.net/about',              title: 'The Firm' },
   { file: 'portfolio.html',        url: 'https://oxfordra.net/portfolio',          title: 'Portfolio' },
   { file: 'track-record.html',     url: 'https://oxfordra.net/track-record',       title: 'Track Record' },
+  { file: 'what-we-see.html',      url: 'https://oxfordra.net/what-we-see',        title: 'How Oxford Sees Small Industrial' },
   { file: 'for-brokers.html',      url: 'https://oxfordra.net/for-brokers',        title: 'Broker Network — Submit a Deal' },
   { file: 'available-space.html',  url: 'https://oxfordra.net/available-space',    title: 'Available Space' },
   { file: 'tenant-resources.html', url: 'https://oxfordra.net/tenant-resources',   title: 'Tenant Resources' },

@@ -354,3 +354,36 @@ test('P21 links inside running text are underlined, and the decorative "vs" meet
 test('P22 Track Record links to the investment-philosophy page', () => {
   assert.match(read('track-record.html'), /href="\/what-we-see"/);
 });
+
+// Polish pass 2026-10-05: five items Gabriel listed after the live QA.
+test('P23 no page says "Permanent holdings" (footer sentence and the /portfolio stat tile)', () => {
+  for (const f of allHtml()) {
+    assert.doesNotMatch(read(f), /Permanent holdings/, `${f} still says "Permanent holdings"`);
+  }
+  assert.match(read('index.html'), /100% proprietary capital\. Long-term holdings\./);
+  assert.match(read('portfolio.html'), /<dd class="pf-stat__note">Long-term holdings<\/dd>/);
+});
+
+test('P24 the owner-form consent label overrides the global uppercase label style', () => {
+  const html = read('sell-your-building.html');
+  const label = html.match(/<label for="owner-consent"[^>]*>/)?.[0] ?? '';
+  assert.match(label, /text-transform:none/, 'consent label would render in capitals');
+  assert.match(label, /letter-spacing:normal/);
+});
+
+test('P25 the 9050 Red Branch card no longer quotes a cap rate', () => {
+  const tr = read('track-record.html');
+  const start = tr.indexOf('<h3>9050 Red Branch Road</h3>');
+  const card = tr.slice(start, tr.indexOf('<h3>29000 Information Lane</h3>', start));
+  assert.ok(start > 0 && card.length > 300, '9050 Red Branch card not found');
+  assert.doesNotMatch(card, /8\.0\s*%|cap rate/i, 'the card quotes a cap rate');
+  assert.match(card, /<strong>What we saw\.<\/strong> A stabilized building with rents slightly below market/, 'the thesis sentence is gone');
+  assert.equal((card.match(/<strong>(Situation|What we saw|What we did|Result)\.<\/strong>/g) || []).length, 4, 'four-step narrative broken');
+});
+
+test('P26 the cookie banner is compact on phones and one row on desktop (CSS), copy unchanged', () => {
+  const css = read('styles.css');
+  assert.match(css, /@media\(max-width:600px\)\{\.cookie-banner\{padding:10px 14px;gap:8px\}/, 'phone banner rules missing');
+  assert.match(css, /@media\(min-width:601px\)\{\.cookie-banner\{flex-wrap:nowrap/, 'desktop single-row rule missing');
+  assert.match(read('index.html'), /Accept to allow analytics cookies; Decline keeps measurement cookieless\./);
+});

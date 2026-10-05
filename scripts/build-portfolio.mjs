@@ -369,7 +369,7 @@ async function renderDetail(a, page, assets) {
     { '@type': 'ListItem', position: 2, name: 'Portfolio', item: 'https://oxfordra.net/portfolio' },
     { '@type': 'ListItem', position: 3, name: a.name, item: url },
   ] };
-  const place = { '@context': 'https://schema.org', '@type': 'Place', name: a.name, url, image: `https://oxfordra.net${a.image.src}`, description: d.summary[0],
+  const place = { '@context': 'https://schema.org', '@type': 'Place', name: a.name, url, image: `https://oxfordra.net${a.image.src}`, description: d.metaDescription,
     address: { '@type': 'PostalAddress', addressLocality: a.city, addressRegion: a.state, addressCountry: 'US' },
     geo: { '@type': 'GeoCoordinates', latitude: a.lat, longitude: a.lng },
     floorSize: { '@type': 'QuantitativeValue', value: a.sf, unitCode: 'FTK' },
@@ -419,25 +419,24 @@ ${heroSources}
       return `<figure class="pf-gallery__item">\n<picture>\n<source type="image/avif" srcset="${esc(set('avif'))}" sizes="${sizes}">\n<source type="image/webp" srcset="${esc(set('webp'))}" sizes="${sizes}">\n<img src="${esc(g.base)}.jpg" alt="${esc(g.alt)}" width="${g.width}" height="${g.height}" loading="lazy" decoding="async">\n</picture>\n</figure>`;
     }).join('\n')}\n</div>`
     : '';
+  // Each fact appears once: location, size and type are in the hero, market/acquired/status
+  // in "At a glance", physical facts in the specs table. The prose carries only what none of
+  // those say, so a property with nothing more to tell has no "About" block at all.
+  const about = d.summary && d.summary.length
+    ? `<h2>About this property</h2>\n${d.summary.map((p) => `<p>${esc(p)}</p>`).join('\n')}`
+    : '';
   const body = `<!-- ═══ PROPERTY DETAIL ═══ -->
 <section class="section" aria-label="Property detail">
 <div class="container pf-detail">
 <nav class="pf-crumbs" aria-label="Breadcrumb"><a href="/">Home</a> <span aria-hidden="true">/</span> <a href="/portfolio">Portfolio</a> <span aria-hidden="true">/</span> <span aria-current="page">${esc(a.name)}</span></nav>
 <div class="pf-detail__grid">
 <div class="pf-detail__main">
-<h2>About this property</h2>
-${d.summary.map((p) => `<p>${esc(p)}</p>`).join('\n')}
-<ul class="pf-detail__highlights">
-${d.highlights.map((h) => `<li>${esc(h)}</li>`).join('\n')}
-</ul>${gallery}${specs}${relatedHtml}
+${about}${gallery}${specs}${relatedHtml}
 <p class="pf-detail__more"><a href="/track-record">See how Oxford creates value across the portfolio &rarr;</a></p>
 </div>
 <section class="pf-detail__facts" aria-label="Property facts">
 <h2>At a glance</h2>
 <dl>
-<div><dt>Location</dt><dd>${esc(a.city)}, ${esc(a.state)}</dd></div>
-<div><dt>Size</dt><dd>${fmtSf(a.sf)} SF</dd></div>
-<div><dt>Property type</dt><dd>${esc(a.type)}</dd></div>
 <div><dt>Market</dt><dd>${market}</dd></div>${a.acquired ? `\n<div><dt>Acquired</dt><dd>${fmtAcquired(a.acquired)}</dd></div>` : ''}
 <div><dt>Status</dt><dd>Current holding</dd></div>
 </dl>

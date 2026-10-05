@@ -46,10 +46,7 @@ test('the replacement wording is in place, and the capital claim is kept', () =>
   const redBranch = portfolio.find((a) => /9050 Red Branch/i.test(a.name));
   assert.ok(redBranch, '9050 Red Branch not found');
   assert.match(redBranch.thesis, /held for the long term\.$/);
-  assert.match(redBranch.detail.summary[0], /has owned and operated it since\.$/);
-  for (const a of portfolio.filter((x) => x.detail && x.detail.highlights.some((h) => /Long-term hold/.test(h)))) {
-    assert.ok(a.detail.highlights.includes('Long-term hold with proprietary capital'), `${a.name}: highlight wording`);
-  }
+  assert.match(redBranch.detail.summary.join(' '), /has owned and operated it since it was acquired, as a long-term hold with proprietary capital\./);
   assert.match(read('scripts/build-portfolio.mjs'), /holds its properties for the long term\./);
 
   // Home FAQ: visible answer and FAQPage JSON-LD carry the same sentence, once each.

@@ -217,3 +217,11 @@ test('P10 homepage case studies carry the four-step narrative and no est. dollar
   assert.doesNotMatch(featured, /Est\. Current Value|\$12M/, 'no estimated dollar value on the homepage cards');
   assert.doesNotMatch(featured, /waiting list/i, 'Sepich waiting-list claim is unresolved');
 });
+
+// "Never failed to close" has no source and a terminated 2026 PSA exists (Claims Audit);
+// Gabriel had it softened site-wide on 2026-10-04.
+test('P11 no page claims Oxford has never failed to close', () => {
+  for (const page of ['index.html', 'for-brokers.html', 'what-we-see.html', 'llms.txt', 'netlify/edge-functions/chat.ts']) {
+    assert.doesNotMatch(read(page), /never failed to close|close what we sign/i, `${page} repeats the struck closing claim`);
+  }
+});

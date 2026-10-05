@@ -36,12 +36,28 @@ test('the one-business-day promise sits right under the submit button (and not i
   assert.doesNotMatch(lede, /one business day/i, 'the promise is next to the form now; do not repeat it in the lede');
 });
 
+test('the success message carries a While you wait panel inside it (the submit script hides everything else in the form)', () => {
+  const success = main.match(/<div class="form-success" id="contactSuccess"[\s\S]*?\n<\/div>\n<div class="form-error"/)?.[0];
+  assert.ok(success, 'contactSuccess block not found');
+  assert.match(success, /<h3 class="contact-wait__title">While you wait<\/h3>/);
+  const items = [...success.matchAll(/<p class="contact-wait__item" data-for="([^"]+)">([\s\S]*?)<\/p>/g)];
+  assert.equal(items.length, 3, 'expected one item each for sellers, space seekers and tenants');
+  const hrefs = items.flatMap((m) => [...m[2].matchAll(/href="([^"]+)"/g)].map((h) => h[1]));
+  assert.deepEqual(hrefs, ['/resources/', '/for-brokers#broker-network', '/available-space', '/tenant-resources']);
+  assert.doesNotMatch(success, /all-cash|all cash|Indianapolis/i);
+});
+
+test('the tenant resources page links to the tenant deep link', () => {
+  const tenant = fs.readFileSync(path.join(ROOT, 'tenant-resources.html'), 'utf8');
+  assert.ok(tenant.includes('<a href="/contact?subject=tenant">'), 'tenant-resources.html must link to /contact?subject=tenant');
+});
+
 test('the main sentence is signed by the two people it names', () => {
   assert.match(section, /<p class="contact-lede[^"]*">[\s\S]*?<\/p>\s*<p class="contact-sign[^"]*">&mdash; Gabriel &amp; Eric<\/p>/);
 });
 
 test('the new styles use the site color tokens only (no raw hex)', () => {
-  const rules = (main.match(/\.contact-[a-z_-]+[^{]*\{[^}]*\}/g) || []).filter((r) => /^\.contact-(lede|aside|promise|sign)/.test(r));
+  const rules = (main.match(/\.contact-[a-z_-]+[^{]*\{[^}]*\}/g) || []).filter((r) => /^\.contact-(lede|aside|promise|sign|wait)/.test(r));
   assert.ok(rules.length >= 4, 'expected rules for contact-lede, contact-aside, contact-promise and contact-sign');
   for (const r of rules) assert.doesNotMatch(r, /#[0-9a-f]{3,8}\b/i, `raw hex color in: ${r}`);
 });
@@ -69,7 +85,7 @@ test('the button and its script agree, and the old stiff labels are gone', () =>
   assert.match(main, /<button type="submit"[^>]*>Send it our way<\/button>/, 'markup button label');
   assert.match(main, /btn\.textContent = 'Send it our way';/, 'the script must restore the same label after an error');
   assert.doesNotMatch(main, /Send Message/);
-  assert.match(main, /id="contactSuccess"[^>]*>[^<]*real person[^<]*one business day/i);
+  assert.match(main, /id="contactSuccess"[^>]*>\s*<p role="alert">[^<]*real person[^<]*one business day/i);
 });
 
 test('no new claims and no repeats', () => {

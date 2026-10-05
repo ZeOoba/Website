@@ -338,7 +338,20 @@ async function renderDetail(a, page, assets) {
   const descLen = [...desc].length;
   if (descLen < 140 || descLen > 160) throw new Error(`${a.name}: metaDescription is ${descLen} chars (need 140-160)`);
   const [marketLabel, marketHref] = MARKET_PAGES[a.market];
-  const { width, height } = await jpegSize(a.image.src);
+  // The page hero, og:image and Place image default to the card image. `detail.hero`
+  // ({src, alt, sources}, same shape as `image`) overrides them for THIS page only, so an
+  // owner photograph can lead the page while the /portfolio card keeps its own image.
+  const heroImage = d.hero || a.image;
+  if (d.hero && (!d.hero.src || !d.hero.alt || !Array.isArray(d.hero.sources) || !d.hero.sources.length)) {
+    throw new Error(`${a.name}: detail.hero needs src, alt and sources`);
+  }
+  // Optional focal point ("50% 40%") for a photo whose subject sits off-centre: the hero is a
+  // wide, short banner, so the default centre crop can cut off a building's roofline.
+  if (d.hero && d.hero.position !== undefined && !/^\d{1,3}% \d{1,3}%$/.test(d.hero.position)) {
+    throw new Error(`${a.name}: detail.hero.position must look like "50% 40%"`);
+  }
+  const heroPosition = d.hero && d.hero.position ? ` style="object-position:${d.hero.position}"` : '';
+  const { width, height } = await jpegSize(heroImage.src);
 
   const bodyAt = page.indexOf('<body>');
   const mainAt = page.indexOf('<main id="main-content">');
@@ -353,12 +366,12 @@ async function renderDetail(a, page, assets) {
   head = replaceOne(head, /<meta name="twitter:description" content="[^"]*">/, `<meta name="twitter:description" content="${esc(desc)}">`, 'twitter:description');
   head = replaceOne(head, /<link rel="canonical" href="[^"]*">/, `<link rel="canonical" href="${url}">`, 'canonical');
   head = replaceOne(head, /<meta property="og:url" content="[^"]*">/, `<meta property="og:url" content="${url}">`, 'og:url');
-  head = replaceOne(head, /<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="https://oxfordra.net${a.image.src}">`, 'og:image');
-  head = replaceOne(head, /<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="https://oxfordra.net${a.image.src}">`, 'twitter:image');
+  head = replaceOne(head, /<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="https://oxfordra.net${heroImage.src}">`, 'og:image');
+  head = replaceOne(head, /<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="https://oxfordra.net${heroImage.src}">`, 'twitter:image');
   head = replaceOne(head, /<meta property="og:image:width" content="[^"]*">/, `<meta property="og:image:width" content="${width}">`, 'og:image:width');
   head = replaceOne(head, /<meta property="og:image:height" content="[^"]*">/, `<meta property="og:image:height" content="${height}">`, 'og:image:height');
 
-  const avif = a.image.sources.find((x) => x.type === 'image/avif');
+  const avif = heroImage.sources.find((x) => x.type === 'image/avif');
   const preload = avif
     ? `<link rel="preload" as="image" type="image/avif" href="${esc(avif.srcset.split(',').pop().trim().split(' ')[0])}" imagesrcset="${esc(avif.srcset)}" imagesizes="100vw" fetchpriority="high">`
     : '';
@@ -369,7 +382,7 @@ async function renderDetail(a, page, assets) {
     { '@type': 'ListItem', position: 2, name: 'Portfolio', item: 'https://oxfordra.net/portfolio' },
     { '@type': 'ListItem', position: 3, name: a.name, item: url },
   ] };
-  const place = { '@context': 'https://schema.org', '@type': 'Place', name: a.name, url, image: `https://oxfordra.net${a.image.src}`, description: d.metaDescription,
+  const place = { '@context': 'https://schema.org', '@type': 'Place', name: a.name, url, image: `https://oxfordra.net${heroImage.src}`, description: d.metaDescription,
     address: { '@type': 'PostalAddress', addressLocality: a.city, addressRegion: a.state, addressCountry: 'US' },
     geo: { '@type': 'GeoCoordinates', latitude: a.lat, longitude: a.lng },
     floorSize: { '@type': 'QuantitativeValue', value: a.sf, unitCode: 'FTK' },
@@ -380,13 +393,13 @@ async function renderDetail(a, page, assets) {
   head = replaceOne(head, /<script type="application\/ld\+json">\s*\{\s*"@context": "https:\/\/schema\.org",\s*"@type": "BreadcrumbList"[\s\S]*?<\/script>\n/, '', 'portfolio BreadcrumbList');
   head = replaceOne(head, LD_RE, ld, 'portfolio:jsonld markers');
 
-  const heroSources = a.image.sources.map((x) => `<source type="${esc(x.type)}" srcset="${esc(x.srcset)}" sizes="100vw">`).join('\n');
+  const heroSources = heroImage.sources.map((x) => `<source type="${esc(x.type)}" srcset="${esc(x.srcset)}" sizes="100vw">`).join('\n');
   const hero = `<!-- ═══ PROPERTY HERO ═══ -->
 <section class="subpage-hero" aria-label="${esc(a.name)}">
 <div class="subpage-hero__bg">
 <picture>
 ${heroSources}
-<img src="${esc(a.image.src)}" alt="${esc(a.image.alt)}" width="${width}" height="${height}" decoding="async" fetchpriority="high">
+<img src="${esc(heroImage.src)}" alt="${esc(heroImage.alt)}" width="${width}" height="${height}" decoding="async" fetchpriority="high"${heroPosition}>
 </picture>
 </div>
 <div class="subpage-hero__overlay"></div>

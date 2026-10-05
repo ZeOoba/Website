@@ -253,6 +253,13 @@ test('E3 contact, owner and broker forms ask an optional "How did you hear about
   }
 });
 
+test('E4 email_click is labeled by firm mailbox name only (GA4 redacts email-shaped labels); other addresses are "external"', () => {
+  const js = read('script.js');
+  assert.match(js, /firmMailbox = \/\^\(\[a-z0-9\._-\]\+\)@oxfordra\\\.net\$\/i\.exec\(address\)/, 'the label must be the local part of a @oxfordra.net address');
+  assert.match(js, /event_label: firmMailbox \? firmMailbox\[1\]\.toLowerCase\(\) : "external"/);
+  assert.doesNotMatch(js, /event_label: \/@oxfordra/, 'a full address as the label is auto-redacted to "(redacted)" by GA4');
+});
+
 test('C5 the privacy policy describes the real analytics (GA4 with a consent choice) and no longer names Umami, which is not loaded', () => {
   for (const f of GA_PAGES) assert.doesNotMatch(read(f), /umami/i, `${f} mentions Umami, which this site does not load`);
   const p = read('privacy.html');

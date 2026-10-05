@@ -205,11 +205,13 @@ test('P8 3540 ~12% is labeled yield on cost; Fairground keeps its published mult
 
 // ── 2026-10-05 follow-ups (Gabriel's decisions) ─────────────────────────────
 
-test('P10 the Search Console ownership tag is on the home page head', () => {
+test('P10 the Search Console and Bing Webmaster ownership tags are on the home page head', () => {
   const html = read('index.html');
   const head = html.slice(0, html.indexOf('</head>'));
   assert.match(head, /<meta name="google-site-verification" content="[A-Za-z0-9_-]{30,}">/);
-  assert.equal((html.match(/google-site-verification/g) || []).length, 1, 'exactly one verification tag');
+  assert.match(head, /<meta name="msvalidate\.01" content="[A-F0-9]{32}">/);
+  assert.equal((html.match(/google-site-verification/g) || []).length, 1, 'exactly one Google verification tag');
+  assert.equal((html.match(/msvalidate\.01/g) || []).length, 1, 'exactly one Bing verification tag');
 });
 
 test('P11 the privacy policy describes the data flows the code actually has, and drops what it does not', () => {

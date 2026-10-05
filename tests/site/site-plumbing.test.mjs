@@ -269,7 +269,14 @@ test('P10 homepage case studies carry the four-step narrative and no est. dollar
     assert.deepEqual([...dl.matchAll(/<dt>([^<]+)<\/dt>/g)].map((m) => m[1]), ['Situation', 'What we saw', 'What we did', 'Result']);
   }
   assert.doesNotMatch(featured, /Est\. Current Value|\$12M/, 'no estimated dollar value on the homepage cards');
-  assert.doesNotMatch(featured, /waiting list/i, 'Sepich waiting-list claim is unresolved');
+  assert.doesNotMatch(featured, /waiting list/i, 'Sepich waiting-list claim was removed');
+  // Gabriel removed the Sepich waiting-list claim from Track Record too (2026-10-04);
+  // other case studies (e.g. Information Lane) keep theirs.
+  const tr = read('track-record.html');
+  const start = tr.indexOf('<h3>Sepich Portfolio</h3>');
+  const sepich = tr.slice(start, tr.indexOf('9050 Red Branch Road', start));
+  assert.ok(start > 0 && sepich.length > 200, 'Sepich case study not found on Track Record');
+  assert.doesNotMatch(sepich, /waiting list|wait list/i, 'Sepich waiting-list claim was removed');
 });
 
 // "Never failed to close" has no source and a terminated 2026 PSA exists (Claims Audit);

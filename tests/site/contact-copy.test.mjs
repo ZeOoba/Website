@@ -17,14 +17,15 @@ const section = (main.match(/<section[^>]*aria-label="What happens next"[\s\S]*?
 
 test('the header is casual', () => {
   assert.match(main, /<h1[^>]*>Say hello<\/h1>/);
-  const intro = main.match(/<p class="section__intro[^"]*">([\s\S]*?)<\/p>/)[1];
-  assert.match(intro, /^We(?:'|&rsquo;|’)re the opposite of intimidating and always down to talk industrial real estate\.?$/);
-  assert.doesNotMatch(intro, /real (?:person|human)/i, 'who reads it is said once, in the What happens section');
+  const header = main.match(/<section[^>]*aria-label="Page header"[\s\S]*?<\/section>/)[0];
+  assert.doesNotMatch(header, /section__intro/, 'the header has one supporting line, the loading-docks aside');
+  assert.doesNotMatch(header, /intimidating|always down to talk/i, 'the old subhead was removed on purpose');
+  assert.doesNotMatch(header, /real (?:person|human)/i, 'who reads it is said once, in the What happens section');
 });
 
 test('the loading-docks line sits in the header, where more people see it', () => {
   const header = main.match(/<section[^>]*aria-label="Page header"[\s\S]*?<\/section>/)[0];
-  assert.match(header, /<p class="contact-aside">We get genuinely excited about loading docks, drive-in doors and clear heights\. Consider yourself warned\.<\/p>/);
+  assert.match(header, /<p class="contact-aside">We get genuinely excited about loading docks, <span class="contact-nowrap">drive-in<\/span> doors and clear heights\. Consider yourself warned\.<\/p>/, 'drive-in must not break across lines');
   assert.doesNotMatch(section, /loading docks/i, 'said once: it moved up out of the bottom section');
   assert.doesNotMatch(section, /class="section__label"/, 'the eyebrow label is removed on purpose');
 });

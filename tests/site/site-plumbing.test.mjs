@@ -159,7 +159,7 @@ test('P9 /what-we-see is built from supported claims only and is linked from the
     [/lender|\bloan\b|mortgage|non-recourse|\bLTV\b/i, 'lender wording'],
     [/\d+\s*%\s*(occupied|occupancy|leased)|occupancy (of|at) \d/i, 'an occupancy figure'],
     [/\b\d+\s+(buildings|properties|assets)\b/i, 'a building / property count'],
-    [/\bNOI\b|\bIRR\b|equity multiple|yield on cost|cash-on-cash/i, 'return metrics Track Record already governs'],
+    [/\bNOI\b|\bIRR\b|equity multiple|yield on cost|cash-on-cash|cap rate/i, 'return metrics Track Record already governs'],
     [/permanent|30[- ]day|best-in-class|world-class|unparalleled/i, 'banned or unsupported wording'],
     [/no broker required|never failed to close/i, 'claims the audit struck'],
   ];
@@ -285,4 +285,72 @@ test('P11 no page claims Oxford has never failed to close', () => {
   for (const page of ['index.html', 'for-brokers.html', 'what-we-see.html', 'llms.txt', 'netlify/edge-functions/chat.ts']) {
     assert.doesNotMatch(read(page), /never failed to close|close what we sign/i, `${page} repeats the struck closing claim`);
   }
+});
+
+// Live QA pass after PRs #145-#148 (2026-10-05): axe sweep of every sitemap page plus
+// a content check found these. Each is pinned so it cannot come back.
+const allHtml = () => {
+  const out = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+      const rel = dir ? `${dir}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        if (['node_modules', 'dist', 'tests', 'scripts', 'evals', 'data', 'netlify', '.git', '.claude'].includes(e.name)) continue;
+        walk(rel);
+      } else if (e.name.endsWith('.html')) out.push(rel);
+    }
+  };
+  walk('');
+  return out;
+};
+
+test('P18 no page lists Kansas City as a market beside the two core markets; FAQ text matches its JSON-LD', () => {
+  for (const f of [...allHtml(), 'llms.txt', 'scripts/meta.md', 'netlify/edge-functions/chat.ts']) {
+    const src = read(f);
+    assert.doesNotMatch(src, /Kansas City MO markets/, `${f} lists Kansas City MO as a market`);
+    assert.doesNotMatch(src, /Columbus OH, and Kansas City/, `${f} lists Kansas City as a third market`);
+  }
+  for (const [file, needle] of [
+    ['sell-your-building.html', 'in our two core markets, Maryland (the DC Metro, Baltimore City and the Eastern Shore) and Columbus OH, with a Kansas City holding'],
+    ['tenant-resources.html', 'across two core markets, Maryland and Columbus OH, plus a Kansas City holding'],
+  ]) {
+    const src = read(file);
+    assert.equal(src.split(needle).length - 1, 2, `${file}: the answer must appear once visibly and once in the FAQPage JSON-LD`);
+  }
+});
+
+test('P19 property facts are a labelled region, not an <aside> nested in <main>', () => {
+  assert.doesNotMatch(read('scripts/build-portfolio.mjs'), /<aside class="pf-detail__facts"/);
+  const pages = readdirSync(path.join(ROOT, 'properties')).filter((f) => f.endsWith('.html'));
+  assert.ok(pages.length >= 18, 'property pages missing');
+  for (const f of pages) {
+    const html = read(`properties/${f}`);
+    assert.doesNotMatch(html, /<aside\b/, `${f} still has a nested complementary landmark`);
+    assert.match(html, /<section class="pf-detail__facts" aria-label="Property facts">/, `${f} lost its facts region`);
+  }
+});
+
+test('P20 /tenant-resources landmarks have unique names', () => {
+  const html = read('tenant-resources.html');
+  const labels = [...html.matchAll(/<section\b[^>]*aria-label="([^"]+)"/g)].map((m) => m[1].toLowerCase());
+  assert.equal(new Set(labels).size, labels.length, `duplicate section aria-labels: ${JSON.stringify(labels)}`);
+});
+
+test('P21 links inside running text are underlined, and the decorative "vs" meets contrast', () => {
+  for (const f of ['privacy.html', 'terms.html']) {
+    assert.match(read(f), /\.breadcrumb a\{[^}]*text-decoration:underline/, `${f} breadcrumb link relies on colour alone`);
+  }
+  assert.match(read('privacy.html'), /<a href="https:\/\/tools\.google\.com\/dlpage\/gaoptout"[^>]*text-decoration:underline/);
+  assert.match(read('markets/index.html'), /\.expanding-note a\{[^}]*text-decoration:underline/);
+  assert.match(read('markets/maryland.html'), /<a href="\/markets\/columbus-oh" style="text-decoration:underline/);
+  assert.match(read('markets/columbus-oh.html'), /<a href="\/markets\/maryland" style="text-decoration:underline/);
+  for (const f of readdirSync(path.join(ROOT, 'resources')).filter((n) => n.endsWith('.html') && n !== 'index.html')) {
+    assert.match(read(`resources/${f}`), /<a href="\/sell-your-building" style="text-decoration:underline[^"]*">reach us/, `resources/${f} CTA link relies on colour alone`);
+  }
+  assert.match(read('resources/industrial-building-sale-document-checklist.html'), /\.checklist-download__fine a\{[^}]*text-decoration:underline/);
+  assert.match(read('about.html'), /<div class="basis-static__vs" aria-hidden="true" style="color:#9aa5bd">/);
+});
+
+test('P22 Track Record links to the investment-philosophy page', () => {
+  assert.match(read('track-record.html'), /href="\/what-we-see"/);
 });

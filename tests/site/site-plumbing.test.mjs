@@ -205,7 +205,7 @@ test('P8 3540 ~12% is labeled yield on cost; Fairground keeps its published mult
 
 // ── 2026-10-05 follow-ups (Gabriel's decisions) ─────────────────────────────
 
-test('P10 the Search Console and Bing Webmaster ownership tags are on the home page head', () => {
+test('P14 the Search Console and Bing Webmaster ownership tags are on the home page head', () => {
   const html = read('index.html');
   const head = html.slice(0, html.indexOf('</head>'));
   assert.match(head, /<meta name="google-site-verification" content="[A-Za-z0-9_-]{30,}">/);
@@ -214,7 +214,7 @@ test('P10 the Search Console and Bing Webmaster ownership tags are on the home p
   assert.equal((html.match(/msvalidate\.01/g) || []).length, 1, 'exactly one Bing verification tag');
 });
 
-test('P11 the privacy policy describes the data flows the code actually has, and drops what it does not', () => {
+test('P15 the privacy policy describes the data flows the code actually has, and drops what it does not', () => {
   const text = read('privacy.html').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').replace(/&rsquo;/g, '’');
   // Statements that were false or overstated.
   for (const [re, why] of [
@@ -236,7 +236,7 @@ test('P11 the privacy policy describes the data flows the code actually has, and
   assert.doesNotMatch(text, /do not track|reply stop/i, 'texting and Do Not Track commitments are counsel items, not added here');
 });
 
-test('P12 the Overview PDF source follows the rulings: gross only, two core markets plus a holding, no tenant tiles, no partnership footnote', () => {
+test('P16 the Overview PDF source follows the rulings: gross only, two core markets plus a holding, no tenant tiles, no partnership footnote', () => {
   const html = read('scripts/overview-pdf/overview.html');
   assert.match(html, /Square footage and tenant counts are gross\.<\/p>/);
   assert.doesNotMatch(html, /50% partnership|held in 50%/i, 'ownership structure must not appear (Gabriel, 2026-10-02 and 2026-10-05)');
@@ -248,11 +248,34 @@ test('P12 the Overview PDF source follows the rulings: gross only, two core mark
   assert.match(html, /two core markets, Maryland and Columbus OH, plus a Kansas City MO holding/);
 });
 
-test('P13 the owner form text-consent box is optional and states the consent terms', () => {
+test('P17 the owner form text-consent box is optional and states the consent terms', () => {
   const html = read('sell-your-building.html');
   const box = html.match(/<input type="checkbox" id="owner-consent"[^>]*>/)?.[0] ?? '';
   assert.ok(box, 'consent checkbox missing');
   assert.doesNotMatch(box, /\brequired\b/, 'consent cannot be a condition of submitting');
   assert.match(box, /name="tcpa-consent"/, 'field name feeds owner-lead-notify');
   assert.match(html, /Consent is not required to submit\. Msg &amp; data rates may apply\. Reply STOP to opt out\./);
+});
+
+// The two homepage case studies tell the Track Record story (Situation / What we saw /
+// What we did / Result) and show only Track Record's tiles: basis per SF and multiples,
+// no estimated dollar value (Gabriel, 2026-10-04).
+test('P10 homepage case studies carry the four-step narrative and no est. dollar value', () => {
+  const home = read('index.html');
+  const featured = home.slice(home.indexOf('id="featured-acquisitions"'), home.indexOf('View Full Track Record'));
+  const stories = featured.match(/<dl class="fc-story">[\s\S]*?<\/dl>/g) || [];
+  assert.equal(stories.length, 2, 'one narrative per featured card');
+  for (const dl of stories) {
+    assert.deepEqual([...dl.matchAll(/<dt>([^<]+)<\/dt>/g)].map((m) => m[1]), ['Situation', 'What we saw', 'What we did', 'Result']);
+  }
+  assert.doesNotMatch(featured, /Est\. Current Value|\$12M/, 'no estimated dollar value on the homepage cards');
+  assert.doesNotMatch(featured, /waiting list/i, 'Sepich waiting-list claim is unresolved');
+});
+
+// "Never failed to close" has no source and a terminated 2026 PSA exists (Claims Audit);
+// Gabriel had it softened site-wide on 2026-10-04.
+test('P11 no page claims Oxford has never failed to close', () => {
+  for (const page of ['index.html', 'for-brokers.html', 'what-we-see.html', 'llms.txt', 'netlify/edge-functions/chat.ts']) {
+    assert.doesNotMatch(read(page), /never failed to close|close what we sign/i, `${page} repeats the struck closing claim`);
+  }
 });

@@ -786,11 +786,14 @@
       return;
     }
     if (/^mailto:/i.test(href)) {
-      // Only the firm's own mailboxes are named; any other address (for example one a
-      // visitor typed into the chat) is reported as "external" so no personal email
+      // Only the firm's own mailboxes are named, and only by mailbox (info, ggoldberg,
+      // maintenance): GA4 auto-redacts any email-shaped value to "(redacted)", so a full
+      // address would hide which mailbox was clicked. Any other address (for example one
+      // a visitor typed into the chat) is reported as "external" so no personal email
       // reaches analytics.
-      var address = href.slice(7).split("?")[0];
-      send("email_click", { event_category: "contact", event_label: /@oxfordra\.net$/i.test(address) ? address : "external", link_location: where });
+      var address = href.slice(7).split("?")[0],
+        firmMailbox = /^([a-z0-9._-]+)@oxfordra\.net$/i.exec(address);
+      send("email_click", { event_category: "contact", event_label: firmMailbox ? firmMailbox[1].toLowerCase() : "external", link_location: where });
       return;
     }
     try {

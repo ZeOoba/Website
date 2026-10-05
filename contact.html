@@ -185,7 +185,7 @@ body{padding-top:36px}.nav{top:36px!important}
 <main id="main-content">
 
 <!-- Page Header -->
-<section class="section section--navy" aria-label="Page header" style="padding-top:120px;">
+<section class="section section--navy contact-header" aria-label="Page header">
 <div class="container">
 <div class="section__header">
 <h1 class="text-white">Say hello</h1>
@@ -205,6 +205,8 @@ body{padding-top:36px}.nav{top:36px!important}
 .contact-lede__punch{font-style:italic;color:var(--gold-accessible)}
 .contact-aside{max-width:640px;text-wrap:balance;margin:8px auto 0;font-family:var(--font-display);font-style:italic;font-size:20px;line-height:1.5;color:var(--gold-light);text-align:center}
 .contact-nowrap{white-space:nowrap}
+.contact-header{padding-top:120px;padding-bottom:56px}
+.contact-header .section__header{margin-bottom:0}
 .contact-promise{margin-top:12px;font-size:13px;line-height:1.5;text-align:center;color:var(--slate)}
 .contact-promise strong{font-weight:500;color:var(--gold-accessible)}
 </style>
@@ -264,11 +266,11 @@ body{padding-top:36px}.nav{top:36px!important}
 <div class="form-group">
 <label for="contact-subject">Subject</label>
 <select id="contact-subject" name="subject">
-<option value="Acquisition Opportunity">Acquisition Opportunity</option>
-<option value="Leasing Inquiry">Leasing Inquiry</option>
-<option value="Tenant Support">Tenant Support</option>
-<option value="General">General</option>
-<option value="Just saying hi">Not sure, just saying hi</option>
+<option value="Acquisition Opportunity" data-hint="Tell us about the building. Leaky roofs and deferred maintenance welcome.">Acquisition Opportunity</option>
+<option value="Leasing Inquiry" data-hint="Tell us about the space you need: size, timing and what it will be used for.">Leasing Inquiry</option>
+<option value="Tenant Support" data-hint="Tell us what is going on and which suite or property you are in.">Tenant Support</option>
+<option value="General" data-hint="Ask us anything. Industrial real estate questions are our favorite kind.">General</option>
+<option value="Just saying hi" data-hint="Say hi. We will say hi back.">Not sure, just saying hi</option>
 </select>
 </div>
 </div>
@@ -299,6 +301,20 @@ body{padding-top:36px}.nav{top:36px!important}
 </form>
 <script>
 (function(){
+  // The message placeholder follows the Subject choice (copy lives in each option's data-hint).
+  var subject = document.getElementById('contact-subject');
+  var message = document.getElementById('contact-message');
+  if (subject && message) {
+    var syncHint = function () {
+      var opt = subject.options[subject.selectedIndex];
+      var hint = opt && opt.getAttribute('data-hint');
+      if (hint) message.placeholder = hint;
+    };
+    subject.addEventListener('change', syncHint);
+    // Back/forward: the browser restores the select at pageshow, with no change event.
+    window.addEventListener('pageshow', syncHint);
+    syncHint();
+  }
   var form = document.getElementById('contactForm');
   if(!form) return;
   // Listen on document so this runs after script.js's per-form validator,

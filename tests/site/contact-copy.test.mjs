@@ -58,7 +58,7 @@ test('"What happens when you hit send" is a single sentence', () => {
 
 test('the voice is dry: the nerd line, the aside and the form copy are in place', () => {
   assert.match(main, /placeholder="Tell us about the building\. Leaky roofs and deferred maintenance welcome\."/);
-  assert.match(main, /<option value="Just saying hi">Not sure, just saying hi<\/option>/);
+  assert.match(main, /<option value="Just saying hi"[^>]*>Not sure, just saying hi<\/option>/);
 });
 
 test('the button and its script agree, and the old stiff labels are gone', () => {

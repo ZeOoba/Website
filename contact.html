@@ -185,11 +185,11 @@ body{padding-top:36px}.nav{top:36px!important}
 <main id="main-content">
 
 <!-- Page Header -->
-<section class="section section--navy" aria-label="Page header" style="padding-top:120px;">
+<section class="section section--navy contact-header" aria-label="Page header">
 <div class="container">
 <div class="section__header">
-<h1 class="text-white">Get in Touch</h1>
-<p class="section__intro text-white-muted">We respond within one business day.</p>
+<h1 class="text-white">Say hello</h1>
+<p class="contact-aside">We get genuinely excited about loading docks, <span class="contact-nowrap">drive-in</span> doors and clear heights. Consider yourself warned.</p>
 </div>
 </div>
 </section>
@@ -201,6 +201,28 @@ body{padding-top:36px}.nav{top:36px!important}
 .contact-routes a{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--light-gray);color:var(--navy);font-size:15px}
 .contact-routes a span{color:var(--slate);font-size:13px}
 .contact-routes a:hover{color:var(--gold-accessible);text-decoration:none}
+.contact-lede{max-width:720px;text-wrap:balance;margin:0 auto;font-family:var(--font-display);font-size:22px;line-height:1.6;color:var(--navy);text-align:center}
+.contact-lede__punch{font-style:italic;color:var(--gold-accessible)}
+.contact-aside{max-width:640px;text-wrap:balance;margin:8px auto 0;font-family:var(--font-display);font-style:italic;font-size:20px;line-height:1.5;color:var(--gold-light);text-align:center}
+.contact-nowrap{white-space:nowrap}
+.contact-wait{margin-top:16px;padding-top:16px;border-top:1px solid var(--divider);color:var(--navy)}
+.contact-wait__title{font-family:var(--font-body);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--gold-accessible);margin-bottom:8px}
+.contact-wait__item{font-size:15px;line-height:1.6;margin:6px 0}
+#contactSuccess .contact-wait a{color:var(--navy);text-decoration:underline;text-underline-offset:3px}
+#contactSuccess .contact-wait a:hover{color:var(--gold-accessible)}
+/* Show only the items that fit the chosen subject; browsers without :has() show all three. */
+@supports selector(:has(*)){
+#contactForm:has(#contact-subject option[data-key="acquisition"]:checked) .contact-wait__item:not([data-for~="acquisition"]),
+#contactForm:has(#contact-subject option[data-key="leasing"]:checked) .contact-wait__item:not([data-for~="leasing"]),
+#contactForm:has(#contact-subject option[data-key="tenant"]:checked) .contact-wait__item:not([data-for~="tenant"]),
+#contactForm:has(#contact-subject option[data-key="general"]:checked) .contact-wait__item:not([data-for~="general"]),
+#contactForm:has(#contact-subject option[data-key="hi"]:checked) .contact-wait__item:not([data-for~="hi"]){display:none}
+}
+.contact-sign{max-width:720px;margin:16px auto 0;font-family:var(--font-display);font-style:italic;font-size:20px;color:var(--gold-accessible);text-align:center}
+.contact-header{padding-top:120px;padding-bottom:56px}
+.contact-header .section__header{margin-bottom:0}
+.contact-promise{margin-top:12px;font-size:13px;line-height:1.5;text-align:center;color:var(--slate)}
+.contact-promise strong{font-weight:500;color:var(--gold-accessible)}
 </style>
 <section class="section" aria-label="Contact form and information">
 <div class="container">
@@ -258,10 +280,11 @@ body{padding-top:36px}.nav{top:36px!important}
 <div class="form-group">
 <label for="contact-subject">Subject</label>
 <select id="contact-subject" name="subject">
-<option value="Acquisition Opportunity">Acquisition Opportunity</option>
-<option value="Leasing Inquiry">Leasing Inquiry</option>
-<option value="Tenant Support">Tenant Support</option>
-<option value="General">General</option>
+<option value="Acquisition Opportunity" data-key="acquisition" data-hint="Tell us about the building. Leaky roofs and deferred maintenance welcome.">Acquisition Opportunity</option>
+<option value="Leasing Inquiry" data-key="leasing" data-hint="Tell us about the space you need: size, timing and what it will be used for.">Leasing Inquiry</option>
+<option value="Tenant Support" data-key="tenant" data-hint="Tell us what is going on and which suite or property you are in.">Tenant Support</option>
+<option value="General" data-key="general" data-hint="Ask us anything. Industrial real estate questions are our favorite kind.">General</option>
+<option value="Just saying hi" data-key="hi" data-hint="Say hi. We will say hi back.">Not sure, just saying hi</option>
 </select>
 </div>
 </div>
@@ -280,17 +303,46 @@ body{padding-top:36px}.nav{top:36px!important}
 </div>
 <div class="form-group">
 <label for="contact-message">Message <span class="required" aria-hidden="true">*</span></label>
-<textarea id="contact-message" name="message" rows="5" required aria-required="true"></textarea>
+<textarea id="contact-message" name="message" rows="5" required aria-required="true" placeholder="Tell us about the building. Leaky roofs and deferred maintenance welcome."></textarea>
 </div>
 <div class="form-group">
 <div data-netlify-recaptcha="true"></div>
 </div>
-<button type="submit" class="btn btn--gold btn--full">Send Message</button>
-<div class="form-success" id="contactSuccess" role="alert" style="display:none;">Thank you for reaching out! We'll respond within one business day.</div>
+<button type="submit" class="btn btn--gold btn--full">Send it our way</button>
+<p class="contact-promise"><strong>We reply within one business day.</strong></p>
+<div class="form-success" id="contactSuccess" style="display:none;">
+<p role="alert">Got it. A real person will read this and respond within one business day. Carry on.</p>
+<div class="contact-wait" role="group" aria-label="While you wait">
+<h3 class="contact-wait__title">While you wait</h3>
+<p class="contact-wait__item" data-for="acquisition general hi">Thinking of selling? <a href="/resources/">Read the owner guides</a>, or <a href="/for-brokers#broker-network">upload an OM or rent roll</a>.</p>
+<p class="contact-wait__item" data-for="leasing general hi">Looking for space? <a href="/available-space">See what is available now</a>.</p>
+<p class="contact-wait__item" data-for="tenant general hi">Current tenant? <a href="/tenant-resources">Open tenant resources</a>.</p>
+</div>
+</div>
 <div class="form-error" id="contactError" role="alert" style="display:none;color:#B0432F;margin-top:12px;"></div>
 </form>
 <script>
 (function(){
+  // The message placeholder follows the Subject choice (copy lives in each option's data-hint).
+  var subject = document.getElementById('contact-subject');
+  var message = document.getElementById('contact-message');
+  if (subject && message) {
+    var syncHint = function () {
+      var opt = subject.options[subject.selectedIndex];
+      var hint = opt && opt.getAttribute('data-hint');
+      if (hint) message.placeholder = hint;
+    };
+    // Deep link: /contact?subject=leasing|tenant|acquisition|general|hi preselects the subject.
+    // Only the data-key values are honoured; anything else leaves the default alone.
+    var wanted = (new URLSearchParams(window.location.search).get('subject') || '').toLowerCase();
+    for (var i = 0; i < subject.options.length; i++) {
+      if (wanted && subject.options[i].getAttribute('data-key') === wanted) { subject.selectedIndex = i; break; }
+    }
+    subject.addEventListener('change', syncHint);
+    // Back/forward: the browser restores the select at pageshow, with no change event.
+    window.addEventListener('pageshow', syncHint);
+    syncHint();
+  }
   var form = document.getElementById('contactForm');
   if(!form) return;
   // Listen on document so this runs after script.js's per-form validator,
@@ -326,7 +378,7 @@ body{padding-top:36px}.nav{top:36px!important}
       errorBox.textContent = 'Something went wrong sending your message. Please email info@oxfordra.net or call 301.512.6125. (' + (err && err.message ? err.message : 'unknown error') + ')';
       errorBox.style.display = '';
       btn.disabled = false;
-      btn.textContent = 'Send Message';
+      btn.textContent = 'Send it our way';
     });
   });
 })();
@@ -335,6 +387,17 @@ body{padding-top:36px}.nav{top:36px!important}
 
 
 </div>
+</div>
+</section>
+
+<!-- What happens next: plain voice, claims the site already makes (personal review, next steps, "we tell you directly") -->
+<section class="section section--parchment" aria-label="What happens next">
+<div class="container">
+<div class="section__header animate-on-scroll">
+<h2>What happens when you hit send</h2>
+</div>
+<p class="contact-lede animate-on-scroll">Gabriel or Eric, a real human and not a bot, reads it, writes back with next steps, and if the numbers work, tells you directly, because <em class="contact-lede__punch">suspense is not part of our process</em>.</p>
+<p class="contact-sign animate-on-scroll">&mdash; Gabriel &amp; Eric</p>
 </div>
 </section>
 

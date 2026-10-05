@@ -152,42 +152,39 @@ function errorFor(form, el) {
 
 /* ---------- Owner form (sell-your-building.html) ---------- */
 
-test('owner form blocks submit when the required consent box is unticked', () => {
+// Gabriel, 2026-10-05: phone/text consent is OPTIONAL and says so. A required box made
+// consent a condition of submitting, with thin wording, which is a Maryland Stop the
+// Spam Calls Act risk pending counsel. (The validator's required-checkbox behavior,
+// the original PR #88 finding, is still pinned by the lease application's terms box.)
+test('owner form: the text-consent box is optional and carries the full consent wording', () => {
   const { form, els } = buildForm(formFields('sell-your-building.html', 'ownerForm'));
   const consent = els['owner-consent'];
   assert.equal(consent.type, 'checkbox');
-  assert.ok(consent.hasAttribute('required'), 'owner-consent must stay required');
+  assert.equal(consent.hasAttribute('required'), false, 'owner-consent must not be required: consent cannot be a condition of submitting');
   fillRequiredText(els);
   consent.checked = false;
+  assert.equal(form.submit(), false, 'an unticked optional consent box must not block submit');
+  assert.equal(consent.hasAttribute('aria-invalid'), false);
 
-  assert.equal(form.submit(), true, 'submit was not prevented: the form would post without tcpa-consent');
-  assert.equal(consent.getAttribute('aria-invalid'), 'true');
-  assert.ok(consent.focused, 'focus should move to the consent box');
-  const err = errorFor(form, consent);
-  assert.ok(err, 'no error message rendered for the consent box');
-  assert.match(err.textContent, /check this box/i);
-  // Not wedged between the box and its label inside the flex row.
-  assert.notEqual(err.parentNode, consent.parentNode, 'consent error must render outside the checkbox row');
-  assert.equal(consent.parentNode.nextSibling, err, 'consent error should follow its .form-group');
+  const html = readFileSync(path.join(ROOT, 'sell-your-building.html'), 'utf8');
+  const label = html.match(/<label for="owner-consent"[^>]*>([\s\S]*?)<\/label>/)?.[1] ?? '';
+  for (const phrase of ['call or text me', 'automated means', 'Consent is not required to submit', 'Msg &amp; data rates may apply', 'Reply STOP to opt out']) {
+    assert.ok(label.includes(phrase), `consent wording is missing: ${phrase}`);
+  }
 });
 
-test('owner form submits when the consent box is ticked, and clears the prior error', () => {
+test('owner form submits when the optional consent box is ticked', () => {
   const { form, els } = buildForm(formFields('sell-your-building.html', 'ownerForm'));
   const consent = els['owner-consent'];
   fillRequiredText(els);
-  consent.checked = false;
-  assert.equal(form.submit(), true);
-
   consent.checked = true;
   assert.equal(form.submit(), false, 'a ticked consent box must not block submit');
   assert.equal(consent.hasAttribute('aria-invalid'), false);
-  assert.equal(errorFor(form, consent), null, 'stale consent error left on the page');
 });
 
 test('owner form still blocks an empty required text field', () => {
   const { form, els } = buildForm(formFields('sell-your-building.html', 'ownerForm'));
   fillRequiredText(els);
-  els['owner-consent'].checked = true;
   els['owner-address'].value = '   ';
 
   assert.equal(form.submit(), true);

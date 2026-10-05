@@ -202,3 +202,55 @@ test('P8 3540 ~12% is labeled yield on cost; Fairground keeps its published mult
   assert.match(read('netlify/edge-functions/chat.ts'), /cap rate, yield on cost, IRR, and sale-price figures/);
   assert.match(read('scripts/meta.md'), /equity multiple, IRR, and sale-price figures/);
 });
+
+// ── 2026-10-05 follow-ups (Gabriel's decisions) ─────────────────────────────
+
+test('P10 the Search Console ownership tag is on the home page head', () => {
+  const html = read('index.html');
+  const head = html.slice(0, html.indexOf('</head>'));
+  assert.match(head, /<meta name="google-site-verification" content="[A-Za-z0-9_-]{30,}">/);
+  assert.equal((html.match(/google-site-verification/g) || []).length, 1, 'exactly one verification tag');
+});
+
+test('P11 the privacy policy describes the data flows the code actually has, and drops what it does not', () => {
+  const text = read('privacy.html').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').replace(/&rsquo;/g, '’');
+  // Statements that were false or overstated.
+  for (const [re, why] of [
+    [/brokerage license information/i, 'there is no license field on the broker form'],
+    [/tenant portal/i, 'there is no tenant portal'],
+    [/_gid/, '_gid is a Universal Analytics cookie; GA4 sets _ga and _ga_<id>'],
+    [/anonymized/i, 'GA4 uses a pseudonymous identifier once accepted'],
+    [/umami/i, 'Umami is not loaded'],
+    [/to prevent cross-site scripting/i, 'CSP helps protect, it does not prevent'],
+  ]) assert.doesNotMatch(text, re, `privacy.html still says something untrue: ${why}`);
+  // Data flows that must be disclosed.
+  for (const needle of [
+    'AI Chat Assistant', 'Anthropic', 'Microsoft 365', 'Netlify', 'reCAPTCHA', 'OpenStreetMap', 'unpkg.com',
+    'credit report, driver’s license', 'credit and background checks you authorize', '_ga_YDSX0RW5HC',
+    'Decline', '9510 Persimmon Tree Road, Suite 200', 'Potomac, MD 20854',
+  ]) assert.ok(text.includes(needle), `privacy.html must disclose: ${needle}`);
+  // No invented promises (retention periods, texting commitments, Do Not Track) without Gabriel's say-so.
+  assert.doesNotMatch(text, /retain(ed)? for \d|\b\d+ (days|months|years)\b.*(retain|keep)/i, 'no invented retention period');
+  assert.doesNotMatch(text, /do not track|reply stop/i, 'texting and Do Not Track commitments are counsel items, not added here');
+});
+
+test('P12 the Overview PDF source follows the rulings: gross only, two core markets plus a holding, no tenant tiles, no partnership footnote', () => {
+  const html = read('scripts/overview-pdf/overview.html');
+  assert.match(html, /Square footage and tenant counts are gross\.<\/p>/);
+  assert.doesNotMatch(html, /50% partnership|held in 50%/i, 'ownership structure must not appear (Gabriel, 2026-10-02 and 2026-10-05)');
+  assert.match(html, /<h2>Two Core Markets, Plus a Kansas City Holding<\/h2>/);
+  assert.match(html, /Holding, entered 2024/);
+  const markets = html.slice(html.indexOf('<div class="markets">'), html.indexOf('<p class="expansion">'));
+  assert.doesNotMatch(markets, /class="l">Tenants</, 'per-market tenant tiles summed to 129+ against a 138+ headline');
+  assert.match(html, /class="mult">2\.6x<\/td>/, 'Sepich matches the site (~2.6x)');
+  assert.match(html, /two core markets, Maryland and Columbus OH, plus a Kansas City MO holding/);
+});
+
+test('P13 the owner form text-consent box is optional and states the consent terms', () => {
+  const html = read('sell-your-building.html');
+  const box = html.match(/<input type="checkbox" id="owner-consent"[^>]*>/)?.[0] ?? '';
+  assert.ok(box, 'consent checkbox missing');
+  assert.doesNotMatch(box, /\brequired\b/, 'consent cannot be a condition of submitting');
+  assert.match(box, /name="tcpa-consent"/, 'field name feeds owner-lead-notify');
+  assert.match(html, /Consent is not required to submit\. Msg &amp; data rates may apply\. Reply STOP to opt out\./);
+});

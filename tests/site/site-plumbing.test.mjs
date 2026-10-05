@@ -202,3 +202,26 @@ test('P8 3540 ~12% is labeled yield on cost; Fairground keeps its published mult
   assert.match(read('netlify/edge-functions/chat.ts'), /cap rate, yield on cost, IRR, and sale-price figures/);
   assert.match(read('scripts/meta.md'), /equity multiple, IRR, and sale-price figures/);
 });
+
+// The two homepage case studies tell the Track Record story (Situation / What we saw /
+// What we did / Result) and show only Track Record's tiles: basis per SF and multiples,
+// no estimated dollar value (Gabriel, 2026-10-04).
+test('P10 homepage case studies carry the four-step narrative and no est. dollar value', () => {
+  const home = read('index.html');
+  const featured = home.slice(home.indexOf('id="featured-acquisitions"'), home.indexOf('View Full Track Record'));
+  const stories = featured.match(/<dl class="fc-story">[\s\S]*?<\/dl>/g) || [];
+  assert.equal(stories.length, 2, 'one narrative per featured card');
+  for (const dl of stories) {
+    assert.deepEqual([...dl.matchAll(/<dt>([^<]+)<\/dt>/g)].map((m) => m[1]), ['Situation', 'What we saw', 'What we did', 'Result']);
+  }
+  assert.doesNotMatch(featured, /Est\. Current Value|\$12M/, 'no estimated dollar value on the homepage cards');
+  assert.doesNotMatch(featured, /waiting list/i, 'Sepich waiting-list claim is unresolved');
+});
+
+// "Never failed to close" has no source and a terminated 2026 PSA exists (Claims Audit);
+// Gabriel had it softened site-wide on 2026-10-04.
+test('P11 no page claims Oxford has never failed to close', () => {
+  for (const page of ['index.html', 'for-brokers.html', 'what-we-see.html', 'llms.txt', 'netlify/edge-functions/chat.ts']) {
+    assert.doesNotMatch(read(page), /never failed to close|close what we sign/i, `${page} repeats the struck closing claim`);
+  }
+});

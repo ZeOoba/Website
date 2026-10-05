@@ -15,13 +15,17 @@ const main = html.match(/<main id="main-content">([\s\S]*?)<\/main>/)[1];
 const text = (s) => s.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;|&#\d+;/g, ' ');
 const section = (main.match(/<section[^>]*aria-label="What happens next"[\s\S]*?<\/section>/) || [''])[0];
 
-test('the header is casual and still makes the one-business-day promise', () => {
+test('the header is casual', () => {
   assert.match(main, /<h1[^>]*>Say hello<\/h1>/);
   const intro = main.match(/<p class="section__intro[^"]*">([\s\S]*?)<\/p>/)[1];
-  assert.match(intro, /friendly/i);
-  assert.match(intro, /don(?:'|&rsquo;|’)t bite/i);
-  assert.match(intro, /one business day/i, 'the response promise must stay in the header');
+  assert.match(intro, /^We(?:'|&rsquo;|’)re the opposite of intimidating and always down to talk industrial real estate\.?$/);
   assert.doesNotMatch(intro, /real (?:person|human)/i, 'who reads it is said once, in the What happens section');
+});
+
+test('the one-business-day promise moved into the main sentence, so it is still visible before submitting', () => {
+  const lede = section.match(/<p class="contact-lede[^"]*">([\s\S]*?)<\/p>/)[1];
+  assert.match(lede, /within one business day/i);
+  assert.doesNotMatch(section, /class="section__label"/, 'the eyebrow label is removed on purpose');
 });
 
 test('"What happens when you hit send" is a single sentence', () => {
@@ -32,11 +36,8 @@ test('"What happens when you hit send" is a single sentence', () => {
   assert.ok(lede, 'p.contact-lede missing');
   const plain = lede.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').trim();
   assert.match(plain, /^[^.!?]+[.]$/, `must be exactly one sentence ending in a period: "${plain}"`);
-  assert.match(plain, /Gabriel or Eric/);
-  assert.match(plain, /^Gabriel or Eric, a real human and not a bot, reads it/);
-  assert.match(plain, /call/);
-  assert.match(plain, /preliminary indication of interest/);
-  assert.match(plain, /if the numbers work, we tell you directly/i);
+  assert.match(plain, /^Gabriel or Eric, a real human and not a bot, reads it within one business day, writes back with next steps, and if the numbers work, tells you directly,/);
+  assert.ok(plain.split(/\s+/).length <= 45, `keep it short enough that the punchline lands (${plain.split(/\s+/).length} words)`);
   assert.match(plain, /suspense is not part of our process/i);
 });
 

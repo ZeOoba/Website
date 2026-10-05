@@ -21,7 +21,14 @@ export const sub = (find, repl) => (s) => {
   return s.replace(find, repl);
 };
 
-const stripJsonLd = (s) => s.replace(/<script\b[^>]*application\/ld\+json[^>]*>[\s\S]*?<\/script>/gi, '');
+// Replace the first sitemap <lastmod> whatever its date. Anchoring on a literal date
+// (it was 2026-08-12) goes STALE the moment that page's lastmod is legitimately bumped.
+const LASTMOD_RE = /<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/;
+const subLastmod = (repl) => (s) => {
+  if (s === null || !LASTMOD_RE.test(s)) throw new Error('anchor not found: any <lastmod>');
+  return s.replace(LASTMOD_RE, (m) => (typeof repl === 'function' ? repl(m) : repl));
+};
+const stripJsonLd =(s) => s.replace(/<script\b[^>]*application\/ld\+json[^>]*>[\s\S]*?<\/script>/gi, '');
 const BTN_BASE = '.nav__mobile-btn{display:none;background:none;border:0;cursor:pointer;padding:8px}';
 const moveHamburgerIntoLinks = (s) => {
   const m = s.match(/<button class="nav__mobile-btn"[\s\S]*?<\/button>\s*/);
@@ -101,11 +108,11 @@ export const CASES = [
   { id: 'IP5', what: 'percent-encoded img src (/images/og%2Dimage.png)', edits: [['about.html', sub('</main>', '<img src="/images/og%2Dimage.png" alt="" width="1" height="1"></main>')]], run: 'integ', expect: 'PASS' },
 
   // --- sitemap lastmod ------------------------------------------------------------
-  { id: 'S1', what: 'lastmod in the future', edits: [['sitemap.xml', sub('<lastmod>2026-08-12</lastmod>', '<lastmod>2099-12-31</lastmod>')]], run: 'integ', expect: 'lastmod' },
-  { id: 'S2', what: 'lastmod month 23', edits: [['sitemap.xml', sub('<lastmod>2026-08-12</lastmod>', '<lastmod>2026-23-09</lastmod>')]], run: 'integ', expect: 'lastmod' },
-  { id: 'S3', what: 'lastmod unpadded', edits: [['sitemap.xml', sub('<lastmod>2026-08-12</lastmod>', '<lastmod>2026-9-3</lastmod>')]], run: 'integ', expect: 'lastmod' },
-  { id: 'S4', what: 'lastmod 2026-02-30 (not a calendar date)', edits: [['sitemap.xml', sub('<lastmod>2026-08-12</lastmod>', '<lastmod>2026-02-30</lastmod>')]], run: 'integ', expect: 'lastmod' },
-  { id: 'S5', what: 'a <url> with two lastmods', edits: [['sitemap.xml', sub('<lastmod>2026-08-12</lastmod>', '<lastmod>2026-08-12</lastmod><lastmod>2026-08-13</lastmod>')]], run: 'integ', expect: 'lastmod' },
+  { id: 'S1', what: 'lastmod in the future', edits: [['sitemap.xml', subLastmod('<lastmod>2099-12-31</lastmod>')]], run: 'integ', expect: 'lastmod' },
+  { id: 'S2', what: 'lastmod month 23', edits: [['sitemap.xml', subLastmod('<lastmod>2026-23-09</lastmod>')]], run: 'integ', expect: 'lastmod' },
+  { id: 'S3', what: 'lastmod unpadded', edits: [['sitemap.xml', subLastmod('<lastmod>2026-9-3</lastmod>')]], run: 'integ', expect: 'lastmod' },
+  { id: 'S4', what: 'lastmod 2026-02-30 (not a calendar date)', edits: [['sitemap.xml', subLastmod('<lastmod>2026-02-30</lastmod>')]], run: 'integ', expect: 'lastmod' },
+  { id: 'S5', what: 'a <url> with two lastmods', edits: [['sitemap.xml', subLastmod((m) => m + '<lastmod>2026-08-13</lastmod>')]], run: 'integ', expect: 'lastmod' },
 
   // --- internal links and asset versions ----------------------------------------
   { id: 'L1', what: 'link to /contactx (no such page)', edits: [['about.html', sub('href="/contact"', 'href="/contactx"')]], run: 'integ', expect: 'ships in dist' },

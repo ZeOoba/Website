@@ -23,16 +23,26 @@ test('the header is casual and still makes the one-business-day promise', () => 
   assert.match(intro, /one business day/i, 'the response promise must stay in the header');
 });
 
-test('"What happens when you hit send" is three ordered steps', () => {
+test('"What happens when you hit send" is a single sentence', () => {
   assert.ok(section, 'section aria-label="What happens next" missing');
   assert.match(section, /<h2[^>]*>What happens when you hit send<\/h2>/);
-  assert.equal((section.match(/<li\b/g) || []).length, 3, 'expected exactly three steps');
-  assert.match(section, /<ol\b/);
+  assert.doesNotMatch(section, /<ol\b|<li\b/, 'the three steps were folded into one sentence');
+  const lede = (section.match(/<p class="contact-lede[^"]*">([\s\S]*?)<\/p>/) || [])[1];
+  assert.ok(lede, 'p.contact-lede missing');
+  const plain = lede.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').trim();
+  assert.match(plain, /^[^.!?]+[.]$/, `must be exactly one sentence ending in a period: "${plain}"`);
+  assert.match(plain, /Gabriel or Eric/);
+  assert.match(plain, /not an autoresponder/);
+  assert.match(plain, /call/);
+  assert.match(plain, /preliminary indication of interest/);
+  assert.match(plain, /if the numbers work, we tell you directly/i);
+  assert.match(plain, /suspense is not part of our process/i);
 });
 
-test('the voice is dry: the nerd line and the form copy are in place', () => {
-  assert.match(main, /genuinely excited about loading docks/i);
-  assert.match(main, /placeholder="Tell us about the building\. Leaky roofs welcome\."/);
+test('the voice is dry: the nerd line, the aside and the form copy are in place', () => {
+  assert.match(main, /genuinely excited about loading docks, drive-in doors and clear heights\. Consider yourself warned\./);
+  assert.match(main, /usually Gabriel, sometimes Eric \(we checked\)/);
+  assert.match(main, /placeholder="Tell us about the building\. Leaky roofs and deferred maintenance welcome\."/);
   assert.match(main, /<option value="Just saying hi">Not sure, just saying hi<\/option>/);
 });
 

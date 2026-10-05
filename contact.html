@@ -189,7 +189,7 @@ body{padding-top:36px}.nav{top:36px!important}
 <div class="container">
 <div class="section__header">
 <h1 class="text-white">Say hello</h1>
-<p class="section__intro text-white-muted">A real person reads every message, usually Gabriel, sometimes Eric. We respond within one business day.</p>
+<p class="section__intro text-white-muted">A real person reads every message, usually Gabriel, sometimes Eric (we checked). We respond within one business day.</p>
 </div>
 </div>
 </section>
@@ -201,11 +201,7 @@ body{padding-top:36px}.nav{top:36px!important}
 .contact-routes a{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--light-gray);color:var(--navy);font-size:15px}
 .contact-routes a span{color:var(--slate);font-size:13px}
 .contact-routes a:hover{color:var(--gold-accessible);text-decoration:none}
-.contact-steps{list-style:none;counter-reset:step;display:grid;gap:28px;max-width:720px;margin:0 auto;padding:0}
-.contact-steps li{counter-increment:step;position:relative;padding-left:56px}
-.contact-steps li::before{content:counter(step);position:absolute;left:0;top:-2px;width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;font-family:var(--font-display);font-size:18px;line-height:36px;text-align:center}
-.contact-steps h3{font-family:var(--font-display);font-size:22px;font-weight:500;color:var(--navy);margin-bottom:4px}
-.contact-steps p{font-size:15px;line-height:1.7;color:var(--slate)}
+.contact-lede{max-width:720px;margin:0 auto;font-family:var(--font-display);font-size:22px;line-height:1.6;color:var(--navy);text-align:center}
 .contact-nerd{max-width:720px;margin:36px auto 0;padding-top:24px;border-top:1px solid var(--divider);font-family:var(--font-display);font-style:italic;font-size:18px;color:var(--slate);text-align:center}
 </style>
 <section class="section" aria-label="Contact form and information">
@@ -287,13 +283,13 @@ body{padding-top:36px}.nav{top:36px!important}
 </div>
 <div class="form-group">
 <label for="contact-message">Message <span class="required" aria-hidden="true">*</span></label>
-<textarea id="contact-message" name="message" rows="5" required aria-required="true" placeholder="Tell us about the building. Leaky roofs welcome."></textarea>
+<textarea id="contact-message" name="message" rows="5" required aria-required="true" placeholder="Tell us about the building. Leaky roofs and deferred maintenance welcome."></textarea>
 </div>
 <div class="form-group">
 <div data-netlify-recaptcha="true"></div>
 </div>
 <button type="submit" class="btn btn--gold btn--full">Send it our way</button>
-<div class="form-success" id="contactSuccess" role="alert" style="display:none;">Got it. A real person will read this and respond within one business day.</div>
+<div class="form-success" id="contactSuccess" role="alert" style="display:none;">Got it. A real person will read this and respond within one business day. Carry on.</div>
 <div class="form-error" id="contactError" role="alert" style="display:none;color:#B0432F;margin-top:12px;"></div>
 </form>
 <script>
@@ -352,12 +348,8 @@ body{padding-top:36px}.nav{top:36px!important}
 <span class="section__label">No Black Hole</span>
 <h2>What happens when you hit send</h2>
 </div>
-<ol class="contact-steps animate-on-scroll">
-<li><h3>A person reads it.</h3><p>Gabriel or Eric Goldberg, not an autoresponder.</p></li>
-<li><h3>We write back.</h3><p>Next steps might be a call, a few questions about the property, or a preliminary indication of interest.</p></li>
-<li><h3>You get a straight answer.</h3><p>If the numbers work, we tell you directly. Suspense is not part of our process.</p></li>
-</ol>
-<p class="contact-nerd animate-on-scroll">We get genuinely excited about loading docks. Consider yourself warned.</p>
+<p class="contact-lede animate-on-scroll">Gabriel or Eric reads it (not an autoresponder), then writes back with next steps, whether that&rsquo;s a call, a few questions about the property or a preliminary indication of interest, and if the numbers work, we tell you directly, because suspense is not part of our process.</p>
+<p class="contact-nerd animate-on-scroll">We get genuinely excited about loading docks, drive-in doors and clear heights. Consider yourself warned.</p>
 </div>
 </section>
 

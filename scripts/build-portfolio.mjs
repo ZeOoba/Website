@@ -43,7 +43,7 @@ const FAQ = [
   },
   {
     q: 'Does Oxford sell the properties it buys?',
-    a: 'Oxford is a family-owned firm that invests 100% proprietary capital and manages its properties as permanent holdings.',
+    a: 'Oxford is a family-owned firm that invests 100% proprietary capital and holds its properties for the long term.',
   },
   {
     q: 'Where can I see space available to lease?',

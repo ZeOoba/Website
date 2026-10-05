@@ -37,7 +37,7 @@ ORA is **not** currently raising outside capital. We invest exclusively from fam
 - Surpassed 300K SF in 2022; expanded into Kansas City in 2024
 
 ## How to Engage
-- **Brokers with off-market industrial/flex deals fitting our parameters:** submit OM and rent roll at oxfordra.net/for-brokers, or reach out to Gabriel directly.
+- **Brokers with on-market or off-market industrial/flex deals fitting our parameters (including Columbus industrial investment sales brokers):** submit OM and rent roll at oxfordra.net/for-brokers, or reach out to Gabriel directly. ORA is a principal buyer, not a broker. Columbus buying details: oxfordra.net/markets/columbus-oh.
 - **Prospective tenants:** browse current vacancies at oxfordra.net/available-space; submit a lease application at oxfordra.net/tenant-application.
 - **Existing tenants:** email maintenance@oxfordra.net for service requests; for billing or lease questions, reach the office directly.
 - **General inquiries:** info@oxfordra.net or 301.512.6125.

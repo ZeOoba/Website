@@ -602,3 +602,15 @@ test('for-brokers: don\'t-buy block, "send it anyway" line and six why-Oxford ca
   assert.ok(html.includes('<h2>Why Brokers Send Us Deals</h2>'));
   assert.equal((html.match(/class="incentive-card animate-on-scroll"/g) || []).length, 6, 'expected six incentive cards');
 });
+
+test('broker-columbus: for-brokers, home and the Columbus page cross-link, the Columbus block speaks to brokers, /home 301s to /', () => {
+  const link = '/markets/columbus-oh';
+  assert.ok(read('for-brokers.html').includes(`href="${link}"`), 'for-brokers must link the Columbus market page');
+  assert.ok(read('index.html').includes(`href="${link}"`), 'home must link the Columbus market page');
+  const columbus = read('markets/columbus-oh.html');
+  assert.ok(columbus.includes('Columbus Investment Sales Brokers'), 'Columbus page needs the broker-facing heading');
+  assert.ok(columbus.includes('href="/for-brokers"') && columbus.includes('href="/for-brokers#broker-network"'));
+  assert.ok(/on-market or off-market/i.test(columbus) && /on-market or off-market/i.test(read('for-brokers.html')));
+  assert.ok(/on-market or off-market/i.test(read('scripts/meta.md')), 'chat facts must agree with the pages');
+  assert.ok(/^\/home\s+\/\s+301\s*$/m.test(read('_redirects')), '/home must 301 to /');
+});

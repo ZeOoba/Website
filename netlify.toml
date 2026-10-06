@@ -19,6 +19,11 @@
 [functions."chat-lead"]
   included_files = []
 
+# The ledger bootstraps the Website Submissions workbook from this template on
+# the first submission if the file does not exist yet (see docs/submissions-ledger.md).
+[functions."submissions-ledger"]
+  included_files = ["netlify/functions/_shared/submissions-template.xlsx"]
+
 [[edge_functions]]
   path = "/api/chat"
   function = "chat"

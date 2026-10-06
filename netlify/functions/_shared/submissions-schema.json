@@ -1,0 +1,187 @@
+{
+  "_comment": "Single source of truth for the Website Submissions workbook. Read by netlify/functions/submissions-ledger.js and scripts/build-submissions-template.py. Each form: sheet (<=31 chars), table (Excel table name), fields = [netlifyFieldKey, columnHeader]. Fixed columns Received (ET) / Submission ID / Status lead every table; Other Fields (JSON) / Notes trail it. Add a field here AND rebuild the template; an unlisted field is never lost, it lands in Other Fields (JSON).",
+  "forms": {
+    "commercial-lease-application": {
+      "sheet": "Tenant Applications",
+      "table": "tblTenantApplications",
+      "uploads": ["upload-credit-report", "upload-drivers-license", "upload-articles"],
+      "fields": [
+        ["full-legal-name", "Applicant Name"],
+        ["applicant-email", "Applicant Email"],
+        ["cell-phone", "Cell Phone"],
+        ["use-different-email", "Use Different Email"],
+        ["personal-email", "Personal Email"],
+        ["home-address", "Home Address"],
+        ["business-name", "Business Name"],
+        ["business-address", "Business Address"],
+        ["business-requirements", "Business Requirements"],
+        ["building-unit", "Building / Unit"],
+        ["building-unit-other", "Building / Unit (Other)"],
+        ["required-sf", "Required SF"],
+        ["monthly-rent", "Monthly Rent"],
+        ["security-deposit", "Security Deposit"],
+        ["length-of-lease", "Lease Length"],
+        ["desired-start-date", "Desired Start"],
+        ["intended-use", "Intended Use"],
+        ["working-with-broker", "Working With Broker"],
+        ["broker-name", "Broker Name"],
+        ["brokerage-name", "Brokerage"],
+        ["broker-contact", "Broker Contact"],
+        ["referral-source", "Referral Source"],
+        ["landlord-1-name", "Prior Landlord 1 Name"],
+        ["landlord-1-address", "Prior Landlord 1 Address"],
+        ["landlord-1-phone", "Prior Landlord 1 Phone"],
+        ["landlord-2-name", "Prior Landlord 2 Name"],
+        ["landlord-2-address", "Prior Landlord 2 Address"],
+        ["landlord-2-phone", "Prior Landlord 2 Phone"],
+        ["landlord-3-name", "Prior Landlord 3 Name"],
+        ["landlord-3-address", "Prior Landlord 3 Address"],
+        ["landlord-3-phone", "Prior Landlord 3 Phone"],
+        ["typed-signature", "Typed Signature"],
+        ["signature-date", "Signature Date"],
+        ["agree-terms", "Agreed to Terms"],
+        ["referrer-url", "Referrer URL"],
+        ["__uploads", "Uploaded Files"],
+        ["__docs_folder", "Docs Folder (OneDrive)"]
+      ]
+    },
+    "owner-submission-intake": {
+      "sheet": "Owner Submissions",
+      "table": "tblOwnerSubmissions",
+      "fields": [
+        ["name", "Name"],
+        ["email", "Email"],
+        ["phone", "Phone"],
+        ["property-address", "Property Address"],
+        ["building-size-sf", "Building SF"],
+        ["occupancy-status", "Occupancy"],
+        ["asking-price-expectation", "Price Expectation"],
+        ["reason-for-selling", "Reason for Selling"],
+        ["timeline", "Timeline"],
+        ["referral-source", "Referral Source"],
+        ["tcpa-consent", "TCPA Consent"]
+      ]
+    },
+    "broker-submission-intake": {
+      "sheet": "Broker Submissions",
+      "table": "tblBrokerSubmissions",
+      "fields": [
+        ["name", "Name"],
+        ["company", "Company"],
+        ["email", "Email"],
+        ["phone", "Phone"],
+        ["market", "Market"],
+        ["referral-source", "Referral Source"],
+        ["message", "Message"],
+        ["file-name", "File Name"],
+        ["occurred-at", "Occurred At"]
+      ]
+    },
+    "broker-network-ledger": {
+      "sheet": "Broker Scores",
+      "table": "tblBrokerScores",
+      "fields": [
+        ["name", "Name"],
+        ["company", "Company"],
+        ["email", "Email"],
+        ["phone", "Phone"],
+        ["market", "Market"],
+        ["message", "Message"],
+        ["submission-id", "Intake Submission ID"],
+        ["document-path", "Document Path"],
+        ["score-total", "Score Total"],
+        ["score-coverage", "Score Coverage"],
+        ["score-gate-market", "Gate: Market"],
+        ["score-gate-property-type", "Gate: Property Type"],
+        ["score-breakdown", "Score Breakdown"]
+      ]
+    },
+    "leasing-inquiry": {
+      "sheet": "Leasing Inquiries",
+      "table": "tblLeasingInquiries",
+      "fields": [
+        ["name", "Name"],
+        ["company", "Company"],
+        ["email", "Email"],
+        ["phone", "Phone"],
+        ["market", "Market"],
+        ["size", "Size Needed"],
+        ["type", "Space Type"],
+        ["timeline", "Timeline"],
+        ["details", "Details"]
+      ]
+    },
+    "listing-inquiry": {
+      "sheet": "Listing Inquiries",
+      "table": "tblListingInquiries",
+      "fields": [
+        ["name", "Name"],
+        ["company", "Company"],
+        ["email", "Email"],
+        ["phone", "Phone"],
+        ["listing", "Listing"],
+        ["message", "Message"]
+      ]
+    },
+    "contact": {
+      "sheet": "Contact",
+      "table": "tblContact",
+      "fields": [
+        ["name", "Name"],
+        ["email", "Email"],
+        ["phone", "Phone"],
+        ["subject", "Subject"],
+        ["referral-source", "Referral Source"],
+        ["message", "Message"]
+      ]
+    },
+    "checklist-download": {
+      "sheet": "Checklist Downloads",
+      "table": "tblChecklistDownloads",
+      "fields": [
+        ["name", "Name"],
+        ["email", "Email"]
+      ]
+    },
+    "chat-lead": {
+      "sheet": "Chat Leads",
+      "table": "tblChatLeads",
+      "fields": [
+        ["name", "Name"],
+        ["email", "Email"],
+        ["phone", "Phone"],
+        ["role", "Role"],
+        ["message", "Message"],
+        ["session-id", "Chat Session ID"],
+        ["submitted-at", "Submitted At"],
+        ["transcript", "Transcript"]
+      ]
+    },
+    "pipeline-failures": {
+      "sheet": "Pipeline Failures",
+      "table": "tblPipelineFailures",
+      "fields": [
+        ["source-function", "Source Function"],
+        ["error-code", "Error Code"],
+        ["submission-id", "Related Submission ID"],
+        ["detail", "Detail"],
+        ["occurred-at", "Occurred At"]
+      ]
+    }
+  },
+  "fallback": {
+    "sheet": "Other Forms",
+    "table": "tblOtherForms"
+  },
+  "longTextKeys": {
+    "message": 2000,
+    "details": 2000,
+    "business-requirements": 2000,
+    "reason-for-selling": 2000,
+    "transcript": 8000,
+    "score-breakdown": 4000,
+    "detail": 2000
+  },
+  "defaultMaxLen": 500,
+  "skipKeys": ["bot-field", "website", "form-name", "g-recaptcha-response", "submission-timestamp"]
+}

@@ -106,4 +106,4 @@ async function getFileContent(itemPath, opts = {}) {
   return Buffer.from(arrayBuffer);
 }
 
-module.exports = { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath, getFileContent, sanitizeSegment };
+module.exports = { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath, getFileContent, sanitizeSegment, graphFetch, encodeGraphPath };

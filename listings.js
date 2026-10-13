@@ -88,9 +88,10 @@
       "loopnetId": "33776831",
       "units": [
         {
-          "suite": "C14-15",
-          "sf": 2400,
-          "sfLabel": "2,400 SF",
+          "suite": "C5-6",
+          "sf": 1200,
+          "sfMax": 2400,
+          "sfLabel": "1,200\u20132,400 SF",
           "rate": "$10.99",
           "rateType": "+UTIL",
           "use": "Industrial"
@@ -120,6 +121,14 @@
       "desc": "Shallow-bay flex industrial in Columbus, OH near I-270.",
       "loopnetId": "39958427",
       "units": [
+        {
+          "suite": "2808",
+          "sf": 1500,
+          "sfLabel": "1,500 SF",
+          "rate": "$13.20",
+          "rateType": "MG",
+          "use": "Flex"
+        },
         {
           "suite": "2802",
           "sf": 1500,
@@ -171,6 +180,14 @@
       "desc": "Multi-tenant industrial/flex building on Rarig Ave, Columbus, OH.",
       "loopnetId": "33272230",
       "units": [
+        {
+          "suite": "J",
+          "sf": 1800,
+          "sfLabel": "1,800 SF",
+          "rate": "$13.00",
+          "rateType": "MG",
+          "use": "Industrial"
+        },
         {
           "suite": "G-H",
           "sf": 3000,
@@ -234,7 +251,8 @@
         {
           "suite": "202",
           "sf": 1500,
-          "sfLabel": "1,500 SF",
+          "sfMax": 3000,
+          "sfLabel": "1,500\u20133,000 SF",
           "rate": "$15.20",
           "rateType": "MG",
           "use": "Flex"

@@ -39,9 +39,13 @@ const graphOk = (onSend) => async (url, opts = {}) => {
 // rotated secret) and let unauthenticated POSTs burn the Forms quota.
 test('rejects an invalid webhook signature (401) with no network call', () => withEnv(ENV, async () => {
   const rawBody = JSON.stringify({ form_name: 'checklist-download', id: 'c-1', data: {} });
-  const fetchImpl = async (url) => { throw new Error(`must not call network: ${url}`); };
+  // Record calls instead of throwing: forwardToNetlifyForm swallows a throwing
+  // fetchImpl, so a throw alone would let the old logging path pass unnoticed.
+  const calls = [];
+  const fetchImpl = async (url) => { calls.push(url); return { ok: true, status: 200 }; };
   const res = await handler({ headers: { 'x-webhook-signature': 'forged.forged.forged' }, body: rawBody }, { fetchImpl });
   assert.equal(res.statusCode, 401);
+  assert.deepEqual(calls, [], 'a forged signature must not trigger any outbound request');
 }));
 
 test('ignores every other form (no-op 200, no email)', () => withEnv(ENV, async () => {

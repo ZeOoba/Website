@@ -234,9 +234,13 @@ test('returns 429 with retry-after once the per-IP limit is exceeded, and mints 
   // The over-limit call must be rejected BEFORE any network work — including
   // the pipeline-failures Forms write: a row per rejected request would let a
   // flood burn the Forms quota the limiter exists to protect.
+  // Record calls instead of throwing: forwardToNetlifyForm swallows a throwing
+  // fetchImpl, so a throw alone would let the old logging path pass unnoticed.
+  const calls = [];
   const res = await handler(eventFrom('203.0.113.11', 99), {
-    fetchImpl: async (url) => { throw new Error(`must not call network once rate limited: ${url}`); },
+    fetchImpl: async (url) => { calls.push(url); return { ok: true, status: 200 }; },
   });
+  assert.deepEqual(calls, [], 'a rate-limited request must not trigger any outbound request');
   assert.equal(res.statusCode, 429);
   assert.equal(JSON.parse(res.body).error, 'rate_limited');
   assert.equal(JSON.parse(res.body).ok, false);

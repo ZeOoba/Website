@@ -48,9 +48,13 @@ const VALID_DATA = {
 test('rejects a submission with an invalid webhook signature (401, no network call)', () => withEnv(ENV, async () => {
   const rawBody = JSON.stringify({ form_name: 'contact', id: 'sub-1', data: {} });
   const event = { headers: { 'x-webhook-signature': 'forged.forged.forged' }, body: rawBody };
-  const fetchImpl = async (url) => { throw new Error(`must not call network: ${url}`); };
+  // Record calls instead of throwing: forwardToNetlifyForm swallows a throwing
+  // fetchImpl, so a throw alone would let the old logging path pass unnoticed.
+  const calls = [];
+  const fetchImpl = async (url) => { calls.push(url); return { ok: true, status: 200 }; };
   const res = await handler(event, { fetchImpl });
   assert.equal(res.statusCode, 401);
+  assert.deepEqual(calls, [], 'a forged signature must not trigger any outbound request');
 }));
 
 test('rejects a malformed-JSON body with a 400 and no email', () => withEnv(ENV, async () => {

@@ -42,20 +42,15 @@ const VALID_DATA = {
   'g-recaptcha-response': 'token-that-must-not-leak-into-the-email',
 };
 
-test('rejects a submission with an invalid webhook signature (401, logged)', () => withEnv(ENV, async () => {
+// A forged signature must make ZERO network calls: a pipeline-failures Forms
+// row here would re-fire every submission-created webhook (feedback loop on a
+// rotated secret) and let unauthenticated POSTs burn the Forms quota.
+test('rejects a submission with an invalid webhook signature (401, no network call)', () => withEnv(ENV, async () => {
   const rawBody = JSON.stringify({ form_name: 'contact', id: 'sub-1', data: {} });
   const event = { headers: { 'x-webhook-signature': 'forged.forged.forged' }, body: rawBody };
-  let loggedFailure = false;
-  const fetchImpl = async (url, opts = {}) => {
-    if (url === 'https://oxfordra.net/' && String(opts.body || '').includes('pipeline-failures')) {
-      loggedFailure = true;
-      return { ok: true, status: 200 };
-    }
-    throw new Error(`must not call network: ${url}`);
-  };
+  const fetchImpl = async (url) => { throw new Error(`must not call network: ${url}`); };
   const res = await handler(event, { fetchImpl });
   assert.equal(res.statusCode, 401);
-  assert.equal(loggedFailure, true, 'a forged-signature 401 must be logged to the failure ledger');
 }));
 
 test('rejects a malformed-JSON body with a 400 and no email', () => withEnv(ENV, async () => {

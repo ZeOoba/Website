@@ -34,6 +34,30 @@ test('chat edge function takes its default model from models.json, with no hardc
   assert.match(src, /Deno\.env\.get\('CHAT_MODEL'\)/, 'CHAT_MODEL env override must survive');
 });
 
+test('chat default is assigned from models.model exactly (a typo would give undefined)', () => {
+  const src = codeOnly(fs.readFileSync(CHAT_EDGE, 'utf8'));
+  assert.match(src, /const MODEL_DEFAULT\s*=\s*models\.model\s*;/);
+});
+
+test('broker default is assigned from models.json .model exactly', () => {
+  const src = codeOnly(fs.readFileSync(BROKER_LLM, 'utf8'));
+  assert.match(src, /const MODEL_DEFAULT\s*=\s*require\('\.\/models\.json'\)\.model\s*;/);
+});
+
+// claude-sonnet-5 rejects non-default sampling parameters with a 400, which /api/chat would turn
+// into a 502 for every visitor. This is the exact trap the model bump walks into.
+test('chat request sends no sampling parameters (Sonnet 5 returns 400 on temperature/top_p/top_k)', () => {
+  const src = codeOnly(fs.readFileSync(CHAT_EDGE, 'utf8'));
+  assert.doesNotMatch(src, /\btemperature\b|\btop_p\b|\btop_k\b|\bTEMPERATURE\b/);
+});
+
+// Sonnet 5 runs adaptive thinking when `thinking` is omitted (Sonnet 4.5 did not), and thinking
+// tokens count against max_tokens (1024 here), which can truncate a visitor-facing answer.
+test('chat request pins thinking off so max_tokens is spent on the answer', () => {
+  const src = codeOnly(fs.readFileSync(CHAT_EDGE, 'utf8'));
+  assert.match(src, /thinking:\s*\{\s*type:\s*'disabled'\s*\}/);
+});
+
 test('broker extractor takes its default model from models.json, with no hardcoded id', () => {
   const src = codeOnly(fs.readFileSync(BROKER_LLM, 'utf8'));
   assert.match(src, /models\.json/);

@@ -201,6 +201,37 @@ test('consumeIntakeToken takes over an expired marker with If-Match on the wire 
   assert.equal(requests[2].headers['if-match'], '"old"', 'takeover must be etag-guarded so only one concurrent caller wins');
 });
 
+// The REAL client reports {modified:true, etag:''} for every non-412 status (401/403/404/409 ...), so a
+// failed write looks like a win. These pin that a store outage / auth failure throws (and so reaches the
+// caller's logged fail-open path) instead of silently disabling replay protection.
+// (429/500 are avoided on purpose: the client retries those for ~25 s.)
+test('consumeIntakeToken throws when the create-only PUT is rejected (403) and the marker is absent (real client)', async () => {
+  const { storeFactory } = realClientFactory((req) => (req.method === 'PUT' ? new Response(null, { status: 403 }) : new Response(null, { status: 404 })));
+  await assert.rejects(() => consumeIntakeToken('fail-403', { storeFactory }), /marker is absent/);
+});
+
+test('consumeIntakeToken throws when the store is unreachable for both the write and the read-back (real client)', async () => {
+  const { storeFactory } = realClientFactory(() => new Response(null, { status: 401 }));
+  await assert.rejects(() => consumeIntakeToken('fail-401', { storeFactory }));
+});
+
+test('consumeIntakeToken still wins when a genuine success carries no etag but the marker reads back (real client)', async () => {
+  const { storeFactory } = realClientFactory((req) => (req.method === 'PUT'
+    ? new Response(null, { status: 200 })
+    : new Response(JSON.stringify({ consumedAt: Date.now(), expiresAt: Date.now() + 60_000 }), { status: 200 })));
+  assert.deepEqual(await consumeIntakeToken('no-etag-ok', { storeFactory }), { first: true });
+});
+
+test('consumeIntakeToken refuses an unguardable takeover: expired marker with no etag is NOT overwritten (real client)', async () => {
+  const puts = [];
+  const { storeFactory } = realClientFactory((req, n) => {
+    if (req.method === 'PUT') { puts.push(req); return n === 1 ? new Response(null, { status: 412 }) : new Response(null, { status: 200, headers: { etag: '"x"' } }); }
+    return new Response(JSON.stringify({ consumedAt: 1, expiresAt: Date.now() - 1000 }), { status: 200 }); // no etag header
+  });
+  assert.deepEqual(await consumeIntakeToken('no-etag-takeover', { storeFactory }), { first: false });
+  assert.equal(puts.length, 1, 'no unconditional overwrite may be attempted');
+});
+
 test('consumeIntakeToken throws (so the caller fails open AND logs) if the store cannot report `modified`', async () => {
   const bad = () => ({ async set() { return undefined; }, async getWithMetadata() { return null; } });
   await assert.rejects(() => consumeIntakeToken('x', { storeFactory: bad }), /did not report `modified`/);

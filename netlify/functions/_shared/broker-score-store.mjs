@@ -87,24 +87,35 @@ const consumedStore = (storeFactory) => storeFactory('broker-intake-consumed');
 async function consumeIntakeToken(key, { storeFactory = getStore } = {}) {
   const store = consumedStore(storeFactory);
   const marker = () => JSON.stringify({ consumedAt: Date.now(), expiresAt: Date.now() + CONSUMED_TTL_MS });
-  const won = (r) => {
+  const won = async (r) => {
     // A store that does not report `modified` cannot prove atomicity: throw so the
     // caller fails open AND logs (intake_consume_unavailable), never a silent double-win.
     if (!r || typeof r.modified !== 'boolean') throw new Error('broker-intake-consumed: conditional write did not report `modified`');
-    return r.modified;
+    if (!r.modified) return false;
+    // The real client returns {modified:true, etag:''} for EVERY non-412 status (400/401/403/404/409/429/500
+    // included; verified by adversarial review of PR #167), so `modified:true` alone does not prove the marker
+    // was written. A genuine success carries an etag. Without one, read the marker back: if it is not there the
+    // write failed, so throw (fail open AND log) instead of treating an outage/auth failure as a win.
+    if (r.etag) return true;
+    const back = await store.getWithMetadata(key, { type: 'json' });
+    if (!back || !back.data) throw new Error('broker-intake-consumed: write reported modified with no etag and the marker is absent');
+    return true;
   };
 
   // Common case: first use. Create-only write; exactly one concurrent caller gets modified:true.
-  if (won(await store.set(key, marker(), { onlyIfNew: true }))) return { first: true };
+  if (await won(await store.set(key, marker(), { onlyIfNew: true }))) return { first: true };
 
   // A marker exists. Live -> replay. Expired (past the 24h TTL) or deleted in between -> take it over,
   // again atomically (etag-guarded replace, or create-only if it vanished). A stale read here can only
   // make the takeover lose (stale etag -> modified:false), which is the safe direction.
   const cur = await store.getWithMetadata(key, { type: 'json' });
-  if (!cur) return { first: won(await store.set(key, marker(), { onlyIfNew: true })) };
+  if (!cur) return { first: await won(await store.set(key, marker(), { onlyIfNew: true })) };
   const data = cur.data;
   if (data && (!data.expiresAt || data.expiresAt > Date.now())) return { first: false };
-  return { first: won(await store.set(key, marker(), { onlyIfMatch: cur.etag })) };
+  // Without an etag onlyIfMatch:undefined sends NO If-Match header, turning the takeover into an
+  // unconditional overwrite that every racer wins. Refuse to take over what we cannot guard.
+  if (!cur.etag) return { first: false };
+  return { first: await won(await store.set(key, marker(), { onlyIfMatch: cur.etag })) };
 }
 
 // Undo a consume when the request failed AFTER the burn (email send threw):

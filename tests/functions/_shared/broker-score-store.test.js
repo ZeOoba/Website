@@ -260,6 +260,23 @@ test('a winner whose retried PUT gets a 412 still wins when the stored marker is
   assert.deepEqual(await consumeIntakeToken('lost-ack', { storeFactory }), { first: true });
 });
 
+// Round-3 review of PR #167: a 412 PROVES a marker exists. If the (eventually consistent) read right
+// after it lags and returns 404, that must be a replay, never a throw: a throw fails open and lets the
+// replay through. 35e1b0d returned first:false here; ccfb478 regressed it to a throw.
+test('an authoritative 412 followed by a lagging 404 read is first:false, never a fail-open throw (real client)', async () => {
+  const { storeFactory } = realClientFactory((req) => (req.method === 'PUT' ? new Response(null, { status: 412 }) : new Response(null, { status: 404 })));
+  assert.deepEqual(await consumeIntakeToken('lagging-read', { storeFactory }), { first: false });
+});
+
+test('a marker that vanishes between the 412 and the read (released) is re-created: the onlyIfNew retry wins (real client)', async () => {
+  const { storeFactory, requests } = realClientFactory((req, n) => (n === 1 ? new Response(null, { status: 412 })
+    : n === 2 ? new Response(null, { status: 404 })
+      : new Response(null, { status: 200, headers: { etag: '"fresh"' } })));
+  assert.deepEqual(await consumeIntakeToken('vanished', { storeFactory }), { first: true });
+  assert.deepEqual(requests.map((r) => r.method), ['PUT', 'GET', 'PUT']);
+  assert.equal(requests[2].headers['if-none-match'], '*');
+});
+
 test('a marker written by the old code (no nonce) is still honored as a live replay (real client)', async () => {
   const legacy = JSON.stringify({ consumedAt: Date.now(), expiresAt: Date.now() + 60_000 });
   const { storeFactory } = realClientFactory((req) => (req.method === 'PUT'

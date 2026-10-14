@@ -51,9 +51,13 @@ function getClientIp(headers) {
 // The Blobs client retries 429/5xx for ~25 s before it throws. The synchronous function limit is
 // shorter (10 s by default), so during a store outage the platform would kill us BEFORE the catch
 // below could fail open and log intake_consume_unavailable: the broker would just see a timeout and
-// nothing would reach pipeline-failures. Bound the consume well under that limit so an outage takes
-// the intended path: fail open AND log.
-const CONSUME_TIMEOUT_MS = 4000;
+// nothing would reach pipeline-failures. Bound the consume under that limit so an outage takes the
+// intended path: fail open AND log. The bound must still sit ABOVE the client's first retry backoff
+// (~5 s: a PUT 500 followed by a successful retry completed at 5.08 s in testing); below it, any single
+// transient 5xx/429 would always fail open and skip replay protection. The best-effort scoring backstop
+// calls further down are bounded too, so the whole request stays inside the limit.
+export const CONSUME_TIMEOUT_MS = 6500;
+const BACKSTOP_TIMEOUT_MS = 2500;
 function withTimeout(promise, ms, what) {
   let timer;
   const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms); });
@@ -103,9 +107,14 @@ export async function handleBrokerFinalize(req, {
   // Consumed AFTER the lookup so a transient lookup failure leaves the broker's
   // retry intact. Fails OPEN on a store outage (logged to pipeline-failures)
   // because blocking every broker is worse than a window of replayability.
+  // ownsBurn is true only when THIS request won the consume. A request that failed open (store
+  // error or timeout) never owned the burn, so it must not release it later: the delete would remove
+  // whatever marker is stored, possibly a concurrent winner's.
+  let ownsBurn = false;
   try {
     const { first } = await withTimeout(consumeIntakeTokenImpl(claims.path, {}), consumeTimeoutMs, 'consumeIntakeToken');
     if (!first) return fail(409, 'intake_token_replayed');
+    ownsBurn = true;
   } catch (err) {
     console.error('[broker-finalize] consumeIntakeToken failed', String(err));
     await logFailure(fetchImpl, { errorCode: 'intake_consume_unavailable', detail: String(err) });
@@ -145,8 +154,10 @@ export async function handleBrokerFinalize(req, {
     // and a second contact row. The contact row written above for THIS attempt keeps its id and never
     // gets a score row; the email_failed row logged here carries the same id, so the orphan stays
     // traceable (2026-10-01 review F4: accepted, documented, not reordered).
-    try { await releaseIntakeTokenImpl(claims.path, {}); }
-    catch (relErr) { console.error('[broker-finalize] releaseIntakeToken failed', String(relErr)); }
+    if (ownsBurn) {
+      try { await releaseIntakeTokenImpl(claims.path, {}); }
+      catch (relErr) { console.error('[broker-finalize] releaseIntakeToken failed', String(relErr)); }
+    }
     return fail(502, 'email_failed');
   }
 
@@ -171,8 +182,10 @@ export async function handleBrokerFinalize(req, {
     // (fresh requests count toward it even though the trigger never fires
     // for them) and silently starve every OTHER broker's scoring for the
     // rest of the UTC day.
-    const rateLimit = await checkAndRecordRateLimitImpl(ip, {});
-    const dailyCap = rateLimit.allowed ? await checkAndRecordDailyCapImpl({}) : null;
+    // Bounded: a hung store must not hold the function past its limit AFTER the ledger row and both
+    // emails have gone out. A timeout lands in the catch below (scoring skipped, response still ok).
+    const rateLimit = await withTimeout(checkAndRecordRateLimitImpl(ip, {}), BACKSTOP_TIMEOUT_MS, 'checkAndRecordRateLimit');
+    const dailyCap = rateLimit.allowed ? await withTimeout(checkAndRecordDailyCapImpl({}), BACKSTOP_TIMEOUT_MS, 'checkAndRecordDailyCap') : null;
     if (rateLimit.allowed && dailyCap && dailyCap.allowed) {
       const authToken = signIntakeToken(
         { type: 'bg-auth', submissionId, itemPath: claims.path, exp: Date.now() + BG_TOKEN_TTL_MS },

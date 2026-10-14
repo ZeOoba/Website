@@ -2,6 +2,7 @@
 // As CommonJS reached from an ESM entry, esbuild left require('@netlify/blobs')
 // as an unresolvable runtime call -- verified broken on deploy-preview-72.
 import { getStore } from '@netlify/blobs';
+import { randomUUID } from 'node:crypto';
 
 const RESULT_TTL_MS = 24 * 60 * 60 * 1000; // 24h — comfortably longer than any broker's poll window
 const DEDUPE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -90,7 +91,7 @@ async function consumeIntakeToken(key, { storeFactory = getStore } = {}) {
   // (the real client reports {modified:true, etag:''} for every non-412 status: 400/401/403/404/409/429/
   // 5xx; adversarial review of PR #167) could read back an already-present marker and call it a win:
   // a replay, or a concurrent loser, silently getting first:true.
-  const nonce = globalThis.crypto.randomUUID();
+  const nonce = randomUUID();
   const marker = () => JSON.stringify({ nonce, consumedAt: Date.now(), expiresAt: Date.now() + CONSUMED_TTL_MS });
   const live = (d) => !!d && (!d.expiresAt || d.expiresAt > Date.now());
   const reported = (r) => {
@@ -112,8 +113,17 @@ async function consumeIntakeToken(key, { storeFactory = getStore } = {}) {
     throw new Error('broker-intake-consumed: write not confirmed and no live marker is stored');
   };
   // A genuine success carries an etag. modified:true WITHOUT one is unproven (failed write, or an
-  // etag-less success), and modified:false after our own takeover attempt means we may have lost.
-  const resolve = async (r) => (reported(r).modified && r.etag ? true : verdict());
+  // etag-less success): confirm it from the stored marker or throw. modified:false is an AUTHORITATIVE
+  // 412 (a marker exists), so it must never fail open: our nonce on read-back means we won, anything
+  // else (another caller's marker, or a stale/eventually-consistent 404) means replay. Throwing there
+  // let a replay through whenever the read right after a 412 lagged (adversarial review of PR #167, round 3).
+  const resolve = async (r) => {
+    reported(r);
+    if (r.modified && r.etag) return true;
+    if (r.modified) return verdict();
+    const back = await store.getWithMetadata(key, { type: 'json' });
+    return !!(back && back.data && back.data.nonce === nonce);
+  };
 
   // Common case: first use. Create-only write; exactly one concurrent caller gets modified:true.
   const first = reported(await store.set(key, marker(), { onlyIfNew: true }));

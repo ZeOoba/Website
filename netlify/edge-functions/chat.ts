@@ -18,7 +18,6 @@ import models from '../functions/_shared/models.json' with { type: 'json' };
 // ---------- Config (env-driven) ----------
 const MODEL_DEFAULT = models.model;
 const MAX_TOKENS = 1024;
-const TEMPERATURE = 0.3;
 const MAX_MESSAGES = 20;
 const MAX_CHARS_PER_MESSAGE = 4000;
 const RATE_WINDOW_MS = 10 * 60 * 1000;   // 10 minutes
@@ -223,7 +222,10 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
     body: JSON.stringify({
       model,
       max_tokens: MAX_TOKENS,
-      temperature: TEMPERATURE,
+      // claude-sonnet-5 returns 400 on temperature/top_p/top_k, so none are sent (tone is steered by
+      // the system prompt). It also runs adaptive thinking when `thinking` is omitted, and thinking
+      // tokens count against max_tokens, so thinking is pinned off to keep the 1024 for the answer.
+      thinking: { type: 'disabled' },
       // Use cache-control on the system prompt + KB so the ~25K-token prefix
       // is billed at 10% of normal input cost on cache hits (5-min TTL by default).
       system: [

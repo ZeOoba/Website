@@ -12,9 +12,11 @@
 
 import type { Config, Context } from '@netlify/edge-functions';
 import knowledgeBase from './knowledge-base.json' with { type: 'json' };
+// Single source of the Anthropic model id, shared with the broker extractor (OI-256).
+import models from '../functions/_shared/models.json' with { type: 'json' };
 
 // ---------- Config (env-driven) ----------
-const MODEL_DEFAULT = 'claude-sonnet-4-5';
+const MODEL_DEFAULT = models.model;
 const MAX_TOKENS = 1024;
 const TEMPERATURE = 0.3;
 const MAX_MESSAGES = 20;

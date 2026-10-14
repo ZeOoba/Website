@@ -169,6 +169,29 @@ test('a consume-store outage fails open with a logged pipeline-failures row rath
   assert.ok(failureRows.some((r) => r.includes('intake_consume_unavailable')), 'the outage must be visible in pipeline-failures');
 }));
 
+// The Blobs client retries 429/5xx for ~25 s, longer than the synchronous function limit, so a hung
+// consume would get the function killed before the catch could fail open and log. The consume is
+// bounded: a consume that never answers takes the same fail-open-and-log path as one that throws.
+test('a consume that hangs is bounded: fails open and logs intake_consume_unavailable instead of hanging', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-25_Acme_re03/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const failureRows = [];
+  const fetchImpl = async (url, opts = {}) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') { if (String(opts.body || '').includes('pipeline-failures')) failureRows.push(String(opts.body)); return { ok: true, status: 200 }; }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const started = Date.now();
+  const res = await callFinalize(event, { fetchImpl, consumeTimeoutMs: 40, consumeIntakeTokenImpl: () => new Promise(() => {}), checkAndRecordRateLimitImpl: async () => ({ allowed: false }), checkAndRecordDailyCapImpl: async () => ({ allowed: true }) });
+  assert.equal(res.statusCode, 200, 'a hung consume must fail open, like an outage');
+  assert.ok(Date.now() - started < 3000, 'the hung consume must be cut off by the timeout, not waited out');
+  const row = failureRows.find((r) => r.includes('intake_consume_unavailable'));
+  assert.ok(row, 'the timeout must be visible in pipeline-failures');
+  assert.match(decodeURIComponent(row.replace(/\+/g, ' ')), /timed out after 40 ms/);
+}));
+
 // Fake overrides for the rate-limit/daily-cap backstop (broker-score-store.js)
 // so tests don't hit real Netlify Blobs (unavailable outside the Netlify
 // runtime — would throw MissingBlobsEnvironmentError).

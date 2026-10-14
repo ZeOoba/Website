@@ -48,12 +48,25 @@ function getClientIp(headers) {
   return 'unknown';
 }
 
+// The Blobs client retries 429/5xx for ~25 s before it throws. The synchronous function limit is
+// shorter (10 s by default), so during a store outage the platform would kill us BEFORE the catch
+// below could fail open and log intake_consume_unavailable: the broker would just see a timeout and
+// nothing would reach pipeline-failures. Bound the consume well under that limit so an outage takes
+// the intended path: fail open AND log.
+const CONSUME_TIMEOUT_MS = 4000;
+function withTimeout(promise, ms, what) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export async function handleBrokerFinalize(req, {
   fetchImpl = fetch,
   checkAndRecordRateLimitImpl = checkAndRecordRateLimit,
   checkAndRecordDailyCapImpl = checkAndRecordDailyCap,
   consumeIntakeTokenImpl = consumeIntakeToken,
   releaseIntakeTokenImpl = releaseIntakeToken,
+  consumeTimeoutMs = CONSUME_TIMEOUT_MS,
 } = {}) {
   if (req.method !== 'POST') return fail(405, 'method_not_allowed');
 
@@ -91,7 +104,7 @@ export async function handleBrokerFinalize(req, {
   // retry intact. Fails OPEN on a store outage (logged to pipeline-failures)
   // because blocking every broker is worse than a window of replayability.
   try {
-    const { first } = await consumeIntakeTokenImpl(claims.path, {});
+    const { first } = await withTimeout(consumeIntakeTokenImpl(claims.path, {}), consumeTimeoutMs, 'consumeIntakeToken');
     if (!first) return fail(409, 'intake_token_replayed');
   } catch (err) {
     console.error('[broker-finalize] consumeIntakeToken failed', String(err));

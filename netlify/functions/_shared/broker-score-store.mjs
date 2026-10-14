@@ -86,36 +86,52 @@ const consumedStore = (storeFactory) => storeFactory('broker-intake-consumed');
 
 async function consumeIntakeToken(key, { storeFactory = getStore } = {}) {
   const store = consumedStore(storeFactory);
-  const marker = () => JSON.stringify({ consumedAt: Date.now(), expiresAt: Date.now() + CONSUMED_TTL_MS });
-  const won = async (r) => {
-    // A store that does not report `modified` cannot prove atomicity: throw so the
-    // caller fails open AND logs (intake_consume_unavailable), never a silent double-win.
+  // A per-call nonce lets the read-back tell OUR marker from someone else's. Without it a failed write
+  // (the real client reports {modified:true, etag:''} for every non-412 status: 400/401/403/404/409/429/
+  // 5xx; adversarial review of PR #167) could read back an already-present marker and call it a win:
+  // a replay, or a concurrent loser, silently getting first:true.
+  const nonce = globalThis.crypto.randomUUID();
+  const marker = () => JSON.stringify({ nonce, consumedAt: Date.now(), expiresAt: Date.now() + CONSUMED_TTL_MS });
+  const live = (d) => !!d && (!d.expiresAt || d.expiresAt > Date.now());
+  const reported = (r) => {
+    // A store that does not report `modified` cannot prove atomicity: throw so the caller fails open
+    // AND logs (intake_consume_unavailable), never a silent double-win.
     if (!r || typeof r.modified !== 'boolean') throw new Error('broker-intake-consumed: conditional write did not report `modified`');
-    if (!r.modified) return false;
-    // The real client returns {modified:true, etag:''} for EVERY non-412 status (400/401/403/404/409/429/500
-    // included; verified by adversarial review of PR #167), so `modified:true` alone does not prove the marker
-    // was written. A genuine success carries an etag. Without one, read the marker back: if it is not there the
-    // write failed, so throw (fail open AND log) instead of treating an outage/auth failure as a win.
-    if (r.etag) return true;
-    const back = await store.getWithMetadata(key, { type: 'json' });
-    if (!back || !back.data) throw new Error('broker-intake-consumed: write reported modified with no etag and the marker is absent');
-    return true;
+    return r;
   };
 
-  // Common case: first use. Create-only write; exactly one concurrent caller gets modified:true.
-  if (await won(await store.set(key, marker(), { onlyIfNew: true }))) return { first: true };
+  // Decide a write from what is actually stored. Our nonce -> we won (even if the write was reported
+  // as lost: a retried PUT whose first attempt committed gets a 412). Someone else's live marker ->
+  // a replay or a lost race, NEVER a win and never a throw (a throw would fail open and let it through).
+  // Nothing provable stored -> throw so the caller fails open AND logs.
+  const verdict = async () => {
+    const back = await store.getWithMetadata(key, { type: 'json' });
+    const d = back && back.data;
+    if (d && d.nonce === nonce) return true;
+    if (live(d)) return false;
+    throw new Error('broker-intake-consumed: write not confirmed and no live marker is stored');
+  };
+  // A genuine success carries an etag. modified:true WITHOUT one is unproven (failed write, or an
+  // etag-less success), and modified:false after our own takeover attempt means we may have lost.
+  const resolve = async (r) => (reported(r).modified && r.etag ? true : verdict());
 
-  // A marker exists. Live -> replay. Expired (past the 24h TTL) or deleted in between -> take it over,
-  // again atomically (etag-guarded replace, or create-only if it vanished). A stale read here can only
-  // make the takeover lose (stale etag -> modified:false), which is the safe direction.
+  // Common case: first use. Create-only write; exactly one concurrent caller gets modified:true.
+  const first = reported(await store.set(key, marker(), { onlyIfNew: true }));
+  if (first.modified) return { first: await resolve(first) };
+
+  // 412: a marker exists. Ours (a retried PUT that had committed) -> win. Another live one -> replay.
+  // Expired (past the 24h TTL) or deleted in between -> take it over, again atomically (etag-guarded
+  // replace, or create-only if it vanished). A stale read here can only make the takeover lose (stale
+  // etag -> modified:false), which is the safe direction.
   const cur = await store.getWithMetadata(key, { type: 'json' });
-  if (!cur) return { first: await won(await store.set(key, marker(), { onlyIfNew: true })) };
+  if (!cur) return { first: await resolve(await store.set(key, marker(), { onlyIfNew: true })) };
   const data = cur.data;
-  if (data && (!data.expiresAt || data.expiresAt > Date.now())) return { first: false };
+  if (data && data.nonce === nonce) return { first: true };
+  if (live(data)) return { first: false };
   // Without an etag onlyIfMatch:undefined sends NO If-Match header, turning the takeover into an
   // unconditional overwrite that every racer wins. Refuse to take over what we cannot guard.
   if (!cur.etag) return { first: false };
-  return { first: await won(await store.set(key, marker(), { onlyIfMatch: cur.etag })) };
+  return { first: await resolve(await store.set(key, marker(), { onlyIfMatch: cur.etag })) };
 }
 
 // Undo a consume when the request failed AFTER the burn (email send threw):

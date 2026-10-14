@@ -172,9 +172,9 @@ function realClientFactory(respond) {
   const requests = [];
   const fetch = async (url, init = {}) => {
     const h = init.headers instanceof Headers ? Object.fromEntries(init.headers.entries()) : Object.fromEntries(Object.entries(init.headers || {}).map(([k, v]) => [k.toLowerCase(), v]));
-    const req = { method: String(init.method || 'GET').toUpperCase(), headers: h };
+    const req = { method: String(init.method || 'GET').toUpperCase(), headers: h, body: typeof init.body === 'string' ? init.body : '' };
     requests.push(req);
-    return respond(req, requests.length);
+    return respond(req, requests.length, requests);
   };
   const storeFactory = (name) => getStore({ name, siteID: 'site', token: 'tok', edgeURL: 'http://edge.test', fetch });
   return { storeFactory, requests };
@@ -207,7 +207,7 @@ test('consumeIntakeToken takes over an expired marker with If-Match on the wire 
 // (429/500 are avoided on purpose: the client retries those for ~25 s.)
 test('consumeIntakeToken throws when the create-only PUT is rejected (403) and the marker is absent (real client)', async () => {
   const { storeFactory } = realClientFactory((req) => (req.method === 'PUT' ? new Response(null, { status: 403 }) : new Response(null, { status: 404 })));
-  await assert.rejects(() => consumeIntakeToken('fail-403', { storeFactory }), /marker is absent/);
+  await assert.rejects(() => consumeIntakeToken('fail-403', { storeFactory }), /no live marker is stored/);
 });
 
 test('consumeIntakeToken throws when the store is unreachable for both the write and the read-back (real client)', async () => {
@@ -215,11 +215,57 @@ test('consumeIntakeToken throws when the store is unreachable for both the write
   await assert.rejects(() => consumeIntakeToken('fail-401', { storeFactory }));
 });
 
-test('consumeIntakeToken still wins when a genuine success carries no etag but the marker reads back (real client)', async () => {
-  const { storeFactory } = realClientFactory((req) => (req.method === 'PUT'
+// Reads back the nonce this caller wrote, as the real server would store it.
+const ourMarker = (requests) => {
+  const put = [...requests].reverse().find((r) => r.method === 'PUT' && r.body);
+  return put ? put.body : '{}';
+};
+const otherLiveMarker = () => JSON.stringify({ nonce: 'someone-else', consumedAt: Date.now(), expiresAt: Date.now() + 60_000 });
+
+test('consumeIntakeToken still wins when a genuine success carries no etag but OUR marker reads back (real client)', async () => {
+  const { storeFactory } = realClientFactory((req, n, requests) => (req.method === 'PUT'
     ? new Response(null, { status: 200 })
-    : new Response(JSON.stringify({ consumedAt: Date.now(), expiresAt: Date.now() + 60_000 }), { status: 200 })));
+    : new Response(ourMarker(requests), { status: 200 })));
   assert.deepEqual(await consumeIntakeToken('no-etag-ok', { storeFactory }), { first: true });
+});
+
+// Round-2 review of PR #167: when the conditional PUT fails with a non-412 status the client still says
+// {modified:true, etag:''}. If a marker ALREADY exists (a replay, or a concurrent winner), reading it back
+// must be a REPLAY (first:false), never a win and never a throw (a throw fails open and lets it through).
+for (const status of [400, 401, 403, 404, 409]) {
+  test(`a replay whose PUT fails with ${status} but a live marker exists is first:false, not a win (real client)`, async () => {
+    const { storeFactory } = realClientFactory((req) => (req.method === 'PUT'
+      ? new Response(null, { status })
+      : new Response(otherLiveMarker(), { status: 200, headers: { etag: '"w"' } })));
+    assert.deepEqual(await consumeIntakeToken(`replay-${status}`, { storeFactory }), { first: false });
+  });
+}
+
+test('a concurrent LOSER whose PUT returns 409 sees the winner\'s marker and loses (exactly one winner, real client)', async () => {
+  // Winner: normal success. Loser: its PUT is answered 409 and the read-back finds the winner's marker.
+  const winner = realClientFactory((req, n, requests) => (req.method === 'PUT' ? new Response(null, { status: 200, headers: { etag: '"w"' } }) : new Response(ourMarker(requests), { status: 200 })));
+  const loser = realClientFactory((req) => (req.method === 'PUT' ? new Response(null, { status: 409 }) : new Response(otherLiveMarker(), { status: 200 })));
+  const results = await Promise.all([
+    consumeIntakeToken('contended', { storeFactory: winner.storeFactory }),
+    consumeIntakeToken('contended', { storeFactory: loser.storeFactory }),
+  ]);
+  assert.deepEqual(results.map((r) => r.first), [true, false]);
+});
+
+test('a winner whose retried PUT gets a 412 still wins when the stored marker is its own (zero-winner case, real client)', async () => {
+  // First attempt committed but its response was lost; the client's retry gets 412. The marker holds OUR nonce.
+  const { storeFactory } = realClientFactory((req, n, requests) => (req.method === 'PUT'
+    ? new Response(null, { status: 412 })
+    : new Response(ourMarker(requests), { status: 200, headers: { etag: '"mine"' } })));
+  assert.deepEqual(await consumeIntakeToken('lost-ack', { storeFactory }), { first: true });
+});
+
+test('a marker written by the old code (no nonce) is still honored as a live replay (real client)', async () => {
+  const legacy = JSON.stringify({ consumedAt: Date.now(), expiresAt: Date.now() + 60_000 });
+  const { storeFactory } = realClientFactory((req) => (req.method === 'PUT'
+    ? new Response(null, { status: 412 })
+    : new Response(legacy, { status: 200, headers: { etag: '"old"' } })));
+  assert.deepEqual(await consumeIntakeToken('legacy', { storeFactory }), { first: false });
 });
 
 test('consumeIntakeToken refuses an unguardable takeover: expired marker with no etag is NOT overwritten (real client)', async () => {

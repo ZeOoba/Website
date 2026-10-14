@@ -71,19 +71,47 @@ async function checkAndRecordDailyCap({ storeFactory = getStore } = {}) {
 // each replay wrote a ledger row and emailed both principals off one reCAPTCHA
 // solve. Keyed on the token's SharePoint path (unique per upload session).
 const CONSUMED_TTL_MS = 24 * 60 * 60 * 1000; // outlives any intake token TTL by a wide margin
+
+// The conditional writes below are what make the burn ATOMIC: a plain get-then-set let N
+// concurrent finalizes with one token all read "absent" and all win (10 concurrent POSTs
+// -> 10 ledger rows + 20 emails; adversarial review of PR #166).
+//
+// MUST be store.set() with a JSON string, NOT store.setJSON(): in @netlify/blobs 10.7.9
+// setJSON accepts onlyIfNew/onlyIfMatch but drops them (verified on the wire: set sends
+// `If-None-Match: *`, setJSON sends nothing), which would make this a silent non-atomic
+// no-op. tests/functions/_shared/broker-score-store.test.js pins the header on the wire.
+// Do not request consistency:'strong' here: the client throws BlobsConsistencyError when the
+// environment has no uncachedEdgeURL, which would push every consume onto the fail-open path.
+const consumedStore = (storeFactory) => storeFactory('broker-intake-consumed');
+
 async function consumeIntakeToken(key, { storeFactory = getStore } = {}) {
-  const store = storeFactory('broker-intake-consumed');
-  const existing = await store.get(key, { type: 'json' });
-  if (existing && (!existing.expiresAt || existing.expiresAt > Date.now())) return { first: false };
-  await store.setJSON(key, { consumedAt: Date.now(), expiresAt: Date.now() + CONSUMED_TTL_MS });
-  return { first: true };
+  const store = consumedStore(storeFactory);
+  const marker = () => JSON.stringify({ consumedAt: Date.now(), expiresAt: Date.now() + CONSUMED_TTL_MS });
+  const won = (r) => {
+    // A store that does not report `modified` cannot prove atomicity: throw so the
+    // caller fails open AND logs (intake_consume_unavailable), never a silent double-win.
+    if (!r || typeof r.modified !== 'boolean') throw new Error('broker-intake-consumed: conditional write did not report `modified`');
+    return r.modified;
+  };
+
+  // Common case: first use. Create-only write; exactly one concurrent caller gets modified:true.
+  if (won(await store.set(key, marker(), { onlyIfNew: true }))) return { first: true };
+
+  // A marker exists. Live -> replay. Expired (past the 24h TTL) or deleted in between -> take it over,
+  // again atomically (etag-guarded replace, or create-only if it vanished). A stale read here can only
+  // make the takeover lose (stale etag -> modified:false), which is the safe direction.
+  const cur = await store.getWithMetadata(key, { type: 'json' });
+  if (!cur) return { first: won(await store.set(key, marker(), { onlyIfNew: true })) };
+  const data = cur.data;
+  if (data && (!data.expiresAt || data.expiresAt > Date.now())) return { first: false };
+  return { first: won(await store.set(key, marker(), { onlyIfMatch: cur.etag })) };
 }
 
 // Undo a consume when the request failed AFTER the burn (email send threw):
 // the broker's retry must be able to finish, or the document sits in
 // SharePoint with a ledger row and no notification, permanently.
 async function releaseIntakeToken(key, { storeFactory = getStore } = {}) {
-  const store = storeFactory('broker-intake-consumed');
+  const store = consumedStore(storeFactory);
   await store.delete(key);
 }
 

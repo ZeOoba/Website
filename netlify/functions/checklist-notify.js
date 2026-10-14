@@ -13,6 +13,7 @@
  * a per-download email to both would be noise; the lead is also stored in Netlify Forms.
  */
 const { verifyNetlifyWebhookSignature, sanitizeField } = require('./_shared/validate.js');
+const { alertInvalidSignature } = require('./_shared/signature-alert.js');
 const { sendMail } = require('./_shared/graph-mail.js');
 const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
 
@@ -63,6 +64,7 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     // Deploy-log only — NEVER a pipeline-failures Forms row (it would re-fire
     // every webhook: exponential loop + unauthenticated Forms-quota burn).
     console.error('[checklist-notify] invalid webhook signature (check NETLIFY_WEBHOOK_SECRET)');
+    await alertInvalidSignature('checklist-notify', { fetchImpl });
     return { statusCode: 401, body: JSON.stringify({ ok: false, error: 'invalid_signature' }) };
   }
 

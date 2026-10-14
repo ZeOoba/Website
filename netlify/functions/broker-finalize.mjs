@@ -76,12 +76,18 @@ export async function handleBrokerFinalize(req, {
     await logFailure(fetchImpl, { errorCode: 'lookup_failed', detail: String(err) });
     return fail(502, 'lookup_failed');
   }
+  // upload_not_found and size_mismatch are deploy-log only — NEVER a pipeline-failures
+  // Forms row. They run BEFORE the replay guard below, so a single valid intake token
+  // whose upload is missing or the wrong size is not consumed and can be replayed for its
+  // whole TTL; a Forms row per replay (each re-firing every submission-created webhook)
+  // would let one reCAPTCHA solve burn the Forms quota. lookup_failed above stays a row:
+  // it needs a real Graph error, which a caller cannot force.
   if (!item) {
-    await logFailure(fetchImpl, { errorCode: 'upload_not_found', detail: claims.path });
+    console.error('[broker-finalize] upload not found', claims.path);
     return fail(409, 'upload_not_found');
   }
   if (typeof item.size === 'number' && item.size !== claims.size) {
-    await logFailure(fetchImpl, { errorCode: 'size_mismatch', detail: `${claims.path} expected=${claims.size} actual=${item.size}` });
+    console.error('[broker-finalize] size mismatch', `${claims.path} expected=${claims.size} actual=${item.size}`);
     return fail(409, 'size_mismatch');
   }
 

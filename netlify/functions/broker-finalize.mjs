@@ -81,7 +81,10 @@ export async function handleBrokerFinalize(req, {
   // whose upload is missing or the wrong size is not consumed and can be replayed for its
   // whole TTL; a Forms row per replay (each re-firing every submission-created webhook)
   // would let one reCAPTCHA solve burn the Forms quota. lookup_failed above stays a row:
-  // it needs a real Graph error, which a caller cannot force.
+  // it needs a real Graph error (path and size are HMAC-bound, so a caller cannot steer it),
+  // but repeated lookups can themselves induce Graph throttling, and the lookup is not
+  // rate-limited, so this is not proven bounded. Known gaps, tracked separately: the
+  // non-atomic consumeIntakeToken race and the email_failed release-and-retry loop.
   if (!item) {
     console.error('[broker-finalize] upload not found', claims.path);
     return fail(409, 'upload_not_found');

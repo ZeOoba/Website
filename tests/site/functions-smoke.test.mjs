@@ -31,10 +31,9 @@
 
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import net from 'node:net';
 import path from 'node:path';
 import url from 'node:url';
+import { startFunctionsServer, spawnFunctionsCli } from './support/functions-server.mjs';
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..', '..');
 const CLI = path.join(ROOT, 'node_modules', 'netlify-cli', 'bin', 'run.js');
@@ -43,17 +42,6 @@ const READY_TIMEOUT_MS = 180_000;
 
 let child;
 let base;
-
-async function freePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.once('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const { port } = srv.address();
-      srv.close(() => resolve(port));
-    });
-  });
-}
 
 /** POST/GET/OPTIONS a deployed-style function path. Generic on purpose. */
 async function invokeFunction(name, init = {}) {
@@ -66,42 +54,17 @@ const jsonPost = (body) => ({
   body: typeof body === 'string' ? body : JSON.stringify(body),
 });
 
+// Port selection is racy on a shared machine (this suite runs on a self-hosted laptop that also hosts other
+// repos' CI): the harness only reports ready once the chat-lead function itself answers with its own
+// signature, and retries on a fresh port if something else owns the port or the CLI dies. See
+// tests/site/support/functions-server.mjs and its unit tests (tests/scripts/functions-server.test.js).
 before(async () => {
-  const port = await freePort();
-  base = `http://127.0.0.1:${port}`;
-  child = spawn(
-    process.execPath,
-    [CLI, 'functions:serve', '--offline', '--port', String(port), '-f', 'netlify/functions'],
-    {
-      cwd: ROOT,
-      env: {
-        ...process.env,
-        // Pin the function's own Netlify-Forms POST target at the local server
-        // so it loops back to localhost and never reaches oxfordra.net.
-        URL: base,
-        NETLIFY_TELEMETRY_DISABLED: '1',
-        CI: '1',
-      },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    }
-  );
-  let log = '';
-  child.stdout.on('data', (d) => (log += d));
-  child.stderr.on('data', (d) => (log += d));
-
-  const deadline = Date.now() + READY_TIMEOUT_MS;
-  for (;;) {
-    if (Date.now() > deadline) {
-      throw new Error(`netlify functions:serve never served ${FUNCTION}. CLI output:\n${log}`);
-    }
-    try {
-      const r = await invokeFunction(FUNCTION, { method: 'OPTIONS' });
-      if (r.status !== 404) break;
-    } catch {
-      /* server not listening yet */
-    }
-    await new Promise((r) => setTimeout(r, 1000));
-  }
+  const server = await startFunctionsServer({
+    spawnServer: spawnFunctionsCli({ cli: CLI, cwd: ROOT }),
+    readyTimeoutMs: READY_TIMEOUT_MS,
+  });
+  base = server.base;
+  child = server.child;
 }, { timeout: READY_TIMEOUT_MS + 20_000 });
 
 after(() => {

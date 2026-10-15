@@ -92,10 +92,10 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   const maxPerWindow = parseInt(process.env.BROKER_UPLOAD_RATE_LIMIT_PER_10MIN || String(RATE_DEFAULT), 10) || RATE_DEFAULT;
   const rl = rateLimit(ip, maxPerWindow);
   if (!rl.ok) {
-    // Fail loudly, per this function's existing convention: console.error for
-    // the deploy log plus a pipeline-failures row so it is visible without one.
+    // Deploy-log only — NEVER a pipeline-failures Forms row. The limiter's job
+    // is to protect the Forms quota; a row per rejected request (each firing
+    // every submission-created webhook) would let a flood burn it instead.
     console.error('[broker-upload-session] rate limit exceeded', { ip, maxPerWindow, retryAfter: rl.retryAfter });
-    await logFailure(fetchImpl, { errorCode: 'rate_limited', detail: `ip=${ip} max=${maxPerWindow}/10min` });
     return {
       statusCode: 429,
       headers: { 'content-type': 'application/json', 'retry-after': String(rl.retryAfter) },

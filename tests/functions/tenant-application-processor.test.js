@@ -27,20 +27,16 @@ function signBody(rawBody, secret) {
 test('rejects a submission with an invalid webhook signature', () => withEnv(FILE_ALLOWLIST_ENV, async () => {
   const rawBody = JSON.stringify({ form_name: 'commercial-lease-application', id: 'sub-1', data: {} });
   const event = { headers: { 'x-webhook-signature': 'forged.forged.forged' }, body: rawBody };
-  // A forged signature has exactly one legitimate side effect: a POST to the
-  // pipeline-failures ledger so a rotated secret can't silently 401 all traffic.
-  // Allow that one call; any other network activity is still a hard failure.
-  let loggedFailure = false;
-  const fetchImpl = async (url, opts = {}) => {
-    if (url === 'https://oxfordra.net/' && String(opts.body || '').includes('pipeline-failures')) {
-      loggedFailure = true;
-      return { ok: true, status: 200 };
-    }
-    throw new Error('must not call network');
-  };
+  // A forged signature must make ZERO network calls: a pipeline-failures Forms
+  // row would re-fire every submission-created webhook (feedback loop on a
+  // rotated secret) and let unauthenticated POSTs burn the Forms quota.
+  // Record calls instead of throwing: forwardToNetlifyForm swallows a throwing
+  // fetchImpl, so a throw alone would let the old logging path pass unnoticed.
+  const calls = [];
+  const fetchImpl = async (url) => { calls.push(url); return { ok: true, status: 200 }; };
   const res = await handler(event, { fetchImpl });
   assert.equal(res.statusCode, 401);
-  assert.equal(loggedFailure, true, 'a forged-signature 401 must be logged to the failure ledger');
+  assert.ok(!calls.includes('https://oxfordra.net/'), 'a forged signature must never write a Netlify Forms row (feedback loop + quota burn); a throttled Graph alert is allowed');
 }));
 
 test('ignores submissions for other forms (no-op 200, no Graph calls)', () => withEnv(FILE_ALLOWLIST_ENV, async () => {

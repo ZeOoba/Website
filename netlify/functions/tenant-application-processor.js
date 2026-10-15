@@ -1,5 +1,6 @@
 'use strict';
 const { verifyNetlifyWebhookSignature, sanitizeField, sniffFileType, isAllowedUpload } = require('./_shared/validate.js');
+const { alertInvalidSignature } = require('./_shared/signature-alert.js');
 const { ensureFolder, uploadSmallFile } = require('./_shared/graph-files.js');
 const { sendMail } = require('./_shared/graph-mail.js');
 const { renderTenantEmail } = require('./_shared/email-template.js');
@@ -31,13 +32,13 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   const secret = process.env.NETLIFY_WEBHOOK_SECRET;
   const signature = (event.headers && (event.headers['x-webhook-signature'] || event.headers['X-Webhook-Signature'])) || '';
   if (!verifyNetlifyWebhookSignature(event.body, signature, secret)) {
-    // A rotated/misconfigured NETLIFY_WEBHOOK_SECRET would silently 401 every
-    // legitimate submission — the exact silent failure this pipeline exists to
-    // eliminate — so surface it to the durable ledger. (The 400 malformed-JSON
-    // path below is deliberately left unlogged: it's near-always scanner noise
-    // with no actionable content.) No submission.id is available yet — the body
-    // isn't parsed until after this gate — so submissionId is empty.
-    await logFailure(fetchImpl, { errorCode: 'invalid_signature', submissionId: '', detail: 'webhook signature verification failed' });
+    // Deploy-log only — NEVER a pipeline-failures Forms row. This webhook
+    // receives every site form submission, pipeline-failures included, so a
+    // row written here re-fires every webhook (exponential loop on a rotated
+    // NETLIFY_WEBHOOK_SECRET) and lets any unauthenticated POST burn the Forms
+    // quota. (The 400 malformed-JSON path below is likewise left unlogged.)
+    console.error('[tenant-application-processor] invalid webhook signature (check NETLIFY_WEBHOOK_SECRET)');
+    await alertInvalidSignature('tenant-application-processor', { fetchImpl });
     return { statusCode: 401, body: JSON.stringify({ ok: false, error: 'invalid_signature' }) };
   }
 

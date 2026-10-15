@@ -231,22 +231,20 @@ test('returns 429 with retry-after once the per-IP limit is exceeded, and mints 
   for (let i = 0; i < RATE_DEFAULT; i += 1) {
     await handler(eventFrom('203.0.113.11', i), { fetchImpl: graphOk() });
   }
-  // The over-limit call must be rejected BEFORE any Graph work — the only
-  // network call it may make is the pipeline-failures log write.
-  let loggedFailure = null;
+  // The over-limit call must be rejected BEFORE any network work — including
+  // the pipeline-failures Forms write: a row per rejected request would let a
+  // flood burn the Forms quota the limiter exists to protect.
+  // Record calls instead of throwing: forwardToNetlifyForm swallows a throwing
+  // fetchImpl, so a throw alone would let the old logging path pass unnoticed.
+  const calls = [];
   const res = await handler(eventFrom('203.0.113.11', 99), {
-    fetchImpl: async (url, opts = {}) => {
-      if (url === 'https://oxfordra.net/') { loggedFailure = String(opts.body || ''); return { ok: true, status: 200 }; }
-      throw new Error(`must not call anything else once rate limited: ${url}`);
-    },
+    fetchImpl: async (url) => { calls.push(url); return { ok: true, status: 200 }; },
   });
+  assert.deepEqual(calls, [], 'a rate-limited request must not trigger any outbound request');
   assert.equal(res.statusCode, 429);
   assert.equal(JSON.parse(res.body).error, 'rate_limited');
   assert.equal(JSON.parse(res.body).ok, false);
   assert.ok(Number(res.headers['retry-after']) > 0, 'a 429 must tell the caller when to retry');
-  assert.ok(loggedFailure, 'the rate-limit rejection must be logged, per this function\'s fail-loudly convention');
-  assert.ok(loggedFailure.includes('pipeline-failures'), 'it must go to the pipeline-failures form');
-  assert.ok(loggedFailure.includes('rate_limited'), 'the logged row must carry the rate_limited error code');
 }));
 
 test('rate-limit buckets are per IP — one exhausted IP does not block another', () => withEnv(ENV, async () => {

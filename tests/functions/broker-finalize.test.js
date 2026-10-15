@@ -93,6 +93,51 @@ test('rejects when the stored item size does not match the token-bound size', ()
   assert.equal(res.statusCode, 409);
 }));
 
+// Quota burn (adversarial review of PR #162, C2): the upload_not_found and
+// size_mismatch branches run BEFORE the token is consumed, so one valid intake
+// token (15-min TTL) whose upload is missing or the wrong size could be replayed
+// without limit, and every replay wrote a pipeline-failures Forms row that then
+// re-fired every submission-created webhook. These branches must stay on the
+// deploy log only. Calls are RECORDED rather than thrown on: forwardToNetlifyForm
+// swallows a throwing fetchImpl, so a throw alone cannot fail the old behaviour.
+function formsPosts(calls) { return calls.filter((c) => c.url === 'https://oxfordra.net/'); }
+
+test('replaying a token whose upload is missing never writes a Forms row (quota burn)', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/x/missing.pdf', size: 1000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob', company: 'Acme', email: 'b@acme.com' }) };
+  const calls = [];
+  const fetchImpl = async (url, opts = {}) => {
+    calls.push({ url, body: String(opts.body || '') });
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: false, status: 404 };
+    return { ok: true, status: 200 };
+  };
+  for (let i = 0; i < 5; i += 1) {
+    const res = await callFinalize(event, { fetchImpl });
+    assert.equal(res.statusCode, 409, `replay ${i + 1} must still be rejected with 409`);
+    assert.equal(JSON.parse(res.body).error, 'upload_not_found');
+  }
+  assert.deepEqual(formsPosts(calls), [], 'five replays of a missing-upload token must not write any Forms row');
+}));
+
+test('replaying a token whose stored size mismatches never writes a Forms row (quota burn)', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/x/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob', company: 'Acme', email: 'b@acme.com' }) };
+  const calls = [];
+  const fetchImpl = async (url, opts = {}) => {
+    calls.push({ url, body: String(opts.body || '') });
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 999, webUrl: 'https://x' }) };
+    return { ok: true, status: 200 };
+  };
+  for (let i = 0; i < 5; i += 1) {
+    const res = await callFinalize(event, { fetchImpl });
+    assert.equal(res.statusCode, 409, `replay ${i + 1} must still be rejected with 409`);
+    assert.equal(JSON.parse(res.body).error, 'size_mismatch');
+  }
+  assert.deepEqual(formsPosts(calls), [], 'five replays of a size-mismatched token must not write any Forms row');
+}));
+
 // A verified intake token was replayable for its whole 15-minute TTL: each
 // replay wrote another ledger row and sent another pair of emails to Gabriel and
 // Eric off a single reCAPTCHA solve (2026-09-25 audit). The token is now

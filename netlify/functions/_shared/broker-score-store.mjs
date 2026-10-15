@@ -2,6 +2,7 @@
 // As CommonJS reached from an ESM entry, esbuild left require('@netlify/blobs')
 // as an unresolvable runtime call -- verified broken on deploy-preview-72.
 import { getStore } from '@netlify/blobs';
+import { randomUUID } from 'node:crypto';
 
 const RESULT_TTL_MS = 24 * 60 * 60 * 1000; // 24h — comfortably longer than any broker's poll window
 const DEDUPE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -71,19 +72,93 @@ async function checkAndRecordDailyCap({ storeFactory = getStore } = {}) {
 // each replay wrote a ledger row and emailed both principals off one reCAPTCHA
 // solve. Keyed on the token's SharePoint path (unique per upload session).
 const CONSUMED_TTL_MS = 24 * 60 * 60 * 1000; // outlives any intake token TTL by a wide margin
+
+// The conditional writes below are what make the burn ATOMIC: a plain get-then-set let N
+// concurrent finalizes with one token all read "absent" and all win (10 concurrent POSTs
+// -> 10 ledger rows + 20 emails; adversarial review of PR #166).
+//
+// MUST be store.set() with a JSON string, NOT store.setJSON(): in @netlify/blobs 10.7.9
+// setJSON accepts onlyIfNew/onlyIfMatch but drops them (verified on the wire: set sends
+// `If-None-Match: *`, setJSON sends nothing), which would make this a silent non-atomic
+// no-op. tests/functions/_shared/broker-score-store.test.js pins the header on the wire.
+// Do not request consistency:'strong' here: the client throws BlobsConsistencyError when the
+// environment has no uncachedEdgeURL, which would push every consume onto the fail-open path.
+const consumedStore = (storeFactory) => storeFactory('broker-intake-consumed');
+
 async function consumeIntakeToken(key, { storeFactory = getStore } = {}) {
-  const store = storeFactory('broker-intake-consumed');
-  const existing = await store.get(key, { type: 'json' });
-  if (existing && (!existing.expiresAt || existing.expiresAt > Date.now())) return { first: false };
-  await store.setJSON(key, { consumedAt: Date.now(), expiresAt: Date.now() + CONSUMED_TTL_MS });
-  return { first: true };
+  const store = consumedStore(storeFactory);
+  // A per-call nonce lets the read-back tell OUR marker from someone else's. Without it a failed write
+  // (the real client reports {modified:true, etag:''} for every non-412 status: 400/401/403/404/409/429/
+  // 5xx; adversarial review of PR #167) could read back an already-present marker and call it a win:
+  // a replay, or a concurrent loser, silently getting first:true.
+  const nonce = randomUUID();
+  const marker = () => JSON.stringify({ nonce, consumedAt: Date.now(), expiresAt: Date.now() + CONSUMED_TTL_MS });
+  const live = (d) => !!d && (!d.expiresAt || d.expiresAt > Date.now());
+  const reported = (r) => {
+    // A store that does not report `modified` cannot prove atomicity: throw so the caller fails open
+    // AND logs (intake_consume_unavailable), never a silent double-win.
+    if (!r || typeof r.modified !== 'boolean') throw new Error('broker-intake-consumed: conditional write did not report `modified`');
+    return r;
+  };
+
+  // Decide a write from what is actually stored. Our nonce -> we won (even if the write was reported
+  // as lost: a retried PUT whose first attempt committed gets a 412). Someone else's live marker ->
+  // a replay or a lost race, NEVER a win and never a throw (a throw would fail open and let it through).
+  // Nothing provable stored -> throw so the caller fails open AND logs.
+  const verdict = async () => {
+    const back = await store.getWithMetadata(key, { type: 'json' });
+    const d = back && back.data;
+    if (d && d.nonce === nonce) return true;
+    if (live(d)) return false;
+    throw new Error('broker-intake-consumed: write not confirmed and no live marker is stored');
+  };
+  // A genuine success carries an etag. modified:true WITHOUT one is unproven (failed write, or an
+  // etag-less success): confirm it from the stored marker or throw. modified:false is an AUTHORITATIVE
+  // 412 (a marker exists), so it must never fail open: our nonce on read-back means we won, anything
+  // else (another caller's marker, or a stale/eventually-consistent 404) means replay. Throwing there
+  // let a replay through whenever the read right after a 412 lagged (adversarial review of PR #167, round 3).
+  const resolve = async (r) => {
+    reported(r);
+    if (r.modified && r.etag) return true;
+    if (r.modified) return verdict();
+    const back = await store.getWithMetadata(key, { type: 'json' });
+    return !!(back && back.data && back.data.nonce === nonce);
+  };
+
+  // Common case: first use. Create-only write; exactly one concurrent caller gets modified:true.
+  const first = reported(await store.set(key, marker(), { onlyIfNew: true }));
+  if (first.modified) return { first: await resolve(first) };
+
+  // 412: a marker exists. Ours (a retried PUT that had committed) -> win. Another live one -> replay.
+  // Expired (past the 24h TTL) or deleted in between -> take it over, again atomically (etag-guarded
+  // replace, or create-only if it vanished). A stale read here can only make the takeover lose (stale
+  // etag -> modified:false), which is the safe direction.
+  //
+  // From here on the server has AUTHORITATIVELY told us a marker is stored, so a throw in anything that
+  // follows (a read 401/403/5xx, unparseable marker JSON, a failed follow-up write) must not fail open and
+  // let a replay through: it is a replay (adversarial review of PR #167, round 4: 143/143 post-412 read
+  // faults threw). The only fail-open left is a fault BEFORE any 412, where nothing is known.
+  try {
+    const cur = await store.getWithMetadata(key, { type: 'json' });
+    if (!cur) return { first: await resolve(await store.set(key, marker(), { onlyIfNew: true })) };
+    const data = cur.data;
+    if (data && data.nonce === nonce) return { first: true };
+    if (live(data)) return { first: false };
+    // Without an etag onlyIfMatch:undefined sends NO If-Match header, turning the takeover into an
+    // unconditional overwrite that every racer wins. Refuse to take over what we cannot guard.
+    if (!cur.etag) return { first: false };
+    return { first: await resolve(await store.set(key, marker(), { onlyIfMatch: cur.etag })) };
+  } catch (err) {
+    console.error('[broker-score-store] read/write after a 412 failed; treating as a replay', String(err));
+    return { first: false };
+  }
 }
 
 // Undo a consume when the request failed AFTER the burn (email send threw):
 // the broker's retry must be able to finish, or the document sits in
 // SharePoint with a ledger row and no notification, permanently.
 async function releaseIntakeToken(key, { storeFactory = getStore } = {}) {
-  const store = storeFactory('broker-intake-consumed');
+  const store = consumedStore(storeFactory);
   await store.delete(key);
 }
 

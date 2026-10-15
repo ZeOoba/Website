@@ -1,6 +1,7 @@
 'use strict';
 
-const MODEL_DEFAULT = 'claude-sonnet-5';
+// Single source of the Anthropic model id, shared with the /api/chat edge function (OI-256).
+const MODEL_DEFAULT = require('./models.json').model;
 
 // The market list is DERIVED from the benchmark file so the extractor enum and the benchmark keys can
 // never drift apart (a mismatch silently excluded the basis category: the 2026-08-21 audit's market-gate

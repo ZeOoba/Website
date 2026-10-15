@@ -273,3 +273,129 @@ test('contact form is reCAPTCHA-gated: form attribute plus the widget placeholde
   assert.match(form.body, /<div\b[^>]*data-netlify-recaptcha="true"[^>]*><\/div>/, 'widget placeholder <div data-netlify-recaptcha="true"> missing inside the form');
   assert.match(form.body, /<input\b[^>]*name="bot-field"/, 'the honeypot stays as a second layer');
 });
+
+// ---------------------------------------------------------------------------
+// Function-side wiring: every form name a Netlify function posts must be a form
+// the site actually registers, and every pipeline-failures post must carry
+// exactly the fields its stub declares. Netlify silently DROPS undeclared
+// fields and blanks missing ones, so a renamed form or a drifted field set
+// loses data with no error anywhere. This is a characterization net: it passes
+// on the current code and fails when a producer or the stub drifts.
+// ---------------------------------------------------------------------------
+function functionFiles(rel = 'netlify/functions') {
+  const files = [];
+  for (const e of readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+    const r = `${rel}/${e.name}`;
+    if (e.isDirectory()) files.push(...functionFiles(r));
+    else if (/\.(?:js|mjs)$/.test(e.name)) files.push(r);
+  }
+  return files.sort();
+}
+
+// Top-level keys of the object literal starting at src[open] === '{'. Handles
+// quoted and bare keys, ignores nested braces/parens/strings, flags spreads.
+function objectKeys(src, open) {
+  const keys = [];
+  let depth = 0, seg = '', quote = null;
+  const flush = () => {
+    const s = seg.trim(); seg = '';
+    if (!s) return;
+    if (s.startsWith('...')) { keys.push(`<spread:${s}>`); return; }
+    const m = s.match(/^(?:'([^']+)'|"([^"]+)"|([A-Za-z_$][\w$]*))\s*(?::|$)/);
+    keys.push(m ? (m[1] ?? m[2] ?? m[3]) : `<unparsed:${s.slice(0, 30)}>`);
+  };
+  for (let i = open; i < src.length; i++) {
+    const c = src[i];
+    if (quote) { seg += c; if (c === '\\') seg += src[++i]; else if (c === quote) quote = null; continue; }
+    if (c === "'" || c === '"' || c === '`') { quote = c; seg += c; continue; }
+    if (c === '{' || c === '(' || c === '[') { if (depth++ > 0) seg += c; continue; }
+    if (c === '}' || c === ')' || c === ']') { if (--depth === 0) { flush(); return keys; } seg += c; continue; }
+    if (c === ',' && depth === 1) { flush(); continue; }
+    seg += c;
+  }
+  throw new Error('unterminated object literal');
+}
+
+// `forwardToNetlifyForm(` / `forwardToNetlifyFormImpl(` calls whose 2nd argument
+// is a string literal. [^,] and \s match newlines, so calls split across lines
+// (checklist-notify, contact-notify, owner-lead-notify, tenant-application-processor)
+// are found too; a single-line regex silently misses them.
+const CALL_RE = /forwardToNetlifyForm(?:Impl)?\(\s*[^,]+,\s*(['"])([^'"]+)\1\s*,\s*(\{)/g;
+
+function producers() {
+  const out = {};
+  for (const file of functionFiles()) {
+    const src = readFileSync(path.join(ROOT, file), 'utf8');
+    const calls = [...src.matchAll(CALL_RE)].map((m) => ({ name: m[2], keys: objectKeys(src, m.index + m[0].length - 1) }));
+    const consts = [...src.matchAll(/\b(WATCHED_FORM|NETLIFY_FORM_NAME)\s*=\s*['"]([^'"]+)['"]/g)].map((m) => m[2]);
+    if (calls.length || consts.length) out[file] = { calls, consts, src };
+  }
+  return out;
+}
+
+const REGISTERED_NAMES = new Set(EXPECTED_NETLIFY_FORMS.map((f) => f.split('#')[1]));
+
+// Per-file floor over the 8 producer files: a call site the scan misses (say, a
+// regex regression to single-line matching) fails here even when another file
+// already supplies the same form name.
+const PRODUCER_FLOOR = {
+  'netlify/functions/_shared/broker-scoring-run.mjs': ['pipeline-failures', 'broker-network-ledger'],
+  'netlify/functions/broker-finalize.mjs': ['pipeline-failures', 'broker-network-ledger'],
+  'netlify/functions/broker-upload-session.js': ['pipeline-failures', 'broker-submission-intake'],
+  'netlify/functions/chat-lead.js': ['chat-lead'],
+  'netlify/functions/checklist-notify.js': ['checklist-download', 'pipeline-failures'],
+  'netlify/functions/contact-notify.js': ['contact', 'pipeline-failures'],
+  'netlify/functions/owner-lead-notify.js': ['owner-submission-intake', 'pipeline-failures'],
+  'netlify/functions/tenant-application-processor.js': ['commercial-lease-application', 'pipeline-failures'],
+};
+const NAME_FLOOR = ['contact', 'owner-submission-intake', 'checklist-download', 'commercial-lease-application', 'chat-lead', 'pipeline-failures', 'broker-network-ledger', 'broker-submission-intake'];
+
+test('every form name a Netlify function posts is a registered Netlify form', () => {
+  const found = producers();
+  const names = new Set();
+  const unregistered = [];
+  for (const [file, p] of Object.entries(found)) {
+    for (const n of [...p.calls.map((c) => c.name), ...p.consts]) {
+      names.add(n);
+      if (!REGISTERED_NAMES.has(n)) unregistered.push(`${file}: "${n}"`);
+    }
+  }
+  assert.deepEqual(unregistered, [], 'a function posts a form name the site does not register (the submission would be dropped)');
+  for (const n of NAME_FLOOR) assert.ok(names.has(n), `scan found no producer of "${n}": the scan is blind or the producer was removed`);
+  for (const [file, floor] of Object.entries(PRODUCER_FLOOR)) {
+    const p = found[file];
+    assert.ok(p, `producer file ${file} not found`);
+    const have = new Set([...p.calls.map((c) => c.name), ...p.consts]);
+    for (const n of floor) assert.ok(have.has(n), `${file} should yield "${n}" but the scan found only: ${[...have].join(', ') || 'nothing'}`);
+  }
+  // chat-lead.js posts without forwardToNetlifyForm: it must declare its form name
+  // and send it as form-name.
+  const chat = found['netlify/functions/chat-lead.js'];
+  assert.deepEqual(chat.consts.filter((n) => n === 'chat-lead'), ['chat-lead'], "chat-lead.js must declare NETLIFY_FORM_NAME = 'chat-lead'");
+  assert.match(chat.src, /params\.append\(\s*['"]form-name['"]\s*,\s*NETLIFY_FORM_NAME\s*\)/, 'chat-lead.js must append NETLIFY_FORM_NAME as form-name');
+});
+
+test('every pipeline-failures post writes exactly the fields the stub declares', () => {
+  const stub = readFileSync(path.join(ROOT, 'pipeline-failures-form.html'), 'utf8');
+  const form = forms(stub).find((f) => f.attrs.name === 'pipeline-failures');
+  assert.ok(form, 'pipeline-failures stub form not found');
+  // forwardToNetlifyForm appends form-name itself (_shared/netlify-forms.js), so no
+  // call-site literal carries it; bot-field is a honeypot, not data.
+  const declared = [...form.body.matchAll(/<(?:input|textarea|select)\b([^>]*)>/gi)]
+    .map((m) => attrs(m[1]).name)
+    .filter((n) => n && n !== 'form-name' && n !== 'bot-field')
+    .sort();
+  assert.deepEqual(declared, ['detail', 'error-code', 'occurred-at', 'source-function', 'submission-id'], 'the stub field set changed: update the producers and this pin together');
+
+  const sites = [];
+  for (const [file, p] of Object.entries(producers())) {
+    for (const c of p.calls) if (c.name === 'pipeline-failures') sites.push({ file, keys: [...c.keys].sort() });
+  }
+  const perFile = Object.fromEntries(Object.keys(PRODUCER_FLOOR).filter((f) => PRODUCER_FLOOR[f].includes('pipeline-failures')).map((f) => [f, 1]));
+  const counted = {};
+  for (const s of sites) counted[s.file] = (counted[s.file] ?? 0) + 1;
+  assert.deepEqual(counted, perFile, 'pipeline-failures call sites per file changed (a dropped or renamed site, or a new one, must update this pin on purpose)');
+  assert.equal(sites.length, 7, 'expected 7 pipeline-failures call sites');
+  const bad = sites.filter((s) => JSON.stringify(s.keys) !== JSON.stringify(declared)).map((s) => `${s.file}: ${s.keys.join(',')}`);
+  assert.deepEqual(bad, [], `these call sites write fields that differ from the stub's declared set (${declared.join(', ')}); Netlify drops undeclared fields and blanks missing ones`);
+});

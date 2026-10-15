@@ -173,6 +173,26 @@ export default async (req) => {
       { freshWindowClaimers: claimed, expiredWindowClaimers: old.filter((r) => r.ok && r.value === true).length, threw: [...results, ...old].filter((r) => !r.ok).length });
   }
 
+  // T8: RAW contention with DISTINCT bodies (so identical-content ETags cannot confuse the count).
+  //   create-only (If-None-Match) and replace (If-Match) are different server paths; count real winners.
+  {
+    const trials = 4;
+    const createWinners = []; const replaceWinners = [];
+    for (let t = 0; t < trials; t += 1) {
+      const ck = `t8-create-${run}-${t}`;
+      const cr = await Promise.all(Array.from({ length: 30 }, (_, i) => timed(() => store.set(ck, JSON.stringify({ t, i, r: randomUUID() }), { onlyIfNew: true }))));
+      createWinners.push(cr.filter((r) => r.ok && r.value.modified).length);
+
+      const rk = `t8-replace-${run}-${t}`;
+      await store.set(rk, JSON.stringify({ seed: t }), { onlyIfNew: true });
+      const g = await store.getWithMetadata(rk, { type: 'json' });
+      const rp = await Promise.all(Array.from({ length: 20 }, (_, i) => timed(() => store.set(rk, JSON.stringify({ t, i, r: randomUUID() }), { onlyIfMatch: g.etag }))));
+      replaceWinners.push(rp.filter((r) => r.ok && r.value.modified).length);
+    }
+    rec('T8_raw_contention_distinct_bodies', createWinners.every((w) => w === 1) && replaceWinners.every((w) => w === 1),
+      { createOnlyIfNew_winnersPerTrial_of30: createWinners, replaceOnlyIfMatch_winnersPerTrial_of20: replaceWinners });
+  }
+
   const cleanup = await timed(() => store.deleteAll());
   report.cleanup = cleanup.ok ? cleanup.value : cleanup.error;
   report.summary = Object.fromEntries(Object.entries(report.tests).map(([k, v]) => [k, v.ok]));

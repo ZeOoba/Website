@@ -214,6 +214,133 @@ test('a consume-store outage fails open with a logged pipeline-failures row rath
   assert.ok(failureRows.some((r) => r.includes('intake_consume_unavailable')), 'the outage must be visible in pipeline-failures');
 }));
 
+// The Blobs client retries 429/5xx for ~25 s, longer than the synchronous function limit, so a hung
+// consume would get the function killed before the catch could fail open and log. The consume is
+// bounded: a consume that never answers takes the same fail-open-and-log path as one that throws.
+test('a consume that hangs is bounded: fails open and logs intake_consume_unavailable instead of hanging', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-25_Acme_re03/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const failureRows = [];
+  const fetchImpl = async (url, opts = {}) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') { if (String(opts.body || '').includes('pipeline-failures')) failureRows.push(String(opts.body)); return { ok: true, status: 200 }; }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const started = Date.now();
+  const res = await callFinalize(event, { fetchImpl, consumeTimeoutMs: 40, consumeIntakeTokenImpl: () => new Promise(() => {}), checkAndRecordRateLimitImpl: async () => ({ allowed: false }), checkAndRecordDailyCapImpl: async () => ({ allowed: true }) });
+  assert.equal(res.statusCode, 200, 'a hung consume must fail open, like an outage');
+  assert.ok(Date.now() - started < 3000, 'the hung consume must be cut off by the timeout, not waited out');
+  const row = failureRows.find((r) => r.includes('intake_consume_unavailable'));
+  assert.ok(row, 'the timeout must be visible in pipeline-failures');
+  assert.match(decodeURIComponent(row.replace(/\+/g, ' ')), /timed out after 40 ms/);
+}));
+
+// Round-3 review of PR #167: the bound must sit ABOVE the Blobs client's first retry backoff (~5 s), or any
+// single transient 5xx/429 always fails open and skips replay protection; and it must stay under the
+// synchronous function limit (10 s default).
+test('the consume timeout sits above the client first-retry backoff and under the 10 s function limit', async () => {
+  const { CONSUME_TIMEOUT_MS } = await loadFinalize();
+  assert.ok(CONSUME_TIMEOUT_MS >= 6000, `CONSUME_TIMEOUT_MS=${CONSUME_TIMEOUT_MS} must exceed the ~5 s first retry backoff`);
+  // Must leave room in the ~9 s request budget for the lookup, ledger, mail and the backstops: 9900 would pass a
+  // '< 10 s' check yet leave nothing (round-4 review mutant).
+  assert.ok(CONSUME_TIMEOUT_MS <= 7000, `CONSUME_TIMEOUT_MS=${CONSUME_TIMEOUT_MS} must leave room in the request budget`);
+});
+
+// Round-4 review of PR #167: the daily-cap call was bounded in code but no test pinned it; the backstops now
+// also share what is left of a request budget instead of each taking a fixed allowance.
+test('a hung daily-cap backstop is bounded: the broker still gets ok, scoring is skipped', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-25_Acme_re06/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const started = Date.now();
+  const res = await callFinalize(event, { fetchImpl, consumeIntakeTokenImpl: async () => ({ first: true }), checkAndRecordRateLimitImpl: async () => ({ allowed: true }), checkAndRecordDailyCapImpl: () => new Promise(() => {}) });
+  assert.equal(res.statusCode, 200);
+  assert.ok(Date.now() - started < 6000, 'the hung daily-cap call must be cut off by its bound');
+  assert.ok(!calls.some((u) => u.includes('broker-score-background')), 'scoring must be skipped when the daily cap cannot answer');
+}));
+
+test('once the request budget is spent the scoring backstops are skipped without being called', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-25_Acme_re07/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const fetchImpl = async (url) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  let rateCalls = 0;
+  const res = await callFinalize(event, { fetchImpl, requestBudgetMs: 0, consumeIntakeTokenImpl: async () => ({ first: true }), checkAndRecordRateLimitImpl: async () => { rateCalls += 1; return { allowed: true }; }, checkAndRecordDailyCapImpl: async () => ({ allowed: true }) });
+  assert.equal(res.statusCode, 200, 'the broker still gets ok');
+  assert.equal(rateCalls, 0, 'a spent budget must skip the store call, not start it');
+}));
+
+test('a hung release on the email-failed path is bounded: the broker gets 502 promptly', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-25_Acme_re08/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const fetchImpl = async (url) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: false, status: 500, text: async () => 'boom' };
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const started = Date.now();
+  const res = await callFinalize(event, { fetchImpl, consumeIntakeTokenImpl: async () => ({ first: true }), releaseIntakeTokenImpl: () => new Promise(() => {}) });
+  assert.equal(res.statusCode, 502);
+  assert.ok(Date.now() - started < 6000, 'a hung release must be cut off by its bound, not waited out');
+}));
+
+// A request that FAILED OPEN (store error/timeout) never owned the burn. Releasing it would delete
+// whatever marker is stored, possibly a concurrent winner's.
+test('a request that failed open does NOT release the token when the email then fails', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-25_Acme_re04/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const fetchImpl = async (url) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: false, status: 500, text: async () => 'boom' };
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  let released = 0;
+  const res = await callFinalize(event, { fetchImpl, consumeIntakeTokenImpl: async () => { throw new Error('blobs down'); }, releaseIntakeTokenImpl: async () => { released += 1; } });
+  assert.equal(res.statusCode, 502);
+  assert.equal(JSON.parse(res.body).error, 'email_failed');
+  assert.equal(released, 0, 'a request that never won the consume must not delete the stored marker');
+}));
+
+// The scoring backstop calls run AFTER the ledger row and both emails. A hung store there must not
+// hold the function past its limit: the 2.5 s bound lets the response complete, scoring skipped.
+test('a hung rate-limit backstop is bounded: the broker still gets ok, scoring is skipped', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-09-25_Acme_re05/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com' }) };
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://x' }) };
+    if (url.includes('sendMail')) return { ok: true, status: 202 };
+    if (url === 'https://oxfordra.net/') return { ok: true, status: 200 };
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const started = Date.now();
+  const res = await callFinalize(event, { fetchImpl, consumeIntakeTokenImpl: async () => ({ first: true }), checkAndRecordRateLimitImpl: () => new Promise(() => {}), checkAndRecordDailyCapImpl: async () => ({ allowed: true }) });
+  assert.equal(res.statusCode, 200);
+  assert.ok(Date.now() - started < 6000, 'the hung backstop must be cut off by its bound, not waited out');
+  assert.ok(!calls.some((u) => u.includes('broker-score-background')), 'scoring must be skipped when the backstop cannot answer');
+}));
+
 // Fake overrides for the rate-limit/daily-cap backstop (broker-score-store.js)
 // so tests don't hit real Netlify Blobs (unavailable outside the Netlify
 // runtime — would throw MissingBlobsEnvironmentError).

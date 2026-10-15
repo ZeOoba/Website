@@ -81,7 +81,7 @@ test('signIntakeToken/verifyIntakeToken round-trip and reject tampering', () => 
 
 // An unset NETLIFY_WEBHOOK_SECRET used to reach crypto.createHmac(undefined) and
 // throw a TypeError out of the verifier — a 500 that skipped the callers'
-// "log an invalid_signature row" path, so a rotated/missing secret was silent
+// invalid-signature 401 path (now console.error only), so a rotated/missing secret was silent
 // (2026-09-25 audit). verifyIntakeToken already fails closed here; match it.
 test('verifyNetlifyWebhookSignature fails closed (false, no throw) when the secret is unset or empty', () => {
   const header = { alg: 'HS256' };

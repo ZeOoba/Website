@@ -54,10 +54,17 @@ function getClientIp(headers) {
 // nothing would reach pipeline-failures. Bound the consume under that limit so an outage takes the
 // intended path: fail open AND log. The bound must still sit ABOVE the client's first retry backoff
 // (~5 s: a PUT 500 followed by a successful retry completed at 5.08 s in testing); below it, any single
-// transient 5xx/429 would always fail open and skip replay protection. The best-effort scoring backstop
-// calls further down are bounded too, so the whole request stays inside the limit.
+// transient 5xx/429 would always fail open and skip replay protection.
+//
+// What is and is NOT bounded (adversarial review of PR #167, round 4): the store calls we make are bounded
+// (consume 6.5 s; the best-effort scoring backstops get only what is LEFT of a ~9 s request budget, and are
+// skipped once it is spent; the release is bounded). The Graph lookup, the Forms posts and sendMail are NOT
+// bounded here, so a simultaneous outage of those can still push a request past the platform limit. This
+// narrows the window; it does not make the whole request provably fit.
 export const CONSUME_TIMEOUT_MS = 6500;
 const BACKSTOP_TIMEOUT_MS = 2500;
+const RELEASE_TIMEOUT_MS = 2500;
+const REQUEST_BUDGET_MS = 9000;
 function withTimeout(promise, ms, what) {
   let timer;
   const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms); });
@@ -71,7 +78,9 @@ export async function handleBrokerFinalize(req, {
   consumeIntakeTokenImpl = consumeIntakeToken,
   releaseIntakeTokenImpl = releaseIntakeToken,
   consumeTimeoutMs = CONSUME_TIMEOUT_MS,
+  requestBudgetMs = REQUEST_BUDGET_MS,
 } = {}) {
+  const startedAt = Date.now();
   if (req.method !== 'POST') return fail(405, 'method_not_allowed');
 
   let body;
@@ -155,7 +164,8 @@ export async function handleBrokerFinalize(req, {
     // gets a score row; the email_failed row logged here carries the same id, so the orphan stays
     // traceable (2026-10-01 review F4: accepted, documented, not reordered).
     if (ownsBurn) {
-      try { await releaseIntakeTokenImpl(claims.path, {}); }
+      // Bounded: a Blobs delete can retry for ~25 s, and this is a best-effort undo on an already-failing path.
+      try { await withTimeout(releaseIntakeTokenImpl(claims.path, {}), RELEASE_TIMEOUT_MS, 'releaseIntakeToken'); }
       catch (relErr) { console.error('[broker-finalize] releaseIntakeToken failed', String(relErr)); }
     }
     return fail(502, 'email_failed');
@@ -182,10 +192,23 @@ export async function handleBrokerFinalize(req, {
     // (fresh requests count toward it even though the trigger never fires
     // for them) and silently starve every OTHER broker's scoring for the
     // rest of the UTC day.
-    // Bounded: a hung store must not hold the function past its limit AFTER the ledger row and both
-    // emails have gone out. A timeout lands in the catch below (scoring skipped, response still ok).
-    const rateLimit = await withTimeout(checkAndRecordRateLimitImpl(ip, {}), BACKSTOP_TIMEOUT_MS, 'checkAndRecordRateLimit');
-    const dailyCap = rateLimit.allowed ? await withTimeout(checkAndRecordDailyCapImpl({}), BACKSTOP_TIMEOUT_MS, 'checkAndRecordDailyCap') : null;
+    // Bounded by what is LEFT of the request budget, not a fixed allowance: a consume that already burned
+    // 6.5 s plus two fixed 2.5 s backstops would total 11.5 s. A timeout, or an exhausted budget, lands in
+    // the catch below (scoring skipped, response still ok).
+    const backstopMs = () => {
+      const left = requestBudgetMs - (Date.now() - startedAt);
+      if (left < 300) throw new Error('request budget spent; scoring backstop skipped');
+      return Math.min(BACKSTOP_TIMEOUT_MS, left);
+    };
+    // The budget is read BEFORE the store call is made (arguments evaluate left to right), so an exhausted
+    // budget skips the call instead of starting it.
+    const rateMs = backstopMs();
+    const rateLimit = await withTimeout(checkAndRecordRateLimitImpl(ip, {}), rateMs, 'checkAndRecordRateLimit');
+    let dailyCap = null;
+    if (rateLimit.allowed) {
+      const capMs = backstopMs();
+      dailyCap = await withTimeout(checkAndRecordDailyCapImpl({}), capMs, 'checkAndRecordDailyCap');
+    }
     if (rateLimit.allowed && dailyCap && dailyCap.allowed) {
       const authToken = signIntakeToken(
         { type: 'bg-auth', submissionId, itemPath: claims.path, exp: Date.now() + BG_TOKEN_TTL_MS },

@@ -133,15 +133,25 @@ async function consumeIntakeToken(key, { storeFactory = getStore } = {}) {
   // Expired (past the 24h TTL) or deleted in between -> take it over, again atomically (etag-guarded
   // replace, or create-only if it vanished). A stale read here can only make the takeover lose (stale
   // etag -> modified:false), which is the safe direction.
-  const cur = await store.getWithMetadata(key, { type: 'json' });
-  if (!cur) return { first: await resolve(await store.set(key, marker(), { onlyIfNew: true })) };
-  const data = cur.data;
-  if (data && data.nonce === nonce) return { first: true };
-  if (live(data)) return { first: false };
-  // Without an etag onlyIfMatch:undefined sends NO If-Match header, turning the takeover into an
-  // unconditional overwrite that every racer wins. Refuse to take over what we cannot guard.
-  if (!cur.etag) return { first: false };
-  return { first: await resolve(await store.set(key, marker(), { onlyIfMatch: cur.etag })) };
+  //
+  // From here on the server has AUTHORITATIVELY told us a marker is stored, so a throw in anything that
+  // follows (a read 401/403/5xx, unparseable marker JSON, a failed follow-up write) must not fail open and
+  // let a replay through: it is a replay (adversarial review of PR #167, round 4: 143/143 post-412 read
+  // faults threw). The only fail-open left is a fault BEFORE any 412, where nothing is known.
+  try {
+    const cur = await store.getWithMetadata(key, { type: 'json' });
+    if (!cur) return { first: await resolve(await store.set(key, marker(), { onlyIfNew: true })) };
+    const data = cur.data;
+    if (data && data.nonce === nonce) return { first: true };
+    if (live(data)) return { first: false };
+    // Without an etag onlyIfMatch:undefined sends NO If-Match header, turning the takeover into an
+    // unconditional overwrite that every racer wins. Refuse to take over what we cannot guard.
+    if (!cur.etag) return { first: false };
+    return { first: await resolve(await store.set(key, marker(), { onlyIfMatch: cur.etag })) };
+  } catch (err) {
+    console.error('[broker-score-store] read/write after a 412 failed; treating as a replay', String(err));
+    return { first: false };
+  }
 }
 
 // Undo a consume when the request failed AFTER the burn (email send threw):

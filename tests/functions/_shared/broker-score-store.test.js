@@ -268,6 +268,33 @@ test('an authoritative 412 followed by a lagging 404 read is first:false, never 
   assert.deepEqual(await consumeIntakeToken('lagging-read', { storeFactory }), { first: false });
 });
 
+// Round-4 review of PR #167: the 412 fix covered only the result of resolve(). Once the server has
+// authoritatively said a marker exists, ANY later fault (a read 401/403/5xx, unparseable marker JSON, a failed
+// follow-up write) must be a replay, not a throw: a throw fails open and lets the replay through.
+for (const status of [401, 403]) {
+  test(`a 412 followed by a read that fails ${status} is first:false, never a fail-open throw (real client)`, async () => {
+    const { storeFactory } = realClientFactory((req) => (req.method === 'PUT' ? new Response(null, { status: 412 }) : new Response(null, { status })));
+    assert.deepEqual(await consumeIntakeToken(`post412-read-${status}`, { storeFactory }), { first: false });
+  });
+}
+
+test('a 412 followed by an unparseable marker body is first:false, never a fail-open throw (real client)', async () => {
+  const { storeFactory } = realClientFactory((req) => (req.method === 'PUT' ? new Response(null, { status: 412 }) : new Response('{bad', { status: 200 })));
+  assert.deepEqual(await consumeIntakeToken('post412-badjson', { storeFactory }), { first: false });
+});
+
+test('a 412, a lagging 404, then a failed retry write (409) and a second 404 is first:false, never a throw (real client)', async () => {
+  const { storeFactory } = realClientFactory((req, n) => (req.method === 'PUT'
+    ? new Response(null, { status: n === 1 ? 412 : 409 })
+    : new Response(null, { status: 404 })));
+  assert.deepEqual(await consumeIntakeToken('post412-retry-409', { storeFactory }), { first: false });
+});
+
+test('a fault BEFORE any 412 still throws (so the caller fails open AND logs): nothing is known yet (real client)', async () => {
+  const { storeFactory } = realClientFactory(() => new Response(null, { status: 403 }));
+  await assert.rejects(() => consumeIntakeToken('pre412-403', { storeFactory }));
+});
+
 test('a marker that vanishes between the 412 and the read (released) is re-created: the onlyIfNew retry wins (real client)', async () => {
   const { storeFactory, requests } = realClientFactory((req, n) => (n === 1 ? new Response(null, { status: 412 })
     : n === 2 ? new Response(null, { status: 404 })

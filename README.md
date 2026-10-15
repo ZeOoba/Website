@@ -8,72 +8,78 @@ Source repository for [oxfordra.net](https://oxfordra.net), the public marketing
 
 ```mermaid
 flowchart LR
-    subgraph Source["Repo root (source of truth)"]
-        HTML["*.html, *.css, *.js\n+ assets/, images/, fonts/,\nmarkets/, resources/"]
-        PLAT["_headers, _redirects"]
-        LDATA["data/listings.json"]
-        FN["netlify/functions/\n+ netlify/edge-functions/"]
-        CFG["netlify.toml"]
-    end
+  subgraph SRC["Repo root (source of truth)"]
+    PAGES["*.html (hand-authored, plus generated blocks) + styles.css / script.js /\nlistings.js / portfolio.js / available-space.css / portfolio.css\nassets/ images/ fonts/ markets/ properties/ resources/"]
+    PLAT["_headers (CSP + cache) / _redirects"]
+    LJ["data/listings.json (vacancies)"]
+    PJ["data/portfolio.json (portfolio assets)"]
+    META["scripts/meta.md (firm facts)"]
+    FN["netlify/functions/ + netlify/edge-functions/chat.ts"]
+    TOML["netlify.toml (build command, publish = dist, NODE_VERSION 20, edge route /api/chat)"]
+  end
 
-    LDATA -->|"npm run build:listings regenerates\nlistings.js + available-space.html\n(npm run build runs --check: fails on drift)"| HTML
+  LJ -->|"npm run build:listings (manual; output is committed)"| GEN["listings.js LISTINGS block\navailable-space.html static cards + ItemList JSON-LD\nportfolio.html availability badges"]
+  PJ -->|"node scripts/build-portfolio.mjs (manual; output is committed)"| GEN2["portfolio.html grid + JSON-LD\nproperties/*.html detail pages\nsitemap.xml lastmod stamps"]
+  GEN --> PAGES
+  GEN2 --> PAGES
 
-    HTML -->|"node scripts/build-dist.mjs\n(allowlist copy; fails on unclassified/\nleaked files and stale CSP hashes)"| DIST["dist/\n(git-ignored build output)"]
-    PLAT -->|"copied verbatim\n(SITE_FILES allowlist)"| DIST
+  subgraph CI["GitHub Actions (never deploys)"]
+    V["ci.yml: npm run verify = build -> verify:jsonld -> test:unit -> test:site -> test:shim -> test:functions"]
+    LH["lighthouse.yml (informational, continue-on-error)"]
+    MU["mutation.yml (only when check files change; not required)"]
+    EV["ci.yml eval-chat (manual dispatch only)"]
+  end
+  V -. "npm run build runs build-listings --check and build-portfolio --check (drift gates)" .-> SRC
 
-    KB["scripts/build-kb.mjs\n(scripts/meta.md +\n8 public pages)"] -->|"run on every build,\ngitignored artifact"| KBJSON["netlify/edge-functions/\nknowledge-base.json"]
-    KBJSON --> FN
+  subgraph NB["Netlify build (netlify.toml command)"]
+    KB["node scripts/build-kb.mjs\n(meta.md + 9 pages -> knowledge-base.json, gitignored)"]
+    BD["node scripts/build-dist.mjs\nallowlist copy; fail on unclassified/leaked files; CSP hash check vs inline scripts"]
+  end
+  META --> KB
+  PAGES --> KB
+  KB --> KBJ["netlify/edge-functions/knowledge-base.json"]
+  PAGES --> BD
+  PLAT --> BD
+  BD -->|"on failure: dist/ is removed (nothing deployable)"| DIST["dist/ (gitignored)"]
+  KBJ --> FN
+  TOML -.-> NB
 
-    DIST -->|"deploy with --build\n(publish = dist, set in netlify.toml)"| NETLIFY["Netlify"]
-    FN -->|"functions dir + edge_functions\nrouting in netlify.toml\n(deployed directly, not via dist/)"| NETLIFY
-    CFG -.->|"read at build time,\nnever copied into dist/"| NETLIFY
-
-    NETLIFY --> CDN["Netlify CDN"]
-    CDN --> LIVE["oxfordra.net"]
-
-    GUARD["scripts/netlify-guard.js\n(postinstall-patched into\nnetlify-cli's bin)"] -.->|"blocks obfuscated/indirected\nproduction deploy calls"| NETLIFY
-
-    subgraph GHA["GitHub Actions (none of these deploy)"]
-        CI["ci.yml: npm run verify\n(PRs + push to main)"]
-        LH["lighthouse.yml\n(informational, PRs)"]
-        MUT["mutation.yml\n(PRs touching the checks)"]
-    end
-    CI -.->|"pre-merge gate"| Source
+  PR["PR merged to main (production deploy trigger)"] --> NB
+  DIST --> NET["Netlify: apply _headers / _redirects, publish dist/, bundle functions, deploy edge function"]
+  FN --> NET
+  NET --> CDN["Netlify CDN"] --> LIVE["oxfordra.net"]
+  LIVE -. "post-deploy, manual: node scripts/verify-live-csp.mjs" .-> LIVE
+  GUARD["scripts/netlify-guard.js (postinstall shim patch)\nblocks obfuscated production CLI deploys"] -.-> NET
+  GATE["Hard Invariant 2: explicit per-deploy permission required; merge to main = deploy"] -.-> PR
 ```
-<!-- diagram-verified: 2026-10-03 -->
+<!-- diagram-verified: 2026-10-06 -->
+
+Note that `netlify.toml` runs only `build-kb.mjs` and `build-dist.mjs`; the two `--check` drift gates run in `npm run build` (and therefore in CI via `npm run verify`), not in the Netlify build itself.
 
 **Reading the diagram:** the repo root deliberately mixes **public site content** with **internal tooling** (scripts, tests, evals, function source). `scripts/build-dist.mjs` is the boundary: it enumerates every root entry one-by-one into either a publish allowlist (`SITE_FILES`/`SITE_DIRS`) or an explicit exclusion list (`EXPECTED_EXCLUSIONS`), and **fails the build** on anything unclassified — a new file can neither silently ship nor silently vanish. After copying it re-checks that `scripts`, `evals`, `netlify`, and `netlify.toml` did not leak into `dist/`, that every required file is present, that at least 14 HTML pages were published, and that the inline-script hashes in `_headers` match the pages being published (a missing or stale hash, or `'unsafe-inline'` in `script-src`, fails the build). `netlify.toml` is itself one of those excluded-and-banned entries: Netlify reads it from the repo root at build time, so it is never published. It sets `publish = "dist"`, `NODE_VERSION = "20"`, and `command = "node scripts/build-kb.mjs && node scripts/build-dist.mjs"`, so every Netlify build first regenerates the chat assistant's knowledge base from current page content, then reassembles `dist/` from source before anything is served — editing a page (or `scripts/meta.md`) now takes effect on the next deploy with no separate manual step (fixed 2026-08-16, OI-165; previously `build-kb.mjs` ran only by hand, so a page edit didn't change what the assistant knew until someone remembered to re-run it). `netlify/edge-functions/knowledge-base.json` is **not** committed: it is a gitignored build artifact regenerated by every Netlify build and by `npm run build` / `npm run verify`, so it never shows up dirty in a worktree and cannot go stale in git (it had sat three weeks behind the pages). Run `npm run build` once in a fresh checkout before using `netlify dev`, since `chat.ts` imports it.
 
-`npm run build` is a superset of the Netlify build command: it first runs `scripts/build-listings.mjs --check` (fails if `listings.js` or `available-space.html` has drifted from `data/listings.json`), then the same two steps Netlify runs. The listings check therefore gates PRs via `npm run verify` but is not part of the Netlify build itself. The two root PDFs (`Oxford-Realty-Advisors-Overview.pdf`, `Oxford-Sale-Ready-Checklist.pdf`) are committed artifacts rendered by hand with `scripts/overview-pdf/build-overview-pdf.mjs` and `scripts/checklist-pdf/build-checklist-pdf.mjs` (headless Chromium, so the text layer is extractable); they are not rebuilt on deploy.
+`npm run build` is a superset of the Netlify build command: it first runs `scripts/build-listings.mjs --check` (fails if `listings.js`, `available-space.html` or the portfolio availability badges have drifted from `data/listings.json`) and `scripts/build-portfolio.mjs --check` (fails if `portfolio.html` or `properties/*.html` have drifted from `data/portfolio.json`), then the same two steps Netlify runs. The drift checks therefore gate PRs via `npm run verify` but are not part of the Netlify build itself. The two root PDFs (`Oxford-Realty-Advisors-Overview.pdf`, `Oxford-Sale-Ready-Checklist.pdf`) are committed artifacts rendered by hand with `scripts/overview-pdf/build-overview-pdf.mjs` and `scripts/checklist-pdf/build-checklist-pdf.mjs` (headless Chromium, so the text layer is extractable); they are not rebuilt on deploy.
 
 ### Site content structure
 
 ```mermaid
 flowchart TD
-    Home["index.html\nHome"] --> About["about.html"]
-    Home --> Portfolio["portfolio.html"]
-    Home --> TrackRecord["track-record.html"]
-    Home --> AvailSpace["available-space.html"]
-    Home --> ForBrokers["for-brokers.html"]
-    Home --> SellBuilding["sell-your-building.html"]
-    Home --> Contact["contact.html"]
-
-    AvailSpace --> TenantRes["tenant-resources.html"]
-    TenantRes --> TenantApp["tenant-application.html"]
-    TenantApp --> AppReceived["application-received.html"]
-
-    Home --> Markets["markets/index.html"]
-    Markets --> Columbus["markets/columbus-oh.html"]
-    Markets --> Maryland["markets/maryland.html"]
-
-    SellBuilding --> Resources["resources/index.html"]
-    Resources --> R1["1031-exchange-industrial-property-guide.html"]
-    Resources --> R2["how-industrial-buildings-are-valued.html"]
-    Resources --> R3["industrial-building-sale-document-checklist.html"]
-    Resources --> R4["selling-industrial-building-without-a-broker.html"]
-
-    Home -.->|"any unmatched path\n(_redirects: /* -> /404.html 404)"| NotFound["404.html"]
+  Home["index.html"] --> About["about"] & Portfolio["portfolio (generated grid)"] & Track["track-record"] & WWS["what-we-see"] & Avail["available-space"] & Brokers["for-brokers"] & Sell["sell-your-building"] & Contact["contact"] & Markets["markets/index"]
+  Portfolio --> Props["properties/*.html (20 generated detail pages)"]
+  Avail --> TenRes["tenant-resources (leasing-inquiry form)"]
+  TenRes --> TenApp["tenant-application"] --> Recv["application-received"]
+  Markets --> Col["markets/columbus-oh"] & MD["markets/maryland"]
+  Sell --> Res["resources/index"]
+  Res --> R1["1031 guide"] & R2["valuation guide"] & R3["sale-document checklist (checklist-download form + PDF)"] & R4["selling without a broker"]
+  Footer["site-wide footer"] --> Priv["privacy"] & Terms["terms"]
+  HiddenForms["Hidden Netlify Forms declarations (published, unlinked):\nbroker-intake-form, broker-ledger-form, chat-lead-form, pipeline-failures-form"]
+  Redirect["_redirects: legacy Squarespace/Wix 301s; /X.html -> /X canonical 301! (43 rules); /api/broker-* -> functions (200); /* -> 404.html (404)"]
+  Home -.-> Redirect
+  Redirect -.-> NF["404.html"]
 ```
+<!-- nav edges for home, portfolio -> properties and markets verified by link grep 2026-10-06; the remaining edges are carried over unchanged -->
+
+Static assets published alongside: `/assets` (chat.js, chat.css, Partytown), `/images`, `/fonts` (four woff2), the two root PDFs, `sitemap.xml`, `robots.txt`, `llms.txt`, `manifest.json`.
 
 `_redirects` also 301s a set of legacy Squarespace and Wix paths (e.g. `/team`, `/investments`, `/portfolio-1`) onto the current pages shown above — do not remove those without confirming the old paths are no longer indexed. `privacy.html` and `terms.html` hang off the site-wide footer rather than this tree; the four `*-form.html` pages are hidden Netlify Forms declarations, not navigable pages (see below).
 
@@ -81,63 +87,58 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Visitor["Visitor's browser"]
-    Visitor --> Static["Static pages\n(Netlify CDN)"]
+  V["Visitor browser"]
+  V --> CDN["Netlify CDN: static pages (_headers CSP, cache)"]
+  V -. "GA4 via Partytown worker; Consent Mode v2 default denied, granted only on Accept (script.js)" .-> GA["googletagmanager.com / analytics"]
+  V -. "available-space and portfolio: Leaflet JS/CSS" .-> UNPKG["unpkg.com"]
+  V -. "map tiles" .-> OSM["*.tile.openstreetmap.org"]
 
-    Visitor -->|"chat widget on every page\n(assets/chat.js) -> SSE"| ChatEdge["/api/chat\nedge-functions/chat.ts\n(in-memory IP rate limit,\n10-min window)"]
-    ChatEdge -->|"POST /v1/messages"| Anthropic["api.anthropic.com"]
-    Visitor -->|"chat lead"| ChatLead[".netlify/functions/\nchat-lead.js"]
+  V -->|"SSE POST /api/chat (assets/chat.js)"| EDGE["edge-functions/chat.ts\nin-memory per-region IP limiter (10-min window)\nsystem prompt rebuilt per request; no fetch timeout"]
+  EDGE -->|"POST /v1/messages"| ANTH["api.anthropic.com"]
+  KBJ["knowledge-base.json (build artifact)"] --> EDGE
 
-    Visitor -->|"contact, tenant application,\nsell-your-building, checklist download,\nleasing/listing inquiry"| Forms["Netlify Forms\n(declared in page markup +\nhidden *-form.html pages)"]
-    ChatLead --> Forms
+  V -->|"lead capture (assets/chat.js)"| CL["functions/chat-lead.js"]
+  CL -->|"urlencoded POST to site root (_shared/netlify-forms.js)"| NF["Netlify Forms"]
 
-    Forms -->|"submission-created webhook\nfires for EVERY form"| Gate{"form_name gate"}
-    Gate -->|"commercial-lease-application"| TenantFn["tenant-application-processor.js"]
-    Gate -->|"owner-submission-intake"| OwnerFn["owner-lead-notify.js"]
-    Gate -->|"contact"| ContactFn["contact-notify.js"]
-    Gate -->|"checklist-download"| ChecklistFn["checklist-notify.js"]
+  V -->|"native form POST: contact, leasing-inquiry, tenant-application, owner-submission-intake, checklist-download"| NF
+  V -. "Netlify-native reCAPTCHA (contact, tenant-application)" .-> RC["google.com/recaptcha"]
+  NF -->|"submission-created outgoing webhook: fires for EVERY form; each fn gates on form_name"| WH{"form_name gate"}
+  WH -->|"contact"| CN["contact-notify.js"]
+  WH -->|"commercial-lease-application"| TA["tenant-application-processor.js"]
+  WH -->|"owner-submission-intake"| OL["owner-lead-notify.js"]
+  WH -->|"checklist-download"| CK["checklist-notify.js"]
+  CN & TA & OL & CK --> GRAPH["Microsoft Graph (mail + SharePoint files)"]
 
-    Visitor -->|"1. POST /api/broker-upload-session\n(broker-upload.js)"| Sess["broker-upload-session.js\n(honeypot + reCAPTCHA enforced;\nmints Graph upload session)"]
-    Sess -->|"2. PUT 5 MiB chunks\ndirect from browser"| SP["oxfordraeg.sharepoint.com\n(SharePoint drive)"]
-    Visitor -->|"3. POST /api/broker-finalize"| Fin["broker-finalize.js\n(signed intake token,\nper-IP + daily cap)"]
-    Fin -->|"triggers"| Score["broker-score-background.js\n(extract -> LLM terms -> score engine)"]
-    Score --> Anthropic
-    Visitor -->|"4. polls broker-score-status"| Status["broker-score-status.js"]
+  V -->|"1 POST /api/broker-upload-session (broker-upload.js)"| BS["broker-upload-session.js\nhoneypot + reCAPTCHA siteverify (403 on fail)\nin-memory limiter; mints Graph upload session + intake token"]
+  BS --> GRAPH
+  BS -.-> RC
+  V -->|"2 PUT chunks direct to SharePoint (broker-upload.js)"| SP["oxfordraeg.sharepoint.com"]
+  V -->|"3 POST /api/broker-finalize"| BF["broker-finalize.mjs\nverify intake token; per-IP + daily cap"]
+  BF --> BLOB["Netlify Blobs: rate limits, caps, token markers, score results"]
+  BF -->|"fire background fn"| BG["broker-score-background.mjs\nextract (xlsx/mammoth) -> LLM terms -> score engine"]
+  BG --> ANTH
+  BG --> BLOB
+  BG --> GRAPH
+  BF --> GRAPH
+  V -->|"4 poll /api/broker-score-status (broker-upload.js)"| ST["broker-score-status.mjs"] --> BLOB
+  GRAPH --> SP
 
-    Visitor -.->|"loads widget,\nfetches token"| Recaptcha["www.google.com/recaptcha"]
-    Sess -.->|"siteverify\n(enforced, 403 on failure)"| Recaptcha
-
-    Fin --> Blobs["Netlify Blobs\n(scores, rate limits,\ndedupe markers)"]
-    Score --> Blobs
-    Status --> Blobs
-
-    TenantFn --> Graph["Microsoft Graph\n(login.microsoftonline.com\n+ graph.microsoft.com)"]
-    OwnerFn --> Graph
-    ContactFn --> Graph
-    ChecklistFn --> Graph
-    Sess --> Graph
-    Fin --> Graph
-    Score --> Graph
-    Graph --> SP
-
-    TenantFn -.->|"pipeline-failures /\nledger + intake rows"| Forms
-    OwnerFn -.-> Forms
-    ContactFn -.-> Forms
-    ChecklistFn -.-> Forms
-    Sess -.-> Forms
-    Fin -.-> Forms
-    Score -.-> Forms
+  BF & BG & BS & TA & OL & CN & CK -. "failure log rows (same platform as the thing that failed)" .-> PF["Netlify Forms: pipeline-failures / broker-network-ledger"]
+  PF --> NF
 ```
 
-**Reading the diagram:** most of what the visitor touches is same-origin, but the browser itself makes two direct cross-origin calls in these flows: it loads Google's reCAPTCHA widget during the broker-upload honeypot step, and it `PUT`s a broker's offering memorandum straight to SharePoint in 5 MiB chunks — both `www.google.com` and `oxfordraeg.sharepoint.com` sit in the `connect-src` allowlist in `_headers` for exactly these reasons (a third entry, `*.tile.openstreetmap.org`, backs the markets-page maps and is unrelated to this flow). Server-side, the only outbound calls are Microsoft Graph (auth, SharePoint file writes, and all outbound mail), the Anthropic API (the `/api/chat` assistant and the broker deal-term extraction), and Google's reCAPTCHA siteverify endpoint — enforced, 403 on failure (`broker-upload-session.js`; disabled 2026-07-19 to 2026-09-07 after a client-side site-key typo, re-enabled once fixed and verified); there is no database — durable state is Netlify Blobs (broker score results, the `broker-finalize` per-IP rate limit and daily cap, dedupe markers) plus Netlify Forms, which doubles as the failure log every function writes to via the `pipeline-failures` form. Four functions are never linked from a page or called by client JS: `tenant-application-processor.js`, `owner-lead-notify.js`, `contact-notify.js` and `checklist-notify.js` are wired as Netlify `submission-created` outgoing webhooks — Netlify itself POSTs to each function's URL on every form submitted anywhere on the site, and each gates on `form_name` — that gate is load-bearing, not defensive. The `/api/chat` and `broker-upload-session` per-IP limiters are in-memory per instance (not shared across instances or durable). The broker pipeline is the only multi-step flow: session, direct upload, finalize, then an out-of-band background scoring job the page polls for.
+**Reading the diagram:** most of what the visitor touches is same-origin, but the browser itself makes two direct cross-origin calls in these flows: it loads Google's reCAPTCHA widget during the broker-upload honeypot step, and it `PUT`s a broker's offering memorandum straight to SharePoint in 5 MiB chunks — both `www.google.com` and `oxfordraeg.sharepoint.com` sit in the `connect-src` allowlist in `_headers` for exactly these reasons (a third entry, `*.tile.openstreetmap.org`, backs the markets-page maps and is unrelated to this flow). Server-side, the only outbound calls are Microsoft Graph (auth, SharePoint file writes, and all outbound mail), the Anthropic API (the `/api/chat` assistant and the broker deal-term extraction), and Google's reCAPTCHA siteverify endpoint — enforced, 403 on failure (`broker-upload-session.js`; disabled 2026-07-19 to 2026-09-07 after a client-side site-key typo, re-enabled once fixed and verified); there is no database — durable state is Netlify Blobs (broker score results, the `broker-finalize` per-IP rate limit and daily cap, dedupe markers) plus Netlify Forms, which doubles as the failure log every function writes to via the `pipeline-failures` form. Four functions are never linked from a page or called by client JS: `tenant-application-processor.js`, `owner-lead-notify.js`, `contact-notify.js` and `checklist-notify.js` are wired as Netlify `submission-created` outgoing webhooks — Netlify itself POSTs to each function's URL on every form submitted anywhere on the site, and each gates on `form_name` — that gate is load-bearing, not defensive. The `/api/chat` and `broker-upload-session` per-IP limiters are in-memory per instance (not shared across instances or durable). Analytics runs through Google Consent Mode v2: the inline gtag script on each page defaults analytics storage to denied, `script.js` grants it only on a cookie-banner Accept, and Decline leaves the default in place. The map pages (`available-space.html`, and `portfolio.js` on the portfolio page) load Leaflet from `unpkg.com`. The broker pipeline is the only multi-step flow: session, direct upload, finalize, then an out-of-band background scoring job the page polls for.
 
 ## Repo layout
 
 ```
 ├── *.html                    Public pages (index, about, portfolio, contact, ...)
 ├── *.css / *.js               Shared styles and client-side scripts (listings.js is GENERATED in part - see below)
+├── portfolio.css, portfolio.js, available-space.css   Page-specific styles/scripts (portfolio.html is GENERATED in part - see below)
 ├── data/listings.json         Source of truth for Available Space listings
+├── data/portfolio.json        Source of truth for the portfolio grid and the properties/ detail pages
 ├── assets/, images/, fonts/   Static site assets (copied verbatim to dist/)
+├── properties/                Per-property detail pages - GENERATED by build-portfolio.mjs (do not hand-edit)
 ├── markets/                   Per-market landing pages (Columbus OH, Maryland)
 ├── resources/                 Seller-focused guide pages (1031 exchange, valuation, ...)
 ├── netlify/
@@ -151,7 +152,8 @@ flowchart TD
 ├── scripts/
 │   ├── build-dist.mjs         Assembles dist/ for deploy (see above)
 │   ├── build-kb.mjs           Builds the chat assistant's knowledge base
-│   ├── build-listings.mjs     Regenerates listings.js + available-space.html from data/listings.json (--check = drift gate)
+│   ├── build-listings.mjs     Regenerates listings.js + available-space.html (and the portfolio availability badges) from data/listings.json (--check = drift gate)
+│   ├── build-portfolio.mjs    Regenerates portfolio.html + properties/*.html from data/portfolio.json and stamps sitemap lastmod (--check = drift gate)
 │   ├── sync-listings.mjs      Reconciles a LoopNet read against data/listings.json (see Available-space listings)
 │   ├── geocode-listing.mjs    US Census geocoder lookup for a new listing's lat/lng
 │   ├── csp-hashes.mjs         Computes/checks/writes the inline-script hashes in _headers
@@ -168,6 +170,7 @@ flowchart TD
 │   └── meta.md                Canonical firm facts fed into the chat assistant's knowledge base
 ├── tests/functions/            node:test unit tests for netlify/functions/ (and _shared/)
 ├── tests/listings/             Unit tests for build-listings, sync-listings, geocode-listing
+├── tests/portfolio/            Unit tests for build-portfolio and portfolio page content rules
 ├── tests/client/, tests/scripts/  Unit tests for broker-upload.js retry logic and lighthouse-summary
 ├── tests/site/                 Build-output checks: CSP (headless Chromium), SEO, forms, a11y, listings/map UI, Netlify-runtime smoke test
 ├── tests/mutation/             Mutation harness: breaks a copy of the site and requires the named check to fail
@@ -212,14 +215,16 @@ Its six stages, each also runnable alone:
 
 | Command | What it proves | Why it can't be a unit test |
 |---|---|---|
-| `npm run build` | listings copies match `data/listings.json`; knowledge base builds; `dist/` assembles with every root entry classified and CSP hashes current | — |
+| `npm run build` | listings copies match `data/listings.json` and the portfolio page/detail pages match `data/portfolio.json`; knowledge base builds; `dist/` assembles with every root entry classified and CSP hashes current | — |
 | `npm run verify:jsonld` | every page's JSON-LD parses, **and** the key pages still have a block at all | — |
 | `npm run test:unit` | function/module logic (`node:test`, no framework dependency; `scripts/run-unit-tests.mjs` enumerates every `*.test.js` under `tests/` except `tests/site/`, plus `application-script.file-size.test.js` and `assets/chat.test.js`) | — |
-| `npm run test:site` | the explicit list of 17 `tests/site/*.test.mjs` files in `package.json`: CSP smoke (four pages load with zero CSP violations in headless Chromium, served with `_headers` applied), CSP hashes and all-pages CSP, SEO and entity markup, analytics, Netlify Forms declarations, form validator, site integrity, mobile nav, client robustness, upload budget, listings and map UI, logo a11y, reCAPTCHA site key, `serve-dist` args | CSP is a property of a served response plus a real renderer; `require()` cannot see it |
+| `npm run test:site` | the explicit list of 23 `tests/site/*.test.mjs` files in `package.json`: CSP smoke (four pages load with zero CSP violations in headless Chromium, served with `_headers` applied), CSP hashes and all-pages CSP, SEO and entity markup, analytics, Netlify Forms declarations, form validator, site integrity and plumbing, mobile nav, client robustness, upload budget, listings, map and portfolio-map UI, cookie banner, announcement-bar contrast, contact copy and form hint, logo a11y, reCAPTCHA site key, `serve-dist` args | CSP is a property of a served response plus a real renderer; `require()` cannot see it |
 | `npm run test:shim` | `scripts/patch-netlify-shim.js` replaces netlify-cli's bin entry instead of writing through a POSIX symlink (regression test against a disposable fixture) | the failure only exists on the POSIX bin-link layout |
 | `npm run test:functions` | `chat-lead` behaves correctly when driven over HTTP through `netlify functions:serve` | a `require()`d handler cannot reveal a runtime-shape mismatch (CJS vs. V2 function runtime) |
 
-Unit tests live in `tests/functions/` (plus `tests/functions/_shared/`), `tests/listings/`, `tests/client/` and `tests/scripts/`; the browser, build-output and Netlify-runtime tests live in `tests/site/`. `application-script.file-size.test.js` at the repo root guards the size of the hand-written DOM script rather than testing exports (it has none — it's a DOM IIFE).
+**Known gap:** `tests/site/consent-mode.test.mjs` (Consent Mode v2 ordering and Accept/Decline state through Partytown, in a real browser) exists but is not in the `test:site` list and is not picked up by `run-unit-tests.mjs` (which skips `tests/site/`), so neither `npm run verify` nor CI runs it. Run it directly with `node --test tests/site/consent-mode.test.mjs` after a build until it is wired in.
+
+Unit tests live in `tests/functions/` (plus `tests/functions/_shared/`), `tests/listings/`, `tests/portfolio/`, `tests/client/` and `tests/scripts/`; the browser, build-output and Netlify-runtime tests live in `tests/site/`. `application-script.file-size.test.js` at the repo root guards the size of the hand-written DOM script rather than testing exports (it has none — it's a DOM IIFE).
 
 `tests/site/functions-smoke.test.mjs` is written as an extensible template: `invokeFunction()` and the server harness are generic, so covering another function is a matter of adding cases. It deliberately covers only `chat-lead`, a non-broker function.
 
@@ -230,6 +235,19 @@ Unit tests live in `tests/functions/` (plus `tests/functions/_shared/`), `tests/
 The chat assistant has a separate eval harness (`scripts/eval-chat.mjs` against fixtures in `evals/fixtures.json`, dated snapshots retained in `evals/`). It is **not** in `npm run verify`: it needs a live `/api/chat` origin and spends real model tokens per case. Run it against a deploy preview instead — `npm run eval:chat -- --base=https://<preview>.netlify.app`, or via the CI workflow's manual `eval-chat` job (Actions -> CI -> Run workflow, `eval_base` input).
 
 CI picks its runner from the `CI_RUNNER` repository variable (a JSON label array); unset means GitHub-hosted `ubuntu-latest`. Fork PRs never run on a self-hosted runner. No workflow deploys.
+
+### CI gates at a glance
+
+```mermaid
+flowchart LR
+  PRN["pull_request (same-repo only for verify) / push main"] --> VER["ci.yml: Build & verify"]
+  PRN --> LHW["lighthouse.yml (continue-on-error; 4 pages; budget LCP<=2.5s CLS<=0.1 TBT<=200ms categories>=90)"]
+  PRN -->|"paths: tests/site, tests/mutation, validate-jsonld, verify-jsonld, build-dist, mutation.yml"| MUT["mutation.yml (40 min timeout; not required)"]
+  MAN["workflow_dispatch + eval_base"] --> EVAL["ci.yml eval-chat (real model tokens)"]
+  VER --> S1["npm ci (postinstall patches netlify shim)"] --> S2["playwright chromium"] --> S3["npm run verify"]
+  S3 --> B["build: listings --check, portfolio --check, build-kb, build-dist (+CSP hash check)"] --> J["verify:jsonld"] --> U["test:unit (*.test.js enumerated)"] --> T["test:site (23 explicit files, headless Chromium with _headers)"] --> SH["test:shim"] --> F["test:functions (netlify functions:serve smoke)"]
+  GAP1["Not covered: dependency audit / Dependabot, lint/format, Node EOL check, consent-mode.test.mjs (unwired), Blobs credential injection, real reCAPTCHA verdicts, post-deploy live CSP (manual)"]
+```
 
 ### What CI still can't catch
 
@@ -242,7 +260,9 @@ CI picks its runner from the `CI_RUNNER` repository variable (a JSON label array
 |---|---|
 | `index.html` | Home — firm overview, investment criteria, featured acquisitions |
 | `about.html` | Firm history, leadership, investment strategy |
-| `portfolio.html` | Owned industrial/flex property portfolio |
+| `portfolio.html` | Owned industrial/flex property portfolio (grid and JSON-LD generated from `data/portfolio.json`) |
+| `properties/*.html` | 20 per-property detail pages, generated by `scripts/build-portfolio.mjs` |
+| `what-we-see.html` | How Oxford Sees Small Industrial (in the chat knowledge base) |
 | `track-record.html` | Case studies and investment performance |
 | `available-space.html` | Current industrial/flex leasing availability |
 | `tenant-resources.html` | Resources for current and prospective tenants |
@@ -269,7 +289,7 @@ All live in `netlify/functions/` unless noted. The four `submission-created` web
 | `tenant-application-processor.js` | `submission-created` webhook: processes tenant lease applications (`commercial-lease-application`) |
 | `contact-notify.js` | `submission-created` webhook: emails on `contact` form submissions |
 | `checklist-notify.js` | `submission-created` webhook: notifies on `checklist-download` form submissions from the sale-document checklist guide |
-| `edge-functions/chat.ts` | Edge function powering the `/api/chat` assistant (Anthropic Messages API; model overridable via `CHAT_MODEL`), backed by `edge-functions/knowledge-base.json` (built by `scripts/build-kb.mjs` from `scripts/meta.md` + 8 site pages) |
+| `edge-functions/chat.ts` | Edge function powering the `/api/chat` assistant (Anthropic Messages API; model overridable via `CHAT_MODEL`), backed by `edge-functions/knowledge-base.json` (built by `scripts/build-kb.mjs` from `scripts/meta.md` + 9 site pages) |
 
 Shared helpers in `netlify/functions/_shared/`: Microsoft Graph auth, mail and file access (`graph-auth.js`, `graph-mail.js`, `graph-files.js`), reCAPTCHA verification (`recaptcha.js`), Netlify Forms posting (`netlify-forms.js`), form validation and signed tokens (`validate.js`), the email template, and the broker pipeline modules (text extraction, LLM term extraction, score engine, score store, scoring run, RCT benchmark data). Functions that go through Blobs are ESM (`.mjs`) and must not export `handler`; `tests/functions/broker-v2-runtime-contract.test.js` and `esm-cjs-bundling-contract.test.js` pin that contract.
 
@@ -279,6 +299,29 @@ Shared helpers in `netlify/functions/_shared/`: Microsoft Graph auth, mail and f
 
 - New listing coordinates: `node scripts/geocode-listing.mjs "<street>, <city>, <ST>"` (US Census geocoder; interpolates along the street, so confirm the pin against parcel or aerial data).
 - `scripts/sync-listings.mjs` reconciles a LoopNet read (supplied as JSON by an external browser-based scheduled task, read twice and required to agree) against `data/listings.json`; outcomes are noop, apply, or alert (guard tripped, fails closed). That scheduled task is not defined in this repo.
+
+`data/portfolio.json` is the equivalent source for the portfolio page. `node scripts/build-portfolio.mjs` rewrites the grid, market mix and `ItemList` JSON-LD in `portfolio.html` between its `portfolio:*:begin/end` markers, regenerates each `properties/*.html` detail page, and stamps `sitemap.xml` `<lastmod>` for every page it changes; `--check` (run by `npm run build`) exits 1 on drift. A `properties/` page that the data no longer generates fails the build rather than being deleted. `build-listings.mjs` also regenerates `portfolio.html` (through `renderPortfolioPage`), which keeps the availability badges current after the weekly sync.
+
+```mermaid
+flowchart TD
+  LN["LoopNet public company page (browser read, TWICE, by a scheduled task outside this repo)"] -->|"scraped.json {reads:[A,B]}"| SYNC["scripts/sync-listings.mjs planSync()\nboth reads must agree; standing exclusions; pinned units; fail-closed alert"]
+  SYNC -->|"--write: noop / apply / alert (exit 0 / 10 / 20)"| LJ["data/listings.json (source of truth)"]
+  GEO["scripts/geocode-listing.mjs (manual) -> lat/lng with at least 4 decimals, state bounding box"] --> LJ
+  LJ --> BL["scripts/build-listings.mjs validate + render"]
+  BL --> J1["listings.js: var LISTINGS = [...]"]
+  BL --> J2["available-space.html: static fallback cards (crawlers)"]
+  BL --> J3["available-space.html: #listing-schema ItemList JSON-LD"]
+  BL --> J4["portfolio.html: availability badges (via build-portfolio renderPortfolioPage)"]
+  PJ["data/portfolio.json"] --> BP["scripts/build-portfolio.mjs"]
+  BP --> P1["portfolio.html grid + JSON-LD"]
+  BP --> P2["properties/*.html detail pages + sitemap lastmod"]
+  J1 --> CLIENT["listings.js client UI: filters, Leaflet map, detail overlay (needs JS)"]
+  J2 --> KB["build-kb.mjs reads available-space.html -> chat knowledge base"]
+  J3 --> VJ["verify-jsonld.mjs + validate-jsonld.js (every built page)"]
+  BL -->|"--check in npm run build: exit 1 on drift"| CI["CI verify"]
+  BP -->|"--check in npm run build: exit 1 on drift"| CI
+  CI --> PR["PR to main (reviewable diff); merge = production deploy"]
+```
 
 ## Headers & CSP
 

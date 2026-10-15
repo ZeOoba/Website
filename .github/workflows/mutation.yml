@@ -41,7 +41,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (resolved 2026-09-25)
         with:
           node-version: '20'
-          cache: npm
+          # Hosted runners only: see ci.yml (the cache-save post-step hangs on the self-hosted runner).
+          cache: ${{ runner.environment == 'github-hosted' && 'npm' || '' }}
 
       - name: Install dependencies
         run: npm ci

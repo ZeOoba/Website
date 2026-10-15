@@ -1,5 +1,6 @@
 'use strict';
 const { verifyNetlifyWebhookSignature, sanitizeField, sniffFileType, isAllowedUpload } = require('./_shared/validate.js');
+const { alertInvalidSignature } = require('./_shared/signature-alert.js');
 const { ensureFolder, uploadSmallFile } = require('./_shared/graph-files.js');
 const { sendMail } = require('./_shared/graph-mail.js');
 const { renderTenantEmail } = require('./_shared/email-template.js');
@@ -37,6 +38,7 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     // NETLIFY_WEBHOOK_SECRET) and lets any unauthenticated POST burn the Forms
     // quota. (The 400 malformed-JSON path below is likewise left unlogged.)
     console.error('[tenant-application-processor] invalid webhook signature (check NETLIFY_WEBHOOK_SECRET)');
+    await alertInvalidSignature('tenant-application-processor', { fetchImpl });
     return { statusCode: 401, body: JSON.stringify({ ok: false, error: 'invalid_signature' }) };
   }
 

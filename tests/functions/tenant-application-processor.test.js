@@ -36,7 +36,7 @@ test('rejects a submission with an invalid webhook signature', () => withEnv(FIL
   const fetchImpl = async (url) => { calls.push(url); return { ok: true, status: 200 }; };
   const res = await handler(event, { fetchImpl });
   assert.equal(res.statusCode, 401);
-  assert.deepEqual(calls, [], 'a forged signature must not trigger any outbound request');
+  assert.ok(!calls.includes('https://oxfordra.net/'), 'a forged signature must never write a Netlify Forms row (feedback loop + quota burn); a throttled Graph alert is allowed');
 }));
 
 test('ignores submissions for other forms (no-op 200, no Graph calls)', () => withEnv(FILE_ALLOWLIST_ENV, async () => {

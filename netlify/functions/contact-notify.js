@@ -16,6 +16,7 @@
  * repo, untested, and with no failure ledger if it silently stopped firing.
  */
 const { verifyNetlifyWebhookSignature, sanitizeField } = require('./_shared/validate.js');
+const { alertInvalidSignature } = require('./_shared/signature-alert.js');
 const { sendMail } = require('./_shared/graph-mail.js');
 const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
 
@@ -84,6 +85,7 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     // loop on a rotated/missing secret) and lets any unauthenticated POST
     // burn the Forms quota. A rotated secret is surfaced via function logs.
     console.error('[contact-notify] invalid webhook signature (check NETLIFY_WEBHOOK_SECRET)');
+    await alertInvalidSignature('contact-notify', { fetchImpl });
     return { statusCode: 401, body: JSON.stringify({ ok: false, error: 'invalid_signature' }) };
   }
 

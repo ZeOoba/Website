@@ -57,7 +57,12 @@ jobs:
           # Matches netlify.toml [build.environment] NODE_VERSION — CI must run
           # the same major as the deploy build, or it verifies a different site.
           node-version: '20'
-          cache: npm
+          # The npm cache only helps GitHub-hosted runners (fresh VM each job). On the
+          # self-hosted laptop runner the disk already persists the npm cache, and the
+          # setup-node post-step that SAVES it hung for 22 minutes after a passing Verify
+          # step until the 25-minute job timeout cancelled the job (2026-10-15, runs
+          # 38572674582 and 38574077301). Empty string = no cache = no post-step save.
+          cache: ${{ runner.environment == 'github-hosted' && 'npm' || '' }}
 
       - name: Install dependencies
         run: npm ci

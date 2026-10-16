@@ -129,10 +129,14 @@ async function consumeIntakeToken(key, { storeFactory = getStore } = {}) {
   const first = reported(await store.set(key, marker(), { onlyIfNew: true }));
   if (first.modified) return { first: await resolve(first) };
 
-  // 412: a marker exists. Ours (a retried PUT that had committed) -> win. Another live one -> replay.
-  // Expired (past the 24h TTL) or deleted in between -> take it over, again atomically (etag-guarded
-  // replace, or create-only if it vanished). A stale read here can only make the takeover lose (stale
-  // etag -> modified:false), which is the safe direction.
+  // 412: a marker exists. Ours (a retried PUT that had committed) -> win. ANY other marker, live OR expired,
+  // is a replay. There is deliberately NO takeover of an expired marker:
+  //   - it would need an If-Match replace, and the live Netlify Blobs service does NOT make that atomic under
+  //     contention (probe 2026-10-15: 20 concurrent writers holding one etag, 8 to 13 succeeded), so a
+  //     takeover could hand the same token to several callers;
+  //   - it is unreachable anyway: markers live 24 h, intake tokens expire after 15 min and the key is a
+  //     unique per-upload-session path, so a token that still verifies never meets an expired marker.
+  // (The create-only paths above and below ARE atomic: exactly one winner of 30 concurrent writers, 4 of 4.)
   //
   // From here on the server has AUTHORITATIVELY told us a marker is stored, so a throw in anything that
   // follows (a read 401/403/5xx, unparseable marker JSON, a failed follow-up write) must not fail open and
@@ -140,14 +144,9 @@ async function consumeIntakeToken(key, { storeFactory = getStore } = {}) {
   // faults threw). The only fail-open left is a fault BEFORE any 412, where nothing is known.
   try {
     const cur = await store.getWithMetadata(key, { type: 'json' });
+    // Released (deleted) between the 412 and this read: create-only again, still atomic.
     if (!cur) return { first: await resolve(await store.set(key, marker(), { onlyIfNew: true })) };
-    const data = cur.data;
-    if (data && data.nonce === nonce) return { first: true };
-    if (live(data)) return { first: false };
-    // Without an etag onlyIfMatch:undefined sends NO If-Match header, turning the takeover into an
-    // unconditional overwrite that every racer wins. Refuse to take over what we cannot guard.
-    if (!cur.etag) return { first: false };
-    return { first: await resolve(await store.set(key, marker(), { onlyIfMatch: cur.etag })) };
+    return { first: !!(cur.data && cur.data.nonce === nonce) };
   } catch (err) {
     console.error('[broker-score-store] read/write after a 412 failed; treating as a replay', String(err));
     return { first: false };

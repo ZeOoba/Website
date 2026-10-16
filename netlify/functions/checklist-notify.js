@@ -64,7 +64,7 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     // Deploy-log only — NEVER a pipeline-failures Forms row (it would re-fire
     // every webhook: exponential loop + unauthenticated Forms-quota burn).
     console.error('[checklist-notify] invalid webhook signature (check NETLIFY_WEBHOOK_SECRET)');
-    await alertInvalidSignature('checklist-notify', { fetchImpl });
+    await alertInvalidSignature('checklist-notify', { fetchImpl, signatureHeader: signature, secretSet: Boolean(secret) });
     return { statusCode: 401, body: JSON.stringify({ ok: false, error: 'invalid_signature' }) };
   }
 

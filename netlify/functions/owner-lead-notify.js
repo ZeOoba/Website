@@ -90,7 +90,7 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     // loop on a rotated/missing secret) and lets any unauthenticated POST
     // burn the Forms quota. A rotated secret is surfaced via function logs.
     console.error('[owner-lead-notify] invalid webhook signature (check NETLIFY_WEBHOOK_SECRET)');
-    await alertInvalidSignature('owner-lead-notify', { fetchImpl });
+    await alertInvalidSignature('owner-lead-notify', { fetchImpl, signatureHeader: signature, secretSet: Boolean(secret) });
     return { statusCode: 401, body: JSON.stringify({ ok: false, error: 'invalid_signature' }) };
   }
 

@@ -38,7 +38,7 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     // NETLIFY_WEBHOOK_SECRET) and lets any unauthenticated POST burn the Forms
     // quota. (The 400 malformed-JSON path below is likewise left unlogged.)
     console.error('[tenant-application-processor] invalid webhook signature (check NETLIFY_WEBHOOK_SECRET)');
-    await alertInvalidSignature('tenant-application-processor', { fetchImpl });
+    await alertInvalidSignature('tenant-application-processor', { fetchImpl, signatureHeader: signature, secretSet: Boolean(secret) });
     return { statusCode: 401, body: JSON.stringify({ ok: false, error: 'invalid_signature' }) };
   }
 

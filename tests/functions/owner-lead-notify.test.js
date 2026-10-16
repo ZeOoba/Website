@@ -48,19 +48,33 @@ const VALID_DATA = {
   'tcpa-consent': 'yes',
 };
 
-test('rejects a submission with an invalid webhook signature (401, no network call)', () => withEnv(ENV, async () => {
+// A forged signature must never write a Netlify Forms row (it would re-fire every submission-created webhook:
+// feedback loop on a rotated secret + Forms-quota burn), and the ONLY outbound request allowed is the signed
+// call to the V2 signature-alert function, which owns the global once-per-hour guard. Calls are RECORDED, not
+// thrown on: forwardToNetlifyForm swallows a throwing fetchImpl. A missing/malformed header (a scanner) makes none.
+const { _resetForTests: resetAlert } = require('../../netlify/functions/_shared/signature-alert.js');
+const ALERT_URL = 'https://oxfordra.net/.netlify/functions/signature-alert';
+const ALERT_ENV = { ...ENV, INTAKE_TOKEN_SECRET: 'intake-secret' };
+
+test('a JWS-shaped bad signature is a 401 whose only outbound request is the signed call to the V2 alert function', () => withEnv(ALERT_ENV, async () => {
+  resetAlert();
   const rawBody = JSON.stringify({ form_name: 'owner-submission-intake', id: 'sub-1', data: {} });
   const event = { headers: { 'x-webhook-signature': 'forged.forged.forged' }, body: rawBody };
-  // A forged signature must make ZERO network calls: a pipeline-failures Forms
-  // row would re-fire every submission-created webhook (feedback loop on a
-  // rotated secret) and let unauthenticated POSTs burn the Forms quota.
-  // Record calls instead of throwing: forwardToNetlifyForm swallows a throwing
-  // fetchImpl, so a throw alone would let the old logging path pass unnoticed.
   const calls = [];
-  const fetchImpl = async (url) => { calls.push(url); return { ok: true, status: 200 }; };
+  const fetchImpl = async (url, opts = {}) => { calls.push({ url: String(url), body: String(opts.body || '') }); return { ok: true, status: 200 }; };
   const res = await handler(event, { fetchImpl });
   assert.equal(res.statusCode, 401);
-  assert.ok(!calls.includes('https://oxfordra.net/'), 'a forged signature must never write a Netlify Forms row (feedback loop + quota burn); a throttled Graph alert is allowed');
+  assert.deepEqual(calls.map((c) => c.url), [ALERT_URL], 'exactly one request, to the alert function; never Forms, never Graph directly');
+  assert.ok(JSON.parse(calls[0].body).token, 'the call carries a signed token');
+}));
+
+test('a missing signature header (a scanner) is a 401 with no network call at all', () => withEnv(ALERT_ENV, async () => {
+  resetAlert();
+  const calls = [];
+  const fetchImpl = async (url) => { calls.push(String(url)); return { ok: true, status: 200 }; };
+  const res = await handler({ headers: {}, body: '{}' }, { fetchImpl });
+  assert.equal(res.statusCode, 401);
+  assert.deepEqual(calls, []);
 }));
 
 test('rejects a malformed-JSON body with a 400 and no email', () => withEnv(ENV, async () => {

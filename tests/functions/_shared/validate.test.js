@@ -19,6 +19,19 @@ test('checkHoneypot flags a filled bot-field or website field', () => {
   assert.equal(checkHoneypot({}), false);
 });
 
+// A multibyte signature can match the expected hex's UTF-16 length while differing in BYTE length, and
+// crypto.timingSafeEqual THROWS on unequal buffers. That turned a junk token on a public endpoint into an
+// uncaught 500 (adversarial review of PR #171, 2026-10-15). The verifier must answer null, never throw.
+test('verifyIntakeToken returns null (never throws) for multibyte and wrong-length signatures', () => {
+  const good = signIntakeToken({ type: 'sig-alert', exp: Date.now() + 60_000 }, 'secret');
+  const [encoded] = good.split('.');
+  for (const sig of ['é'.repeat(64), '😀'.repeat(32), 'f'.repeat(63), 'f'.repeat(65), '', 'é'.repeat(32) + 'a'.repeat(32)]) {
+    assert.doesNotThrow(() => verifyIntakeToken(`${encoded}.${sig}`, 'secret', 'sig-alert'), JSON.stringify(sig).slice(0, 14));
+    assert.equal(verifyIntakeToken(`${encoded}.${sig}`, 'secret', 'sig-alert'), null);
+  }
+  assert.ok(verifyIntakeToken(good, 'secret', 'sig-alert'), 'a genuine token still verifies');
+});
+
 test('sniffFileType detects PDF, JPEG, PNG, DOCX/XLSX(zip) by magic bytes', () => {
   const pdf = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
   const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);

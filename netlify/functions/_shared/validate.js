@@ -116,7 +116,12 @@ function verifyIntakeToken(token, secret, expectedType) {
     // secret missing/invalid (e.g. an unset env var) -- fail closed, never throw uncaught.
     return null;
   }
-  if (sig.length !== expectedSig.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) return null;
+  // Compare BYTE lengths, not string lengths: a multibyte signature can have the same UTF-16 length as the
+  // expected hex yet a different byte length, and timingSafeEqual THROWS (RangeError) on unequal buffers, which
+  // turned a junk token on a public endpoint into an uncaught 500 (adversarial review of PR #171, 2026-10-15).
+  const sigBuf = Buffer.from(sig);
+  const expectedBuf = Buffer.from(expectedSig);
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
   let payload;
   try { payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); } catch { return null; }
   if (typeof payload.exp !== 'number' || payload.exp < Date.now()) return null;

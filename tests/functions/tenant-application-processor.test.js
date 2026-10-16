@@ -44,6 +44,15 @@ test('a JWS-shaped bad signature is a 401 whose only outbound request is the sig
   assert.ok(JSON.parse(calls[0].body).token, 'the call carries a signed token');
 }));
 
+test('an UNSET NETLIFY_WEBHOOK_SECRET is high confidence: even with no header the bad request makes the one signed alert call', () => withEnv({ ...ALERT_ENV, NETLIFY_WEBHOOK_SECRET: '' }, async () => {
+  resetAlert();
+  const calls = [];
+  const fetchImpl = async (url) => { calls.push(String(url)); return { ok: true, status: 200 }; };
+  const res = await handler({ headers: {}, body: '{}' }, { fetchImpl });
+  assert.equal(res.statusCode, 401);
+  assert.deepEqual(calls, [ALERT_URL]);
+}));
+
 test('a missing signature header (a scanner) is a 401 with no network call at all', () => withEnv(ALERT_ENV, async () => {
   resetAlert();
   const calls = [];

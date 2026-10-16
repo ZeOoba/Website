@@ -75,6 +75,15 @@ test('a per-instance cooldown stops a flood from hammering the V2 function, then
   assert.equal(calls.length, 2);
 }));
 
+test('concurrent bad signatures on ONE instance make exactly one call (the claim happens before the await)', () => withEnv(async () => {
+  const calls = [];
+  const fetchImpl = async (url, opts = {}) => { calls.push(url); await new Promise((r) => setTimeout(r, 20)); return { ok: true, status: 200 }; };
+  const results = await Promise.all(Array.from({ length: 10 }, () => alertInvalidSignature('contact-notify', { signatureHeader: JWS, secretSet: true, fetchImpl })));
+  assert.equal(calls.length, 1, `made ${calls.length} calls`);
+  assert.equal(results.filter((r) => r === 'sent').length, 1);
+  assert.equal(results.filter((r) => r === 'cooldown').length, 9);
+}));
+
 test('without INTAKE_TOKEN_SECRET it cannot sign: no network call, no throw', () => withEnv(async () => {
   const { fetchImpl, calls } = recorder();
   assert.equal(await alertInvalidSignature('contact-notify', { signatureHeader: JWS, secretSet: true, fetchImpl }), 'no_secret');

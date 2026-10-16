@@ -184,3 +184,49 @@ test('a missing INTAKE_TOKEN_SECRET fails closed (500) without touching store or
   assert.deepEqual(m.sent, []);
   assert.equal(s.opened.length, 0);
 }, { INTAKE_TOKEN_SECRET: undefined }));
+
+// Round-2 review of PR #171 ------------------------------------------------------------------------------
+test('a multibyte junk token is a 401, never an uncaught throw (timingSafeEqual used to throw on unequal byte lengths)', () => withEnv(async () => {
+  const { handleSignatureAlert } = await load();
+  const m = mailer(); const s = fakeStores();
+  for (const tokenValue of [`abc.${'é'.repeat(64)}`, `abc.${'😀'.repeat(32)}`, `${'é'.repeat(10)}.${'f'.repeat(64)}`]) {
+    const res = await handleSignatureAlert(req({ token: tokenValue }), { storeFactory: s.storeFactory, ...m });
+    assert.equal(res.status, 401, tokenValue.slice(0, 12));
+  }
+  assert.deepEqual(m.sent, []);
+  assert.equal(s.opened.length, 0, 'a junk token must not open the store');
+}));
+
+test('a hung Blobs claim is cut off and fails closed (no mail), so the hour is not claimed by an abandoned invocation', () => withEnv(async () => {
+  const m = mailer();
+  const storeFactory = () => ({ set: () => new Promise(() => {}) });
+  const t0 = Date.now();
+  const r = await call({ storeFactory, ...m, claimTimeoutMs: 40 });
+  assert.equal(r.body.reason, 'store_unavailable');
+  assert.deepEqual(m.sent, []);
+  assert.ok(Date.now() - t0 < 2000);
+}));
+
+test('the Graph fetch used by the mail send carries an AbortSignal (a hung Graph cannot hold the function)', () => withEnv(async () => {
+  const { handleSignatureAlert } = await load();
+  const s = fakeStores();
+  const seen = [];
+  const baseFetch = async (url, opts) => { seen.push({ url, signal: opts && opts.signal }); return { ok: true, status: 200 }; };
+  const sendMailImpl = async (_msg, { fetchImpl }) => { await fetchImpl('https://graph.example/send', { method: 'POST' }); };
+  const res = await handleSignatureAlert(req({ token: token() }), { storeFactory: s.storeFactory, sendMailImpl, fetchImpl: baseFetch });
+  assert.equal((await res.json()).sent, true);
+  assert.equal(seen.length, 1);
+  assert.ok(seen[0].signal instanceof AbortSignal, 'the wrapped fetch must pass an AbortSignal');
+}));
+
+test('the hour bucket is UTC, never the host-local clock (local getters are poisoned for the duration)', () => withEnv(async () => {
+  const proto = Date.prototype;
+  const saved = {};
+  for (const k of ['getHours', 'getDate', 'getMonth', 'getFullYear', 'getDay', 'getTimezoneOffset']) { saved[k] = proto[k]; proto[k] = () => 99; }
+  try {
+    const m = mailer(); const s = fakeStores();
+    const now = () => Date.UTC(2026, 9, 15, 23, 59, 59);
+    await call({ storeFactory: s.storeFactory, ...m, now });
+    assert.deepEqual([...s.data.keys()], ['sig-alert:alert-2026101523']);
+  } finally { Object.assign(proto, saved); }
+}));

@@ -23,7 +23,10 @@ const { signIntakeToken } = require('./validate.js');
 
 const COOLDOWN_MS = 60 * 1000;
 const TOKEN_TTL_MS = 60 * 1000;
-const CALL_TIMEOUT_MS = 2500;
+// Long enough for the V2 function to claim the hour AND send (its claim <= 1.5 s + mail <= 3 s = 4.5 s), so the
+// invocation is not abandoned between claiming the hour and sending. This only delays the 401 for the one request
+// per instance per COOLDOWN_MS that actually calls out; every other bad request returns immediately.
+const CALL_TIMEOUT_MS = 5000;
 const JWS_SHAPE = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
 let lastCallAt = 0;

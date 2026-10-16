@@ -29,6 +29,7 @@ const STORE = 'sig-alert';
 const ALERT_TO = ['ggoldberg@oxfordra.net'];
 const ALLOWED_FNS = new Set(['checklist-notify', 'contact-notify', 'owner-lead-notify', 'tenant-application-processor']);
 const MAIL_TIMEOUT_MS = 3000;
+const CLAIM_TIMEOUT_MS = 1500; // claim + mail <= 4.5 s, inside the V1 client's 5 s wait
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 const reply = (sent, reason) => json(200, sent ? { ok: true, sent: true } : { ok: true, sent: false, reason });
@@ -47,6 +48,8 @@ export async function handleSignatureAlert(req, {
   sendMailImpl = sendMail,
   now = () => Date.now(),
   mailTimeoutMs = MAIL_TIMEOUT_MS,
+  claimTimeoutMs = CLAIM_TIMEOUT_MS,
+  fetchImpl = fetch,
 } = {}) {
   if (req.method !== 'POST') return json(405, { ok: false, error: 'method_not_allowed' });
 
@@ -62,7 +65,10 @@ export async function handleSignatureAlert(req, {
     body = raw ? JSON.parse(raw) : {};
   } catch { return json(400, { ok: false, error: 'invalid_json' }); }
 
-  const claims = verifyIntakeToken(body && body.token, secret, 'sig-alert');
+  // verifyIntakeToken fails closed by returning null, but a malformed token on a PUBLIC URL must never become an
+  // uncaught 500 (a multibyte signature once made its timingSafeEqual throw). Anything that throws is a 401.
+  let claims = null;
+  try { claims = verifyIntakeToken(body && body.token, secret, 'sig-alert'); } catch { claims = null; }
   if (!claims) return json(401, { ok: false, error: 'invalid_token' });
   if (!ALLOWED_FNS.has(claims.fn)) return json(400, { ok: false, error: 'unknown_function' });
 
@@ -70,7 +76,12 @@ export async function handleSignatureAlert(req, {
   const key = `alert-${hourBucket(at)}`;
   let claim;
   try {
-    claim = await storeFactory(STORE).set(key, JSON.stringify({ fn: claims.fn, at: new Date(at).toISOString() }), { onlyIfNew: true });
+    // Bounded: the whole claim + send must fit inside the V1 caller's wait (see CALL_TIMEOUT_MS there), or the
+    // hour could be claimed by an invocation that is abandoned before it sends. A timeout fails closed.
+    claim = await withTimeout(
+      storeFactory(STORE).set(key, JSON.stringify({ fn: claims.fn, at: new Date(at).toISOString() }), { onlyIfNew: true }),
+      claimTimeoutMs,
+    );
   } catch (err) {
     console.error('[signature-alert] claim failed; sending nothing (fail closed)', String(err));
     return reply(false, 'store_unavailable');
@@ -99,7 +110,7 @@ export async function handleSignatureAlert(req, {
             'rotation, someone is sending forged webhooks to the public function URLs.</p>',
           to: ALERT_TO,
         },
-        { fetchImpl: (u, o) => fetch(u, { ...o, signal: AbortSignal.timeout(mailTimeoutMs) }) },
+        { fetchImpl: (u, o) => fetchImpl(u, { ...o, signal: AbortSignal.timeout(mailTimeoutMs) }) },
       ),
       mailTimeoutMs,
     );

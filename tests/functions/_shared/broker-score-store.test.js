@@ -150,11 +150,15 @@ test('consumeIntakeToken: sequential replay is rejected, and distinct tokens do 
   assert.deepEqual(await consumeIntakeToken('b', { storeFactory }), { first: true });
 });
 
-test('consumeIntakeToken: an expired consumed-marker is replaced atomically (exactly one concurrent winner)', async () => {
+// There is deliberately NO takeover of an expired marker. It would need an If-Match replace, which the live
+// Netlify Blobs service does not make atomic under contention (probe 2026-10-15: 20 concurrent holders of one etag,
+// 8 to 13 succeeded), and it is unreachable anyway (marker 24 h vs intake token 15 min, unique per-session key).
+// So ANY existing marker, live or expired, is a replay, and nobody can win it concurrently.
+test('consumeIntakeToken: an EXPIRED marker is a replay for every concurrent caller (no takeover, nobody wins)', async () => {
   const storeFactory = fakeConditionalStoreFactory();
   storeFactory.raw.set('broker-intake-consumed:old', { value: { consumedAt: 1, expiresAt: Date.now() - 1000 }, etag: 'stale' });
   const results = await Promise.all(Array.from({ length: 8 }, () => consumeIntakeToken('old', { storeFactory })));
-  assert.equal(results.filter((r) => r.first).length, 1, 'expired marker: only one concurrent caller may re-consume it');
+  assert.equal(results.filter((r) => r.first).length, 0, 'an expired marker must never hand the token to anyone');
 });
 
 test('releaseIntakeToken lets the same token be consumed again (email-failure retry path)', async () => {
@@ -191,14 +195,13 @@ test('consumeIntakeToken sends If-None-Match: * on the wire, and a 412 means a r
   assert.deepEqual(await consumeIntakeToken('wire-1', { storeFactory }), { first: false }, '412 then a live marker is a replay');
 });
 
-test('consumeIntakeToken takes over an expired marker with If-Match on the wire (real client)', async () => {
+test('consumeIntakeToken NEVER sends an If-Match replace: an expired marker with an etag is a replay (real client)', async () => {
   const { storeFactory, requests } = realClientFactory((req, n) => (n === 1
     ? new Response(null, { status: 412 })
-    : n === 2 ? new Response(JSON.stringify({ consumedAt: 1, expiresAt: Date.now() - 1000 }), { status: 200, headers: { etag: '"old"' } })
-      : new Response(null, { status: 200, headers: { etag: '"new"' } })));
-  assert.deepEqual(await consumeIntakeToken('wire-2', { storeFactory }), { first: true });
-  assert.equal(requests[2].method, 'PUT');
-  assert.equal(requests[2].headers['if-match'], '"old"', 'takeover must be etag-guarded so only one concurrent caller wins');
+    : new Response(JSON.stringify({ consumedAt: 1, expiresAt: Date.now() - 1000 }), { status: 200, headers: { etag: '"old"' } })));
+  assert.deepEqual(await consumeIntakeToken('wire-2', { storeFactory }), { first: false });
+  assert.equal(requests.filter((r) => r.method === 'PUT').length, 1, 'only the create-only attempt may be written');
+  assert.ok(requests.every((r) => r.headers['if-match'] === undefined), 'no request may carry If-Match (not atomic under contention)');
 });
 
 // The REAL client reports {modified:true, etag:''} for every non-412 status (401/403/404/409 ...), so a
@@ -312,7 +315,7 @@ test('a marker written by the old code (no nonce) is still honored as a live rep
   assert.deepEqual(await consumeIntakeToken('legacy', { storeFactory }), { first: false });
 });
 
-test('consumeIntakeToken refuses an unguardable takeover: expired marker with no etag is NOT overwritten (real client)', async () => {
+test('consumeIntakeToken: an expired marker with no etag is a replay and is NOT overwritten (real client)', async () => {
   const puts = [];
   const { storeFactory } = realClientFactory((req, n) => {
     if (req.method === 'PUT') { puts.push(req); return n === 1 ? new Response(null, { status: 412 }) : new Response(null, { status: 200, headers: { etag: '"x"' } }); }

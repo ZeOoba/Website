@@ -129,7 +129,7 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
   const badSF = invalidNumberReason(buildingSizeSF, opts.ios ? PLAUSIBLE_IOS_BUILDING_SF_MIN : PLAUSIBLE_BUILDING_SF_MIN, PLAUSIBLE_BUILDING_SF_MAX);
   if (badSF) return invalidCategory(possible, 'Building size', badSF);
   // Checked before the market match so an implausible price/SF pair is flagged (and shows up in the
-  // category payload) even when no RCT market matched. IOS is land-like and exempt from the band.
+  // category payload) even when no RCT market matched. IOS is land-like and exempt from the UPPER bound only.
   const rawPerSF = askingPrice / buildingSizeSF;
   // IOS drops only the UPPER bound (small SF relative to price). The lower bound still applies: land SF
   // dropped into the building slot would otherwise earn full basis credit against building replacement cost.
@@ -202,7 +202,13 @@ const VALUE_ADD_SIGNALS = new Set(['vacancy', 'deferred_maintenance', 'environme
 
 function scoreComplexity(valueAddSignals) {
   const possible = 15;
-  if (!Array.isArray(valueAddSignals) || valueAddSignals.length === 0) {
+  // Absent (null/undefined) or an empty array means "not stated". Any OTHER non-array shape (a bare string,
+  // an array-like object, {}) is a schema violation: the original engine threw on it, which failed closed
+  // to "unavailable"; hold it for review rather than silently excluding it and renormalising around it.
+  if (valueAddSignals != null && !Array.isArray(valueAddSignals)) {
+    return invalidCategory(possible, 'Value-add signals', 'is not a list');
+  }
+  if (valueAddSignals == null || valueAddSignals.length === 0) {
     return { possible, excluded: true, note: 'Value-add signals not stated in OM — excluded from scoring.' };
   }
   // Only the extractor schema's own values count. A non-string or off-list entry is a schema violation:

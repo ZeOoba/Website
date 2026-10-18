@@ -99,13 +99,17 @@ All pass today. When one trips, the output names the file and class (not the ter
    the entry count shows how many terms a deal has; `roster_digest` lets someone confirm a guessed full set.
 3. **Git history is forever.** Rotating the salt or retiring a deal does not remove old hash files from history, so a
    retired deal stays brute-forceable from past commits. Do not rely on rotation to "unpublish".
-4. **Blind spots:** pixel text in images; base64 or data-URI payloads; a short (under 10 char) term glued onto adjacent
+4. **Blind spots:** bidirectionally reversed text and other visual-order tricks; pixel text in images; base64 or data-URI payloads; a short (under 10 char) term glued onto adjacent
    letters; text assembled at runtime by script; Windows-1252/other non-UTF-8 text files with non-ASCII letters;
    homoglyphs outside the folded sets; fonts with unusual PDF encodings (these fail closed when detected).
 5. **History and the push path are not scanned.** The gate covers the final tree. Commit messages, branch names and
    PR text are protected only by the machine-local hook and pre-push scan.
 6. **Staleness.** Nothing in CI can tell that the roster gained a deal after the last generation. The local freshness
    warning and the roster owner re-running the generator are the control.
+
+## Narrowing and bypass guards
+
+The test module throws if it is run with a name/skip/only filter (`--test-name-pattern`, `--test-skip-pattern`, `--test-only`, via the command line or `NODE_OPTIONS`), because that would pass while running one test. `netlify.toml` may not contain any `context` key or table, more than one `command`, `NODE_OPTIONS`, or `LEAK_GATE_FAST`; the test parses it. `LEAK_GATE_FAST=1` skips the slow real-tree scan and exists only for the mutation runner. A Netlify UI environment override cannot be seen from the repo: keep `NODE_OPTIONS` and `LEAK_GATE_FAST` out of the site's environment variables.
 
 ## Before activating a deal
 
@@ -114,4 +118,5 @@ whole-word terms blocked 12 files (6 in `dist/`, 6 tracked sources), 8 of them t
 
 1. Run the generator (it dry-scans `dist/` and every tracked file and prints counts by location, kind and class).
 2. Run `LEAK_GATE_SHOW_PATHS=1 npm run test:leak-gate` locally to see which files; CI and Netlify logs show only fingerprints.
-3. Lengthen the alias (name plus street/city) rather than excluding files; then wire `LEAK_GATE_KEY` before merging a keyed file.
+3. Keyed mode needs `LEAK_GATE_KEY` scoped to Netlify **Builds** and to GitHub Actions. Fork and Dependabot PRs get no secrets, so `verify` fails on them once the file is keyed: test on a deploy preview before committing a keyed file.
+4. Lengthen the alias (name plus street/city) rather than excluding files; then wire `LEAK_GATE_KEY` before merging a keyed file.

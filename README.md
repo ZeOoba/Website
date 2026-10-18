@@ -34,6 +34,8 @@ flowchart LR
   subgraph NB["Netlify build (netlify.toml command)"]
     KB["node scripts/build-kb.mjs\n(meta.md + 9 pages -> knowledge-base.json, gitignored)"]
     BD["node scripts/build-dist.mjs\nallowlist copy; fail on unclassified/leaked files; CSP hash check vs inline scripts"]
+    LG["node --test tests/site/leak-gate.test.mjs\nHard Invariant 3 leak gate: a hit fails the build"]
+    BD --> LG
   end
   META --> KB
   PAGES --> KB
@@ -192,7 +194,7 @@ npm ci                         # installs netlify-cli (pinned 26.2.0) + playwrig
                                # postinstall runs scripts/patch-netlify-shim.js,
                                # which wires netlify-guard.js into netlify-cli's bin
 npx playwright install chromium  # one-time, for the CSP smoke test
-npm run build                  # build-listings --check + build-kb + build-dist (netlify.toml runs the last two)
+npm run build                  # build-listings --check + build-kb + build-dist (netlify.toml runs the last two, then the leak-gate test)
 npm run build:listings         # regenerate listings.js + available-space.html after editing data/listings.json
 npm run serve                  # serve dist/ on :8788 WITH _headers applied (see below)
 ```
@@ -211,7 +213,7 @@ npm run serve                  # serve dist/ on :8788 WITH _headers applied (see
 npm run verify           # build -> leak-gate -> jsonld -> unit -> site -> shim -> functions runtime
 ```
 
-Its six stages, each also runnable alone:
+Its seven stages, each also runnable alone:
 
 | Command | What it proves | Why it can't be a unit test |
 |---|---|---|
@@ -223,13 +225,13 @@ Its six stages, each also runnable alone:
 | `npm run test:shim` | `scripts/patch-netlify-shim.js` replaces netlify-cli's bin entry instead of writing through a POSIX symlink (regression test against a disposable fixture) | the failure only exists on the POSIX bin-link layout |
 | `npm run test:functions` | `chat-lead` behaves correctly when driven over HTTP through `netlify functions:serve` | a `require()`d handler cannot reveal a runtime-shape mismatch (CJS vs. V2 function runtime) |
 
-**Coverage guard:** `tests/site/` is enumerated by hand in `package.json` (`run-unit-tests.mjs` skips it), so a new file nobody appends would silently never run. `tests/scripts/test-classification.test.js` (part of `test:unit`) fails if any `tests/site/*.test.mjs` is in none of `test:site`, `test:functions` or `test:shim` (or an `EXCLUDED` list with a written reason), or if a script names a file that does not exist.
+**Coverage guard:** `tests/site/` is enumerated by hand in `package.json` (`run-unit-tests.mjs` skips it), so a new file nobody appends would silently never run. `tests/scripts/test-classification.test.js` (part of `test:unit`) fails if any `tests/site/*.test.mjs` is in none of `test:site`, `test:functions`, `test:shim` or `test:leak-gate` (or an `EXCLUDED` list with a written reason), or if a script names a file that does not exist.
 
 Unit tests live in `tests/functions/` (plus `tests/functions/_shared/`), `tests/listings/`, `tests/portfolio/`, `tests/client/` and `tests/scripts/`; the browser, build-output and Netlify-runtime tests live in `tests/site/`. `application-script.file-size.test.js` at the repo root guards the size of the hand-written DOM script rather than testing exports (it has none — it's a DOM IIFE).
 
 `tests/site/functions-smoke.test.mjs` is written as an extensible template: `invokeFunction()` and the server harness are generic, so covering another function is a matter of adding cases. It deliberately covers only `chat-lead`, a non-broker function.
 
-**Mutation tests** (`npm run test:mutation`, `.github/workflows/mutation.yml`) are separate from `verify`. `tests/mutation/run.mjs` copies the repo to a temp dir, confirms every check is green, then applies each break in `tests/mutation/cases.mjs` one at a time and requires the named check to fail, so a check that quietly stops catching its breakage is itself caught. The workflow runs on PRs that touch `tests/site/**`, `tests/mutation/**`, the JSON-LD scripts or `build-dist.mjs`, and on demand; it is not a required check.
+**Mutation tests** (`npm run test:mutation`, `.github/workflows/mutation.yml`) are separate from `verify`. `tests/mutation/run.mjs` copies the repo to a temp dir, confirms every check is green, then applies each break in `tests/mutation/cases.mjs` one at a time and requires the named check to fail, so a check that quietly stops catching its breakage is itself caught. The workflow runs on PRs that touch `tests/site/**`, `tests/mutation/**`, the JSON-LD scripts, `build-dist.mjs`, `scripts/lib/**`, `scripts/leak-gate-hashes.*` or `netlify.toml`, and on demand; it is not a required check.
 
 **Lighthouse** (`.github/workflows/lighthouse.yml`) runs on PRs against the built, header-serving `dist/` for four pages (home, for-brokers, available-space, sell-your-building) and reports against the site's budget. It is informational only (`continue-on-error`) and never fails a PR.
 
@@ -243,7 +245,7 @@ CI picks its runner from the `CI_RUNNER` repository variable (a JSON label array
 flowchart LR
   PRN["pull_request (same-repo only for verify) / push main"] --> VER["ci.yml: Build & verify"]
   PRN --> LHW["lighthouse.yml (continue-on-error; 4 pages; budget LCP<=2.5s CLS<=0.1 TBT<=200ms categories>=90)"]
-  PRN -->|"paths: tests/site, tests/mutation, validate-jsonld, verify-jsonld, build-dist, mutation.yml"| MUT["mutation.yml (40 min timeout; not required)"]
+  PRN -->|"paths: tests/site, tests/mutation, validate-jsonld, verify-jsonld, build-dist, scripts/lib, leak-gate-hashes, netlify.toml, mutation.yml"| MUT["mutation.yml (40 min timeout; not required)"]
   MAN["workflow_dispatch + eval_base"] --> EVAL["ci.yml eval-chat (real model tokens)"]
   VER --> S1["npm ci (postinstall patches netlify shim)"] --> S2["playwright chromium"] --> S3["npm run verify"]
   S3 --> B["build: listings --check, portfolio --check, build-kb, build-dist (+CSP hash check)"] --> LG["test:leak-gate (Invariant 3)"] --> J["verify:jsonld"] --> U["test:unit (*.test.js enumerated)"] --> T["test:site (24 explicit files, headless Chromium with _headers)"] --> SH["test:shim"] --> F["test:functions (netlify functions:serve smoke)"]

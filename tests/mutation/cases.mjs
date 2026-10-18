@@ -214,6 +214,11 @@ export const CASES = [
   { id: 'LG16', what: 'a [context.production] block overrides the build command without the gate', edits: [['netlify.toml', (t) => t + '\n[context.production]\n  command = "node scripts/build-kb.mjs && node scripts/build-dist.mjs"\n']], run: 'leakFast', expect: 'Netlify build command' },
   { id: 'LG17', what: 'a keyed file without the key is reported as fresh', edits: [['scripts/leak-gate-hashes.mjs', sub("return { state: 'needs-key', active: entries.length };", "return { state: 'fresh', active: entries.length };")]], run: 'leakFast', expect: 'roster staleness is detected' },
   { id: 'LG18', what: 'missing required scan targets are no longer reported', edits: [['scripts/lib/leak-gate.mjs', sub('return required.filter((f) => !files.includes(f) || !existsSync(path.join(root, f)));', 'return [];')]], run: 'leakFast', expect: 'scanFiles' },
+  { id: 'LG19', what: 'a symlink or submodule entry is no longer a finding', edits: [['scripts/lib/leak-gate.mjs', sub('    if (!st.isFile()) {', '    if (false) {')]], run: 'leakFast', expect: 'symlinks are findings' },
+  { id: 'LG20', what: 'the second look-alike pass (after lowercasing) is removed', edits: [['scripts/lib/leak-gate.mjs', dropLine(/^ {2}if \(\/\[\^\\u0000-\\u007f\]\/\.test\(t\)\) t = [^\n]*\n/m)]], run: 'leakFast', expect: 'second look-alike pass' },
+  { id: 'LG21', what: 'escaped backslash-n is no longer treated as a separator', edits: [['scripts/lib/leak-gate.mjs', dropLine(/^ +\.replace\(\/\\\\\[nrt\]\/g[^\n]*\n/m)]], run: 'leakFast', expect: 'escaped newlines/tabs' },
+  { id: 'LG22', what: 'NODE_OPTIONS in netlify.toml narrows the gate to one test', edits: [['netlify.toml', (t) => t.replace('[build.environment]', '[build.environment]\n  NODE_OPTIONS = "--test-name-pattern=^aliases"')]], run: 'leakFast', expect: 'Netlify build command' },
+  { id: 'LG23', what: 'a dotted context key overrides the build command without the gate', edits: [['netlify.toml', (t) => t + '\ncontext.production.command = "node scripts/build-kb.mjs && node scripts/build-dist.mjs"\n']], run: 'leakFast', expect: 'Netlify build command' },
   { id: 'LG3', what: 'the PDF extractor goes blind (skips every content stream)', edits: [['scripts/lib/leak-gate-pdf.mjs', sub('if (!/\\bBT\\b/.test(d)) continue;', 'continue;')]], run: 'leakFast', expect: 'PDF text layers' },
 ];
 

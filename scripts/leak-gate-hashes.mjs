@@ -122,12 +122,20 @@ async function main() {
         'Recommended: set LEAK_GATE_KEY (16+ random chars) here, in the GitHub Actions secrets and in the Netlify environment, then re-run with --keyed.'
     );
   }
-  const short = new Set(entries.map((e) => compact(e.term)).filter((c) => c && c.length < SUBSTRING_MIN)).size;
+  const lens = entries.map((e) => compact(e.term).length).filter(Boolean);
+  const short = lens.filter((n) => n < SUBSTRING_MIN).length;
+  const tiny = lens.filter((n) => n < 5).length;
   if (short) {
     console.warn(
-      `[leak-gate] WARNING: ${short} term(s) are shorter than ${SUBSTRING_MIN} normalized chars. Short or guessable names can be ` +
-        'brute-forced from the committed hashes (see docs/leak-gate.md) and match whole words only. Add a longer, multi-word alias ' +
-        '(name plus street/city) to the roster entry; do not rely on this gate alone for a common-word name.'
+      `[leak-gate] WARNING: ${short} term(s) are shorter than ${SUBSTRING_MIN} normalized chars: they match whole words only` +
+        (keyed ? ' (keyed mode protects the hashes from offline guessing). ' : ' and, UNKEYED, can be brute-forced from the committed hashes (see docs/leak-gate.md). ') +
+        'Add a longer, multi-word alias (name plus street/city) to the roster entry; do not rely on this gate alone for a common-word name.'
+    );
+  }
+  if (tiny) {
+    console.warn(
+      `[leak-gate] STRONG WARNING: ${tiny} term(s) are under 5 normalized characters. Such terms match common words and block builds constantly (a 3-letter term blocked 34 of 40 simulated files). ` +
+        'Replace them with a distinctive alias before committing this file.'
     );
   }
   try {

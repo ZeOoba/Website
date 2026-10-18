@@ -23,6 +23,12 @@ import { tokens } from '../../scripts/lib/leak-gate.mjs';
 import { activeEntries, buildDenylist, findingLabel, formatFinding, listDist, listTracked, missingRequired, scanFiles, hmac, indexDenylist, rosterDigest, scanFile, scanText, HASH_FILE_VERSION } from '../../scripts/lib/leak-gate.mjs';
 import { localRosterStatus } from '../../scripts/leak-gate-hashes.mjs';
 
+// Fail closed if the run is narrowed: a name/skip/only filter (CLI or NODE_OPTIONS) would make this file pass while running one test.
+const NARROWING = /--test-(?:name-pattern|skip-pattern|only)\b|--test-only\b/;
+if (NARROWING.test(process.env.NODE_OPTIONS || '') || process.execArgv.some((a) => NARROWING.test(a))) {
+  throw new Error('leak-gate: refusing to run with a test filter (--test-name-pattern/--test-skip-pattern/--test-only); that would skip the real scan.');
+}
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const HASH_FILE = path.join(ROOT, 'scripts', 'leak-gate-hashes.json');
 
@@ -300,6 +306,18 @@ test('canary: substring matching across words, plurals and look-alike capitals',
   assert.ok(scanFile('a.html', Buffer.from('Nuvon Tower'), idx2).hits.includes('always'));
 });
 
+test('canary: escaped newlines/tabs in JSON and JS strings, and the second look-alike pass', () => {
+  const idx = indexDenylist(buildDenylist([{ kind: 'always', term: 'Foo Holding Group' }], salt));
+  const bs = String.fromCharCode(92);
+  for (const t of ['Foo' + bs + 'nHolding' + bs + 'tGroup', 'Foo' + bs + 'r' + bs + 'nHolding Group']) {
+    assert.ok(scanFile('chat.ts', Buffer.from(JSON.stringify({ k: 1 }) + ' "' + t + '"'), idx).hits.includes('always'), t.length + ' chars');
+  }
+  // These two only fold on the pass AFTER lowercasing (their capitals are not in the first-pass map).
+  assert.deepEqual(tokens('\u051c'), ['w']);
+  assert.deepEqual(tokens('\u2c6d'), ['a']);
+  for (const [ch, want] of Object.entries({ '\u0261': 'g', '\u2c9e': 'o', '\u2c9f': 'o' })) assert.deepEqual(tokens(ch), [want], 'U+' + ch.codePointAt(0).toString(16));
+});
+
 test('canary: PDF literal-string metadata with octal escapes is found', () => {
   const lit = '\\376\\377' + [...`Memo ${CANARY} 2026`].map((c) => '\\000' + c).join('');
   const doc = pdf(['<</Type /Catalog>>', `<</Title (${lit})>>`, streamObj('', 'BT /F1 12 Tf (' + 'a readable filler sentence about ordinary business '.repeat(2) + ') Tj ET')]);
@@ -374,7 +392,10 @@ test('the Netlify build command runs this gate (previews and production are gate
   assert.ok(cmd[1].indexOf('build-dist.mjs') < cmd[1].indexOf('leak-gate.test.mjs'), 'the gate must run after dist/ is built');
   assert.ok(cmd[1].trim().endsWith('node --test tests/site/leak-gate.test.mjs'), 'nothing may follow the gate step in the command');
   assert.ok(!/\|\||;|\|(?!\|)|&(?!&)|(?<!&)&$/.test(cmd[1].replace(/&&/g, ' ')), 'the command may only chain with && (no || true, ;, pipes or a lone & that background the step)');
-  assert.ok(!/^\s*\[context\./m.test(toml) && (toml.match(/^\s*command\s*=/gm) || []).length === 1, 'no [context.*] block or second command may override the build command');
+  const live = toml.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  assert.ok(!/context/i.test(live), 'netlify.toml may not use any [context] table or dotted context key (it could override the build command)');
+  assert.equal((live.match(/^\s*(?:[\w."'-]+\.)?["']?command["']?\s*=/gm) || []).length, 1, 'exactly one build command key, in any spelling');
+  assert.ok(!/NODE_OPTIONS|LEAK_GATE_FAST|--test-(?:name-pattern|skip-pattern|only)/.test(live), 'netlify.toml may not set options that narrow or skip the gate');
 });
 
 test('canary: round-3 regressions (short-term plurals, glued/context paths, gzipped PDFs, capital sharp s)', async () => {
@@ -454,8 +475,8 @@ test('generator CLI: --keyed writes a keyed file, unkeyed warns, dry scan runs, 
   }
 });
 
-test('scanFiles: symlinks are findings, missing files are skipped, required targets are checked', async () => {
-  const { mkdtempSync, writeFileSync, symlinkSync, rmSync } = await import('node:fs');
+test('scanFiles: symlinks are findings, missing files are skipped, required targets are checked', async (t) => {
+  const { mkdtempSync, writeFileSync, symlinkSync, mkdirSync, rmSync } = await import('node:fs');
   const os = await import('node:os');
   const dir = mkdtempSync(path.join(os.tmpdir(), 'leak-gate-tree-'));
   try {
@@ -468,12 +489,21 @@ test('scanFiles: symlinks are findings, missing files are skipped, required targ
     assert.equal(dirty.findings.length, 1);
     assert.ok(!dirty.findings[0].includes('a.txt'), 'the finding does not name the path');
     assert.deepEqual(missingRequired(dir, ['a.txt', 'b.txt', 'c.txt'], ['a.txt', 'c.txt', 'd.txt']), ['c.txt', 'd.txt']);
+    let link = null;
     try {
       symlinkSync(path.join(dir, 'a.txt'), path.join(dir, 'link.txt'));
+      link = 'link.txt';
     } catch {
-      return; // symlinks need privileges on some Windows setups; the rest is still asserted above
+      try {
+        mkdirSync(path.join(dir, 'sub'));
+        symlinkSync(path.join(dir, 'sub'), path.join(dir, 'junction'), 'junction'); // no privilege needed on Windows
+        link = 'junction';
+      } catch {
+        // fall through
+      }
     }
-    const linked = scanFiles(dir, ['link.txt'], canaryIdx);
+    if (!link) return t.skip('could not create a symlink or junction on this machine: the symlink finding was NOT exercised here (CI covers it)');
+    const linked = scanFiles(dir, [link], canaryIdx);
     assert.equal(linked.findings.length, 1);
     assert.match(linked.findings[0], /symlink or submodule/);
   } finally {
@@ -494,6 +524,9 @@ test('local roster freshness (warns locally; skipped where the roster is absent,
 });
 
 test('no active confidential-deal term appears in dist/, tracked source, data, edge functions or PDFs', (t) => {
+  // Only the mutation runner sets this, for cases the unit-level tests catch (keeps that job inside its time limit). The Netlify
+  // command test below forbids it in netlify.toml.
+  if (process.env.LEAK_GATE_FAST === '1') return t.skip('LEAK_GATE_FAST=1: real-tree scan skipped (mutation runner only)');
   const idx = indexDenylist(loadDenylist());
   const files = [...new Set([...distFiles(), ...listTracked(ROOT), ...MUST_SCAN.filter((f) => !f.startsWith('dist/'))])];
   const tracked = files.filter((f) => !f.startsWith('dist/'));

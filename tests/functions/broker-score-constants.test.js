@@ -415,3 +415,21 @@ test('deal-size labels and credit just below the target minimum', () => {
     assert.equal(engine.scoreDealSize(price).earned, e(price), `credit @ ${price}`);
   }
 });
+
+test('fractional inputs just inside each plausibility lower bound and label boundary', () => {
+  const p = retained.values.plausibility;
+  const v = retained.values;
+  const just = (x) => x * (1 - 1e-6);
+  assert.equal(engine.scoreDealSize(just(p.askingPriceMin)).invalid, true);
+  assert.equal(engine.scoreBuildingSize(just(p.buildingSfMin)).invalid, true);
+  assert.equal(engine.scoreBuildingSize(just(p.iosBuildingSfMin), { ios: true }).invalid, true);
+  assert.equal(engine.scoreBasis(just(p.askingPriceMin) + 1e6, 40_000, 2000, 'Columbus', rctBenchmark, {}).invalid, undefined);
+  assert.equal(engine.scoreBasis(just(p.askingPriceMin), 40_000, 2000, 'Columbus', rctBenchmark, {}).invalid, true);
+  assert.equal(engine.scoreBasis(900_000, just(p.buildingSfMin), 2000, 'Columbus', rctBenchmark, {}).invalid, true);
+  assert.equal(engine.scoreBasis(900_000, just(p.iosBuildingSfMin), 2000, 'Columbus', rctBenchmark, { ios: true }).invalid, true);
+  assert.match(engine.scoreBuildingSize(v.buildingSize.fullBelowSF - 0.01).note, /within target/);
+  assert.match(engine.scoreClearHeight(v.clearHeight.fullAtFt - 1e-6).note, /below target, tapering credit/);
+  const below = engine.scoreClearHeight(v.clearHeight.zeroBelowFt - 1e-6);
+  assert.match(below.note, /below target\.$/);
+  assert.ok(Object.is(below.earned, 0));
+});

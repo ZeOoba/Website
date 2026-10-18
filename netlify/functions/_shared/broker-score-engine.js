@@ -25,11 +25,45 @@ function evaluateMarketGate(matchedRctMarket, city, state) {
   return 'NOT_VERIFIED';
 }
 
-function fmtMoney(n) { return n.toLocaleString('en-US'); }
+// Up to 6 fraction digits so a fractional figure is shown as scored (49,999.9999 must not print as "50,000").
+function fmtMoney(n) { return n.toLocaleString('en-US', { maximumFractionDigits: 6 }); }
+
+// Plausibility bounds for LLM-extracted inputs. These are NOT scoring thresholds and never feed a
+// score: they only decide whether an extracted figure is believable enough to score at all. A value
+// outside them (or non-numeric, zero, negative, non-finite) fails closed to a "needs review" outcome
+// instead of earning credit. Deliberately wide so a real deal is never rejected, tight enough to catch
+// zero, $-in-thousands and SF-in-thousands for buy-box-size deals, and runaway figures.
+// ACCEPTED RESIDUAL: a wrong FIELD or unit that still lands inside these bounds (for example NOI in the
+// price slot, SF in square metres, a large price quoted in $000s) is not detectable here and is scored.
+const PLAUSIBLE_ASKING_PRICE_MIN = 50_000;       // $; below this a price is almost certainly in $000s or a typo
+const PLAUSIBLE_ASKING_PRICE_MAX = 500_000_000;  // $
+const PLAUSIBLE_BUILDING_SF_MIN = 500;           // SF; below this is almost certainly SF in thousands
+const PLAUSIBLE_BUILDING_SF_MAX = 5_000_000;     // SF
+const PLAUSIBLE_CLEAR_HEIGHT_MIN_FT = 6;         // ft
+const PLAUSIBLE_CLEAR_HEIGHT_MAX_FT = 100;       // ft
+const PLAUSIBLE_PRICE_PER_SF_MIN = 5;            // $/SF, asking price / building SF
+const PLAUSIBLE_PRICE_PER_SF_MAX = 2_000;        // $/SF
+
+// Returns null when `v` is usable (a finite number inside [min, max]), else a short reason. Strings are
+// rejected, not coerced: "5000000" or "$5M" from the model means the extraction did not follow the schema.
+function invalidNumberReason(v, min, max) {
+  if (typeof v !== 'number') return 'is not a number';
+  if (!Number.isFinite(v)) return 'is not finite';
+  if (v <= 0) return 'is zero or negative';
+  if (v < min || v > max) return 'is outside the plausible range';
+  return null;
+}
+
+// `note` is broker-visible, so it carries no figures; `reviewReason` is internal (email/ledger).
+function invalidCategory(possible, label, reason) {
+  return { possible, excluded: true, invalid: true, reviewReason: `${label} ${reason}`, note: `${label} could not be validated — held for team review.` };
+}
 
 function scoreDealSize(askingPrice) {
   const possible = 25;
   if (askingPrice == null) return { possible, excluded: true, note: 'Asking price not stated in OM — excluded from scoring.' };
+  const bad = invalidNumberReason(askingPrice, PLAUSIBLE_ASKING_PRICE_MIN, PLAUSIBLE_ASKING_PRICE_MAX);
+  if (bad) return invalidCategory(possible, 'Asking price', bad);
   if (askingPrice >= 1_000_000 && askingPrice <= 10_000_000) {
     return { possible, earned: possible, note: `Asking price $${fmtMoney(askingPrice)} — within target $1M-$10M.` };
   }
@@ -46,7 +80,12 @@ function scoreDealSize(askingPrice) {
 function scoreBuildingSize(buildingSizeSF) {
   const possible = 20;
   if (buildingSizeSF == null) return { possible, excluded: true, note: 'Building size not stated in OM — excluded from scoring.' };
+  const bad = invalidNumberReason(buildingSizeSF, PLAUSIBLE_BUILDING_SF_MIN, PLAUSIBLE_BUILDING_SF_MAX);
+  if (bad) return invalidCategory(possible, 'Building size', bad);
   if (buildingSizeSF < 50_000) return { possible, earned: possible, note: `${fmtMoney(buildingSizeSF)} SF — within target (<50,000 SF).` };
+  // Exactly 50,000 SF is not under the ceiling (the buy-box is strictly sub-50K) but the taper below earns
+  // full credit at that point, so the score is unchanged; only the label is made to match the comparison.
+  if (buildingSizeSF === 50_000) return { possible, earned: possible, note: `${fmtMoney(buildingSizeSF)} SF — at the 50,000 SF target ceiling (not under it); full credit.` };
   if (buildingSizeSF >= 100_000) return { possible, earned: 0, note: `${fmtMoney(buildingSizeSF)} SF — well above target size.` };
   const t = (100_000 - buildingSizeSF) / 50_000;
   return { possible, earned: Math.round(t * possible), note: `${fmtMoney(buildingSizeSF)} SF — above target, tapering credit.` };
@@ -55,6 +94,8 @@ function scoreBuildingSize(buildingSizeSF) {
 function scoreClearHeight(clearHeightFt) {
   const possible = 15;
   if (clearHeightFt == null) return { possible, excluded: true, note: 'Clear height not stated in OM — excluded from scoring.' };
+  const bad = invalidNumberReason(clearHeightFt, PLAUSIBLE_CLEAR_HEIGHT_MIN_FT, PLAUSIBLE_CLEAR_HEIGHT_MAX_FT);
+  if (bad) return invalidCategory(possible, 'Clear height', bad);
   if (clearHeightFt >= 18) return { possible, earned: possible, note: `${clearHeightFt}' clear height — meets 18'+ target.` };
   if (clearHeightFt < 14) return { possible, earned: 0, note: `${clearHeightFt}' clear height — below target.` };
   const t = (clearHeightFt - 14) / 4;
@@ -66,8 +107,16 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
   if (askingPrice == null || buildingSizeSF == null || !matchedRctMarket) {
     return { possible, excluded: true, note: 'Insufficient data to compute basis vs. replacement cost — excluded from scoring.' };
   }
+  const badPrice = invalidNumberReason(askingPrice, PLAUSIBLE_ASKING_PRICE_MIN, PLAUSIBLE_ASKING_PRICE_MAX);
+  if (badPrice) return invalidCategory(possible, 'Asking price', badPrice);
+  const badSF = invalidNumberReason(buildingSizeSF, PLAUSIBLE_BUILDING_SF_MIN, PLAUSIBLE_BUILDING_SF_MAX);
+  if (badSF) return invalidCategory(possible, 'Building size', badSF);
+  const rawPerSF = askingPrice / buildingSizeSF;
+  if (!(rawPerSF >= PLAUSIBLE_PRICE_PER_SF_MIN && rawPerSF <= PLAUSIBLE_PRICE_PER_SF_MAX)) {
+    return invalidCategory(possible, 'Implied price per SF', 'is outside the plausible range');
+  }
   const rctLow = rctBenchmark.marketToRctLowPerSF[matchedRctMarket];
-  if (rctLow == null) {
+  if (typeof rctLow !== 'number' || !Number.isFinite(rctLow) || rctLow <= 0) {
     return { possible, excluded: true, note: `No RCT v03 benchmark for "${matchedRctMarket}" — excluded from scoring.` };
   }
   // Markets whose benchmark is a proxy for another market's figure (RCT v3.1 `proxy: true`). Shown in the
@@ -76,6 +125,7 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
     ? ` [proxy benchmark for ${matchedRctMarket}, not a directly sourced figure]` : '';
   const floorPct = vintageFloorPct(yearBuilt, rctBenchmark.vintageFloor);
   const floorPerSF = rctLow * (1 - floorPct);
+  if (!Number.isFinite(floorPerSF) || floorPerSF <= 0) return invalidCategory(possible, 'Replacement-cost floor', 'could not be computed');
   const impliedPricePerSF = (askingPrice * 1.02) / buildingSizeSF;
   // `note` is what the BROKER sees (broker-score-status returns it). It must never carry the floor or
   // the implied basis in dollars (2026-09-30 audit). `internalNote` keeps the figures for the
@@ -85,11 +135,18 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
   // repeated submissions can still narrow it (an independent review recovered it to about +/-0.3% from
   // a single submission landing in the 85-100% band). The per-IP rate limit and daily cap slow that; they
   // do not stop it. Closing it fully means not showing the broker the basis row or score at all.
-  if (impliedPricePerSF > floorPerSF) {
+  // Clearing the floor means being strictly BELOW it. A basis exactly at the floor earns 0 either way
+  // (the taper below starts at 0 there), so it is grouped with "does not clear" and labelled as such.
+  if (impliedPricePerSF >= floorPerSF) {
+    const atFloor = impliedPricePerSF === floorPerSF;
     return {
       possible, earned: 0,
-      note: 'Implied basis is above the replacement-cost floor for this market and vintage — does not clear ORA\'s replacement-cost discipline.',
-      internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF exceeds the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF for ${matchedRctMarket} — does not clear ORA's replacement-cost discipline.${proxySuffix}`,
+      note: atFloor
+        ? 'Implied basis is at the replacement-cost floor for this market and vintage, not below it — does not clear ORA\'s replacement-cost discipline.'
+        : 'Implied basis is above the replacement-cost floor for this market and vintage — does not clear ORA\'s replacement-cost discipline.',
+      internalNote: atFloor
+        ? `Implied basis $${impliedPricePerSF.toFixed(2)}/SF equals the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF for ${matchedRctMarket} (not below it) — does not clear ORA's replacement-cost discipline.${proxySuffix}`
+        : `Implied basis $${impliedPricePerSF.toFixed(2)}/SF exceeds the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF for ${matchedRctMarket} — does not clear ORA's replacement-cost discipline.${proxySuffix}`,
     };
   }
   const comfortableFloor = floorPerSF * 0.85;
@@ -110,7 +167,7 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
 
 function scoreComplexity(valueAddSignals) {
   const possible = 15;
-  if (!valueAddSignals || valueAddSignals.length === 0) {
+  if (!Array.isArray(valueAddSignals) || valueAddSignals.length === 0) {
     return { possible, excluded: true, note: 'Value-add signals not stated in OM — excluded from scoring.' };
   }
   const realSignals = valueAddSignals.filter((s) => s !== 'none_stabilized');
@@ -122,7 +179,10 @@ function scoreComplexity(valueAddSignals) {
 // Minimum share of the 100 scoring points that must have been extractable before a score is shown.
 const MIN_COVERAGE_PCT = 60;
 
-function scoreDeal(extracted, rctBenchmark) {
+function scoreDeal(extractedIn, rctBenchmark) {
+  const extracted = (extractedIn && typeof extractedIn === 'object') ? { ...extractedIn } : {};
+  // Only strings are meaningful value-add signals; numbers/NaN from a misbehaving extractor are dropped.
+  if (Array.isArray(extracted.valueAddSignals)) extracted.valueAddSignals = extracted.valueAddSignals.filter((s) => typeof s === 'string');
   const propertyTypeGate = evaluatePropertyTypeGate(extracted.assetClass);
   // The extractor's schema constrains matchedRctMarket to the benchmark keys, but the engine must not rely on
   // the model obeying it: any other string ("Phoenix") used to PASS the market gate uncapped. Treat a market
@@ -153,23 +213,40 @@ function scoreDeal(extracted, rctBenchmark) {
   // the RCT benchmark. It does NOT mean the OM was fully read, so a thin OM where only a city outside those
   // markets was extracted still shows the broker a capped score at low coverage. Kept deliberately
   // (owner decision 2026-10-01, independent review F1): a city outside the benchmark markets is outside the box.
-  const insufficientData = !gateFailed && coveragePct < MIN_COVERAGE_PCT;
+  // Fail closed on bad extracted figures: a category whose input was present but invalid (zero, negative,
+  // non-finite, string, wrong-unit, implausible) must not be silently dropped and renormalised around, since
+  // that would let the remaining categories print a clean-looking score. Any such category, or any
+  // non-finite number anywhere in the arithmetic, withholds the score for human review. Even a gate FAIL
+  // does not exempt it: the cap of 30 is only trustworthy if the figures behind it were readable.
+  const reviewReasons = rawCategories.filter((c) => c.invalid).map((c) => c.reviewReason);
+  const arithmeticBroken = included.some((c) => !Number.isFinite(c.earned)) || !Number.isFinite(rawWeightedScore) || !Number.isFinite(coveragePct);
+  if (arithmeticBroken) reviewReasons.push('Scoring arithmetic produced a non-finite value');
+  const needsReview = reviewReasons.length > 0;
+
+  // needsReview also sets insufficientData so every existing consumer (broker status endpoint, ledger
+  // score-total) already treats the result as "no score" without a schema change.
+  const insufficientData = needsReview || (!gateFailed && coveragePct < MIN_COVERAGE_PCT);
   const finalScore = insufficientData ? null : (gateFailed ? Math.min(rawWeightedScore, 30) : rawWeightedScore);
 
   return {
     finalScore,
-    coveragePct,
+    coveragePct: Number.isFinite(coveragePct) ? coveragePct : 0,
     insufficientData,
+    needsReview,
+    reviewReasons,
     gates: { propertyType: propertyTypeGate, market: marketGate },
     gateFailed,
     categories: rawCategories.map((c) => ({
       key: c.key, label: c.label, possible: c.possible, excluded: !!c.excluded,
-      earned: c.excluded ? null : c.earned, note: c.note, internalNote: c.internalNote || c.note,
+      earned: c.excluded ? null : (Number.isFinite(c.earned) ? c.earned : null),
+      note: c.note, internalNote: c.internalNote || c.reviewReason || c.note,
     })),
   };
 }
 
 module.exports = {
+  PLAUSIBLE_ASKING_PRICE_MIN, PLAUSIBLE_ASKING_PRICE_MAX, PLAUSIBLE_BUILDING_SF_MIN, PLAUSIBLE_BUILDING_SF_MAX,
+  PLAUSIBLE_CLEAR_HEIGHT_MIN_FT, PLAUSIBLE_CLEAR_HEIGHT_MAX_FT, PLAUSIBLE_PRICE_PER_SF_MIN, PLAUSIBLE_PRICE_PER_SF_MAX,
   vintageFloorPct, evaluatePropertyTypeGate, evaluateMarketGate,
   scoreDealSize, scoreBuildingSize, scoreClearHeight, scoreBasis, scoreComplexity,
   scoreDeal,

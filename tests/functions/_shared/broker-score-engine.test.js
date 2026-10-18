@@ -434,3 +434,195 @@ test('a matchedRctMarket that is not a benchmark market is treated as unmatched,
   assert.equal(inherited.categories.find((c) => c.key === 'basis').excluded, true);
   assert.ok(Number.isFinite(inherited.finalScore));
 });
+
+// Input validation and boundary labels (broker score hardening). The extractor is an LLM: a 0, a string, a
+// wrong-unit figure or an absurd magnitude must withhold the score for review, never earn credit or go NaN.
+const engine = require('../../../netlify/functions/_shared/broker-score-engine.js');
+
+const goodDeal = {
+  askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'industrial', buildingGrade: 'B',
+  clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
+  valueAddSignals: ['vacancy', 'deferred_maintenance'], notes: null,
+};
+
+function assertNoNaN(value, path = 'result') {
+  if (typeof value === 'number') assert.ok(Number.isFinite(value), `${path} is ${value}`);
+  else if (Array.isArray(value)) value.forEach((v, i) => assertNoNaN(v, `${path}[${i}]`));
+  else if (value && typeof value === 'object') for (const [k, v] of Object.entries(value)) assertNoNaN(v, `${path}.${k}`);
+}
+
+test('plausibility bounds are exported named constants', () => {
+  assert.equal(engine.PLAUSIBLE_ASKING_PRICE_MIN, 50_000);
+  assert.equal(engine.PLAUSIBLE_BUILDING_SF_MIN, 500);
+  assert.ok(engine.PLAUSIBLE_PRICE_PER_SF_MAX > engine.PLAUSIBLE_PRICE_PER_SF_MIN);
+});
+
+const BAD_VALUES = [
+  ['zero', 0], ['negative', -5_000_000], ['NaN', NaN], ['Infinity', Infinity],
+  ['string-numeric', '5000000'], ['string with $', '$5M'], ['boolean', true], ['object', {}],
+];
+
+for (const [label, bad] of BAD_VALUES) {
+  test(`scoreDeal: asking price ${label} needs review, no score, no NaN`, () => {
+    const r = engine.scoreDeal({ ...goodDeal, askingPrice: bad }, rctBenchmark);
+    assert.equal(r.needsReview, true);
+    assert.equal(r.finalScore, null);
+    assert.equal(r.insufficientData, true);
+    assert.ok(r.reviewReasons.length >= 1);
+    assertNoNaN(r);
+    assert.doesNotMatch(r.categories.find((c) => c.key === 'dealSize').note, /\d/, 'public note carries no figures');
+  });
+  test(`scoreDeal: building SF ${label} needs review, no score, no NaN`, () => {
+    const r = engine.scoreDeal({ ...goodDeal, buildingSizeSF: bad }, rctBenchmark);
+    assert.equal(r.needsReview, true);
+    assert.equal(r.finalScore, null);
+    assertNoNaN(r);
+  });
+  test(`scoreDeal: clear height ${label} needs review, no score, no NaN`, () => {
+    const r = engine.scoreDeal({ ...goodDeal, clearHeightFt: bad }, rctBenchmark);
+    assert.equal(r.needsReview, true);
+    assert.equal(r.finalScore, null);
+    assertNoNaN(r);
+  });
+}
+
+test('scoreDeal: price 0 and SF 0 together (0/0) is needs review, never NaN', () => {
+  const r = engine.scoreDeal({ ...goodDeal, askingPrice: 0, buildingSizeSF: 0 }, rctBenchmark);
+  assert.equal(r.needsReview, true);
+  assert.equal(r.finalScore, null);
+  assertNoNaN(r);
+  assert.equal(engine.scoreBasis(0, 0, 1990, 'Columbus', rctBenchmark).invalid, true);
+});
+
+test('scoreBasis: price 0 no longer earns full basis credit', () => {
+  const basis = engine.scoreBasis(0, 40_000, 1990, 'Columbus', rctBenchmark);
+  assert.equal(basis.excluded, true);
+  assert.equal(basis.earned, undefined);
+  assert.equal(basis.invalid, true);
+});
+
+test('scoreDeal: absurd magnitudes (wrong unit) need review', () => {
+  for (const patch of [
+    { askingPrice: 2_000 }, { buildingSizeSF: 40 }, { askingPrice: 9e15 }, { buildingSizeSF: 9e12 }, { clearHeightFt: 2000 },
+  ]) {
+    const r = engine.scoreDeal({ ...goodDeal, ...patch }, rctBenchmark);
+    assert.equal(r.needsReview, true, JSON.stringify(patch));
+    assert.equal(r.finalScore, null);
+    assertNoNaN(r);
+  }
+});
+
+test('scoreDeal: each figure plausible alone but implied $/SF implausible needs review', () => {
+  const r = engine.scoreDeal({ ...goodDeal, askingPrice: 5_000_000, buildingSizeSF: 600 }, rctBenchmark);
+  assert.equal(r.needsReview, true);
+  assert.equal(r.categories.find((c) => c.key === 'basis').excluded, true);
+  const cheap = engine.scoreDeal({ ...goodDeal, askingPrice: 60_000, buildingSizeSF: 4_000_000 }, rctBenchmark);
+  assert.equal(cheap.needsReview, true);
+});
+
+test('scoreDeal: an invalid figure does not exempt a gate failure from review', () => {
+  const r = engine.scoreDeal({ ...goodDeal, assetClass: 'multifamily', askingPrice: 0 }, rctBenchmark);
+  assert.equal(r.gateFailed, true);
+  assert.equal(r.needsReview, true);
+  assert.equal(r.finalScore, null);
+});
+
+test('scoreDeal: missing (null/undefined) figures stay excluded, not flagged', () => {
+  const r = engine.scoreDeal({ ...goodDeal, clearHeightFt: undefined, askingPrice: null }, rctBenchmark);
+  assert.equal(r.needsReview, false);
+  assert.deepEqual(r.reviewReasons, []);
+  assertNoNaN(r);
+});
+
+test('scoreDeal: a clean deal is unchanged (needsReview false, same score)', () => {
+  const r = engine.scoreDeal(goodDeal, rctBenchmark);
+  assert.equal(r.needsReview, false);
+  assert.equal(r.insufficientData, false);
+  assert.ok(r.finalScore >= 90);
+  assertNoNaN(r);
+});
+
+test('scoreDeal: non-array valueAddSignals does not throw', () => {
+  assert.doesNotThrow(() => engine.scoreDeal({ ...goodDeal, valueAddSignals: 'vacancy' }, rctBenchmark));
+});
+
+test('plausibility bounds are inclusive: values exactly at each limit are accepted', () => {
+  assert.equal(engine.scoreDealSize(engine.PLAUSIBLE_ASKING_PRICE_MIN).invalid, undefined);
+  assert.equal(engine.scoreDealSize(engine.PLAUSIBLE_ASKING_PRICE_MAX).invalid, undefined);
+  assert.equal(engine.scoreBuildingSize(engine.PLAUSIBLE_BUILDING_SF_MIN).invalid, undefined);
+  assert.equal(engine.scoreBuildingSize(engine.PLAUSIBLE_BUILDING_SF_MAX).invalid, undefined);
+  assert.equal(engine.scoreClearHeight(engine.PLAUSIBLE_CLEAR_HEIGHT_MIN_FT).invalid, undefined);
+  assert.equal(engine.scoreClearHeight(engine.PLAUSIBLE_CLEAR_HEIGHT_MAX_FT).invalid, undefined);
+  assert.equal(engine.scoreDealSize(engine.PLAUSIBLE_ASKING_PRICE_MIN - 1).invalid, true);
+  assert.equal(engine.scoreBuildingSize(engine.PLAUSIBLE_BUILDING_SF_MIN - 1).invalid, true);
+});
+
+// Boundary 1: exactly 50,000 SF. Score unchanged (full credit) but the label must not say "under 50,000".
+test('scoreBuildingSize: exactly 50,000 SF keeps full credit and is labelled AT the ceiling, not within <50,000', () => {
+  const at = engine.scoreBuildingSize(50_000);
+  assert.equal(at.earned, 20);
+  assert.doesNotMatch(at.note, /within target|<\s*50,000/);
+  assert.match(at.note, /at the 50,000 SF/);
+  assert.match(engine.scoreBuildingSize(49_999).note, /within target \(<50,000 SF\)/);
+  assert.match(engine.scoreBuildingSize(50_001).note, /above target/);
+  assert.equal(engine.scoreBuildingSize(50_001).earned, 20);
+});
+
+// Boundary 2: basis exactly at the floor. With early/late pct 0.5 the floor is rctLow * 0.5 (exact in
+// binary), so setting rctLow = implied * 2 makes implied $/SF equal the floor bit-for-bit.
+test('scoreBasis: a basis exactly at the floor is labelled as not clearing (strictly below clears)', () => {
+  const sf = 10_000;
+  const price = 1_000_000;
+  const implied = (price * 1.02) / sf;
+  const bench = { marketToRctLowPerSF: { Columbus: implied * 2 }, vintageFloor: { earlyYear: 1995, earlyPct: 0.5, lateYear: 2005, latePct: 0.5 } };
+  const at = engine.scoreBasis(price, sf, 1990, 'Columbus', bench);
+  assert.equal(at.earned, 0);
+  assert.match(at.note, /at the replacement-cost floor/);
+  assert.match(at.note, /does not clear/);
+  assert.doesNotMatch(at.note, /\d/);
+  assert.match(at.internalNote, /equals the RCT v03 floor/);
+  assert.doesNotMatch(at.note + at.internalNote, /but not comfortably|with meaningful margin/);
+  bench.marketToRctLowPerSF.Columbus = implied * 2 * (1 + 1e-9);
+  assert.match(engine.scoreBasis(price, sf, 1990, 'Columbus', bench).note, /clears the replacement-cost floor but not comfortably/);
+  bench.marketToRctLowPerSF.Columbus = implied * 2 * (1 - 1e-9);
+  const above = engine.scoreBasis(price, sf, 1990, 'Columbus', bench);
+  assert.match(above.note, /is above the replacement-cost floor/);
+  assert.equal(above.earned, 0);
+});
+
+// Adversarial review follow-ups.
+test('scoreDeal: undefined/null extraction does not throw and withholds the score', () => {
+  for (const bad of [undefined, null, 'x', 5]) {
+    const r = engine.scoreDeal(bad, rctBenchmark);
+    assert.equal(r.finalScore, null);
+    assertNoNaN(r);
+  }
+});
+
+test('scoreDeal: a malformed benchmark floor yields needs review with no NaN text', () => {
+  const bench = { marketToRctLowPerSF: { Columbus: 229.65 }, vintageFloor: { earlyYear: 1995, earlyPct: NaN, lateYear: 2005, latePct: 0.6 } };
+  const r = engine.scoreDeal(goodDeal, bench);
+  assert.equal(r.needsReview, true);
+  assert.equal(r.finalScore, null);
+  assert.doesNotMatch(JSON.stringify(r), /NaN/);
+});
+
+test('scoreDeal: non-string value-add signals are dropped, not printed', () => {
+  const r = engine.scoreDeal({ ...goodDeal, valueAddSignals: [NaN, Infinity, 'vacancy'] }, rctBenchmark);
+  assert.doesNotMatch(JSON.stringify(r), /NaN|Infinity/);
+  assert.equal(r.categories.find((c) => c.key === 'complexity').earned, 8);
+});
+
+test('scoreBuildingSize: fractional SF is displayed as scored, not rounded across the 50,000 boundary', () => {
+  assert.doesNotMatch(engine.scoreBuildingSize(49_999.9999).note, /^50,000 SF/);
+  assert.doesNotMatch(engine.scoreBuildingSize(50_000.0004).note, /^50,000 SF/);
+});
+
+test('email: a needs-review result renders a distinct subject and reasons, not a numeric score', () => {
+  const { renderScoreFollowupEmail } = require('../../../netlify/functions/_shared/email-template.js');
+  const r = engine.scoreDeal({ ...goodDeal, askingPrice: 0 }, rctBenchmark);
+  const { subject, html } = renderScoreFollowupEmail({ fields: { company: 'Acme' }, score: r });
+  assert.match(subject, /Needs Review/);
+  assert.match(html, /Asking price is zero or negative/);
+  assert.doesNotMatch(html, /NaN|undefined/);
+});

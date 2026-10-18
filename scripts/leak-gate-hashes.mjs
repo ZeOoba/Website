@@ -30,10 +30,11 @@ import crypto from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import url from 'node:url';
-import { activeEntries, buildDenylist, effectiveSalt, indexDenylist, rosterDigest, compact, scanFile, SUBSTRING_MIN } from './lib/leak-gate.mjs';
+import { activeEntries, buildDenylist, effectiveSalt, indexDenylist, listDist, listTracked, rosterDigest, compact, scanFile, SUBSTRING_MIN } from './lib/leak-gate.mjs';
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
-export const HASH_FILE = path.join(ROOT, 'scripts', 'leak-gate-hashes.json');
+// LEAK_GATE_OUT lets tests write to a temp file; the committed default is the only real destination.
+export const HASH_FILE = process.env.LEAK_GATE_OUT || path.join(ROOT, 'scripts', 'leak-gate-hashes.json');
 export const rosterPath = () => process.env.LEAK_GATE_ROSTER || path.join(os.homedir(), '.claude', 'hooks', 'confidential-terms.json');
 
 export function readCommitted() {
@@ -65,29 +66,29 @@ export function localRosterStatus(committed = readCommitted()) {
   return { state: same ? 'fresh' : 'stale', active: entries.length };
 }
 
-/** Count-only dry run over dist/: which classes of file WOULD hit, so activating a deal does not surprise-block a PR. */
+/**
+ * Count-only dry run over dist/ AND every tracked file: which kinds of file WOULD hit, so activating a deal does not
+ * surprise-block a PR. Counts only; run the test with LEAK_GATE_SHOW_PATHS=1 for paths.
+ */
 function dryScan(file) {
-  const dist = path.join(ROOT, 'dist');
-  if (!existsSync(dist)) return null;
   const idx = indexDenylist(file);
+  const hasDist = existsSync(path.join(ROOT, 'dist'));
+  const files = [...new Set([...(hasDist ? listDist(ROOT) : []), ...listTracked(ROOT)])];
   const tally = {};
-  let files = 0;
-  const walk = (d) => {
-    for (const e of readdirSync(path.join(dist, d), { withFileTypes: true })) {
-      const rel = d ? `${d}/${e.name}` : e.name;
-      if (e.isDirectory()) walk(rel);
-      else {
-        files++;
-        const r = scanFile('dist/' + rel, readFileSync(path.join(dist, rel)), idx);
-        for (const h of r.hits) {
-          const key = `${r.kind}:${h}`;
-          tally[key] = (tally[key] || 0) + 1;
-        }
-      }
+  for (const rel of files) {
+    let r;
+    try {
+      r = scanFile(rel, readFileSync(path.join(ROOT, rel)), idx);
+    } catch {
+      continue;
     }
-  };
-  walk('');
-  return { files, tally };
+    const where = rel.startsWith('dist/') ? 'dist' : 'tracked';
+    for (const h of r.hits) {
+      const key = `${where} ${r.kind}:${h.replace(/^path:/, 'path ')}`;
+      tally[key] = (tally[key] || 0) + 1;
+    }
+  }
+  return { files: files.length, hasDist, tally };
 }
 
 async function main() {
@@ -131,10 +132,10 @@ async function main() {
   }
   try {
     const dry = dryScan(file);
-    if (!dry) console.log('[leak-gate] dry scan skipped: run `npm run build` first to see what the new hashes would block');
-    else if (!Object.keys(dry.tally).length) console.log(`[leak-gate] dry scan of dist/ (${dry.files} files): nothing would be blocked`);
+    if (!dry.hasDist) console.log('[leak-gate] note: dist/ is absent, so only tracked files were dry-scanned; run `npm run build` first for the full picture');
+    if (!Object.keys(dry.tally).length) console.log(`[leak-gate] dry scan (${dry.files} files): nothing would be blocked`);
     else {
-      console.warn(`[leak-gate] dry scan of dist/ (${dry.files} files): the new hashes WOULD BLOCK these (counts by file kind and class; run npm run test:leak-gate for paths):`);
+      console.warn(`[leak-gate] dry scan (${dry.files} files): the new hashes WOULD BLOCK these (counts by location, file kind and class; run LEAK_GATE_SHOW_PATHS=1 npm run test:leak-gate to see which):`);
       for (const [k, n] of Object.entries(dry.tally).sort()) console.warn(`  ${k}: ${n}`);
     }
   } catch {

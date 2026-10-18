@@ -14,7 +14,7 @@ works on salted hashes only.
 | `scripts/leak-gate-hashes.json` | Committed. Per-repo random salt + HMAC-SHA256 (truncated to 128 bits) of each normalized term, with its length and kind. No term text. |
 | `scripts/lib/leak-gate.mjs`, `leak-gate-pdf.mjs` | Normalizer, scanner, dependency-free PDF text extractor. Contain no roster data. |
 | `tests/site/leak-gate.test.mjs` | The gate (`npm run test:leak-gate`). Run by `npm run verify` right after the build **and** by the Netlify build command in `netlify.toml`, so deploy previews and production cannot ship a hit. |
-| `tests/mutation/cases.mjs` `LG1`-`LG10` | Mutation cases: a planted hit, a gutted or re-salted hash file, a blind PDF extractor, a vacuous file listing, a disabled staleness check, dropped aliases and a missing Netlify step must each fail the gate. |
+| `tests/mutation/cases.mjs` `LG*` cases | Mutation cases: a planted hit, a gutted or re-salted hash file, a blind PDF extractor, a vacuous file listing, a disabled staleness check, dropped aliases and a missing Netlify step must each fail the gate. |
 
 ## What is scanned
 
@@ -40,11 +40,11 @@ report never prints the path of a matched file. A tracked symlink or submodule i
 
 Terms and text are normalized (NFKD, strip diacritics, drop trademark/superscript marks, fold common Cyrillic/Greek
 look-alikes, lowercase, alphanumeric tokens), so spacing, hyphens, case and punctuation variants of one name are the
-same string. A hit is any run of consecutive tokens, compacted, whose HMAC is in the denylist (no token-count cap; the
-character length of the longest term bounds the window). Terms of 10+ normalized characters are matched as substrings of the compacted document (like the hook; windows start at every token boundary and at every position inside tokens longer than 10 chars), so
-plurals ("Foo Holding" in "Foo Holdings"), glued suffixes and names split by tags or entities are found. Shorter
-terms are matched on whole words only (a trailing plural "s"/"es" is tolerated) to limit false positives. Known gaps: a prefix glued onto a short token ("XFoo Holding"), and "&"
-versus "and" (or a dropped word) is not equated. In PDFs, every window of every term length is checked in the glued character
+same string. A hit is any run of consecutive tokens, compacted, whose HMAC is in the denylist (up to 64 tokens; the
+character length of the longest term also bounds the window). Terms of 10+ normalized characters are matched as substrings of the compacted document (like the hook; windows start at every token boundary, and at every character position of the file's most normalized text variant), so
+plurals ("Foo Holding" in "Foo Holdings"), glued prefixes/suffixes and names split by tags or entities are found. Shorter
+terms are matched on whole words only (a trailing plural "s"/"es" is tolerated) to limit false positives. Known gap: "&"
+versus "and" (or a dropped word) is not equated; the hook does not equate them either. In PDFs, every window of every term length is checked in the glued character
 stream, so a short alias can false-positive there (for example a common word inside "Oxford"); the failure label says
 `glued:`. The fix is a longer alias, not an exemption.
 
@@ -92,18 +92,26 @@ All pass today. When one trips, the output names the file and class (not the ter
      environment. The hashing salt is then derived from the committed salt AND the secret, so the committed file cannot be
      brute-forced without it. A keyed file fails closed (the test throws) if the variable is missing or wrong, so wire the
      secrets BEFORE merging a keyed file, or the build and deploys break. Unkeyed is acceptable only for
-     long, distinctive aliases. The generator warns when an active deal is unkeyed, and a dry scan of `dist/` reports counts of
+     long, distinctive aliases. The generator warns when an active deal is unkeyed, and a dry scan of `dist/` and every tracked file reports counts of
      files the new hashes would block.
 2. **Metadata leaks.** The file lists each term's normalized length and kind. Generic `context` and `ctxreq` words are
    labelled, which makes them the easiest targets; the same hash appearing under two kinds shows one term is in both;
    the entry count shows how many terms a deal has; `roster_digest` lets someone confirm a guessed full set.
 3. **Git history is forever.** Rotating the salt or retiring a deal does not remove old hash files from history, so a
    retired deal stays brute-forceable from past commits. Do not rely on rotation to "unpublish".
-4. **Blind spots:** pixel text in images; base64 or data-URI payloads; a name glued to adjacent letters across a tag or
-   entity boundary (`Deal</li><li>Zentro</b>vane Pellmark` style prefix/suffix glue) when the name is under the window
-   rules; text assembled at runtime by script; Windows-1252/other non-UTF-8 text files with non-ASCII letters;
-   homoglyphs outside the folded Cyrillic/Greek set; fonts with unusual PDF encodings (these fail closed when detected).
+4. **Blind spots:** pixel text in images; base64 or data-URI payloads; a short (under 10 char) term glued onto adjacent
+   letters; text assembled at runtime by script; Windows-1252/other non-UTF-8 text files with non-ASCII letters;
+   homoglyphs outside the folded sets; fonts with unusual PDF encodings (these fail closed when detected).
 5. **History and the push path are not scanned.** The gate covers the final tree. Commit messages, branch names and
    PR text are protected only by the machine-local hook and pre-push scan.
 6. **Staleness.** Nothing in CI can tell that the roster gained a deal after the last generation. The local freshness
    warning and the roster owner re-running the generator are the control.
+
+## Before activating a deal
+
+Activation can block more files than expected, especially with short or generic terms. A simulated activation with two short
+whole-word terms blocked 12 files (6 in `dist/`, 6 tracked sources), 8 of them through image metadata strings. So:
+
+1. Run the generator (it dry-scans `dist/` and every tracked file and prints counts by location, kind and class).
+2. Run `LEAK_GATE_SHOW_PATHS=1 npm run test:leak-gate` locally to see which files; CI and Netlify logs show only fingerprints.
+3. Lengthen the alias (name plus street/city) rather than excluding files; then wire `LEAK_GATE_KEY` before merging a keyed file.

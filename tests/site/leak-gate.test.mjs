@@ -19,7 +19,8 @@ import { deflateSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
-import { activeEntries, buildDenylist, findingLabel, formatFinding, hmac, indexDenylist, rosterDigest, scanFile, scanText, HASH_FILE_VERSION } from '../../scripts/lib/leak-gate.mjs';
+import { tokens } from '../../scripts/lib/leak-gate.mjs';
+import { activeEntries, buildDenylist, findingLabel, formatFinding, listDist, listTracked, missingRequired, scanFiles, hmac, indexDenylist, rosterDigest, scanFile, scanText, HASH_FILE_VERSION } from '../../scripts/lib/leak-gate.mjs';
 import { localRosterStatus } from '../../scripts/leak-gate-hashes.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -249,37 +250,9 @@ function loadDenylist() {
   return JSON.parse(readFileSync(HASH_FILE, 'utf8'));
 }
 
-function trackedFiles() {
-  try {
-    return execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\0').filter(Boolean);
-  } catch {
-    const out = [];
-    const walk = (d) => {
-      for (const e of readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
-        if (['node_modules', '.git', 'dist', '.claude'].includes(e.name)) continue;
-        const rel = d ? `${d}/${e.name}` : e.name;
-        if (e.isDirectory()) walk(rel);
-        else out.push(rel);
-      }
-    };
-    walk('');
-    return out;
-  }
-}
-
 function distFiles() {
-  const dist = path.join(ROOT, 'dist');
-  assert.ok(existsSync(dist), 'dist/ is missing: run `npm run build` first (the gate scans the shipped output)');
-  const out = [];
-  const walk = (d) => {
-    for (const e of readdirSync(path.join(dist, d), { withFileTypes: true })) {
-      const rel = d ? `${d}/${e.name}` : e.name;
-      if (e.isDirectory()) walk(rel);
-      else out.push('dist/' + rel);
-    }
-  };
-  walk('');
-  return out;
+  assert.ok(existsSync(path.join(ROOT, 'dist')), 'dist/ is missing: run `npm run build` first (the gate scans the shipped output)');
+  return listDist(ROOT);
 }
 
 const MUST_SCAN = [
@@ -311,7 +284,10 @@ test('canary: substring matching across words, plurals and look-alike capitals',
   const hit = (name, body) => assert.deepEqual(scanFile(name, Buffer.from(body, 'utf8'), idx).hits, ['always'], body.slice(0, 50));
   hit('a.html', 'Foo Holding Groups LLC'); // long term: plain substring, like the hook
   hit('a.html', 'Foo-Holding-GroupY');
-  assert.deepEqual(scanFile('a.html', Buffer.from('XFoo-Holding-Group'), idx).hits, [], 'documented gap: prefix glued onto a short token');
+  hit('a.html', 'XFoo-Holding-Group'); // a prefix glued onto a short token (the hook catches this too)
+  hit('a.html', '<a href="/xfoo-holding-group">link</a>');
+  hit('a.html', '<img alt="XFoo Holding Group" src="x.png">');
+  hit('a.html', '<meta name="description" content="NewFoo Holding Group">');
   hit('a.html', '<li>Foo</li><li>Holding Group</li>');
   hit('a.html', 'The Acme Yards'); // short term: whole words, plural tolerated
   hit('a.html', 'ACME  YARD');
@@ -371,6 +347,14 @@ test('roster staleness is detected against a temporary roster (alias handling in
     assert.equal(localRosterStatus(fresh).state, 'fresh', 'regenerated file matches');
     writeFileSync(rosterFile, '{ not json');
     assert.equal(localRosterStatus(fresh).state, 'unreadable');
+    writeFileSync(rosterFile, JSON.stringify({ d1: { always: [CANARY_SHORT] } }));
+    const savedKey = process.env.LEAK_GATE_KEY;
+    try {
+      delete process.env.LEAK_GATE_KEY;
+      assert.equal(localRosterStatus({ ...fresh, keyed: true }).state, 'needs-key', 'a keyed file without the key is never reported fresh');
+    } finally {
+      if (savedKey !== undefined) process.env.LEAK_GATE_KEY = savedKey;
+    }
   } finally {
     if (saved === undefined) delete process.env.LEAK_GATE_ROSTER;
     else process.env.LEAK_GATE_ROSTER = saved;
@@ -388,6 +372,9 @@ test('the Netlify build command runs this gate (previews and production are gate
   assert.ok(cmd, 'netlify.toml has a build command');
   assert.ok(cmd[1].includes('node --test tests/site/leak-gate.test.mjs'), 'the build command must run the leak-gate test');
   assert.ok(cmd[1].indexOf('build-dist.mjs') < cmd[1].indexOf('leak-gate.test.mjs'), 'the gate must run after dist/ is built');
+  assert.ok(cmd[1].trim().endsWith('node --test tests/site/leak-gate.test.mjs'), 'nothing may follow the gate step in the command');
+  assert.ok(!/\|\||;|\|(?!\|)|&(?!&)|(?<!&)&$/.test(cmd[1].replace(/&&/g, ' ')), 'the command may only chain with && (no || true, ;, pipes or a lone & that background the step)');
+  assert.ok(!/^\s*\[context\./m.test(toml) && (toml.match(/^\s*command\s*=/gm) || []).length === 1, 'no [context.*] block or second command may override the build command');
 });
 
 test('canary: round-3 regressions (short-term plurals, glued/context paths, gzipped PDFs, capital sharp s)', async () => {
@@ -406,6 +393,7 @@ test('canary: round-3 regressions (short-term plurals, glued/context paths, gzip
   assert.match(label, /^file#[0-9a-f]{8}\.html$/);
   assert.ok(!label.includes('foo'), 'the label never contains the path');
   assert.equal(findingLabel('dist/a.html', longAlias, true), 'dist/a.html');
+  assert.match(findingLabel('dist/memo.Vrenkolt', longAlias), /^file#[0-9a-f]{8}$/, 'an unknown extension is not echoed');
   const ctx = indexDenylist(buildDenylist([{ kind: 'context', term: CTX }, { kind: 'ctxreq', term: CTX_REQ }], salt));
   assert.deepEqual(scanFile(`dist/${CTX.toLowerCase()}.html`, Buffer.from(`${CTX_REQ} body`), ctx).hits, ['context+ctxreq'], 'context term in the file name, anchor in the body');
   const { gzipSync } = await import('node:zlib');
@@ -414,6 +402,83 @@ test('canary: round-3 regressions (short-term plurals, glued/context paths, gzip
   assert.ok(scanFile('x.docx.gz', gzipSync(Buffer.from('PK')), canaryIdx).problems.length, 'a gzipped container still fails closed');
   const ss = indexDenylist(buildDenylist([{ kind: 'always', term: 'Straße Kilnmoor' }], salt));
   hit('a.html', 'STRAẞE KILNMOOR', ss);
+});
+
+test('canary: look-alike glyphs the audit listed all fold to their Latin letters', () => {
+  const vectors = { 'Օ': 'o', 'ү': 'y', 'Ԛ': 'q', 'Һ': 'h', 'һ': 'h', 'ɑ': 'a', 'Ꭺ': 'a', 'Ϲ': 'c', 'ϲ': 'c' };
+  for (const [ch, want] of Object.entries(vectors)) assert.deepEqual(tokens(`x${ch}x`), [`x${want}x`], 'U+' + ch.codePointAt(0).toString(16));
+  const idx = indexDenylist(buildDenylist([{ kind: 'always', term: 'Cobalt Haven Quay' }], salt));
+  assert.ok(scanFile('a.html', Buffer.from('Ϲobalt һaven Ԛuay'), idx).hits.includes('always'));
+});
+
+test('generator CLI: --keyed writes a keyed file, unkeyed warns, dry scan runs, no term is echoed', async () => {
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { spawnSync } = await import('node:child_process');
+  const os = await import('node:os');
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'leak-gate-gen-'));
+  const rosterFile = path.join(dir, 'roster.json');
+  const outFile = path.join(dir, 'out.json');
+  writeFileSync(rosterFile, JSON.stringify({ d1: { active: true, always: [CTX_REQ] } })); // 7 chars: also exercises the short-term warning
+  const run = (args, env = {}) => {
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'leak-gate-hashes.mjs'), ...args], {
+      env: { ...process.env, LEAK_GATE_KEY: '', LEAK_GATE_ROSTER: rosterFile, LEAK_GATE_OUT: outFile, ...env },
+      encoding: 'utf8',
+    });
+    return { status: r.status, text: (r.stdout || '') + (r.stderr || ''), file: existsSync(outFile) ? JSON.parse(readFileSync(outFile, 'utf8')) : null };
+  };
+  try {
+    const plain = run([]);
+    assert.equal(plain.status, 0, plain.text);
+    assert.equal(plain.file.keyed, false);
+    assert.equal(plain.file.entries.length, 1);
+    assert.match(plain.text, /UNKEYED/, 'an active unkeyed deal must warn');
+    assert.match(plain.text, /shorter than 10/, 'short terms must warn');
+    const dry = /dry scan \((\d+) files\)/.exec(plain.text);
+    assert.ok(dry && Number(dry[1]) >= 200, 'the dry scan must actually walk dist/ and the tracked files, and report how many');
+    assert.ok(!plain.text.toLowerCase().includes(CTX_REQ.toLowerCase()), 'the term is never echoed');
+    assert.equal(run(['--check']).status, 0, 'the written file is fresh');
+
+    const key = 'k'.repeat(24);
+    const keyed = run(['--keyed'], { LEAK_GATE_KEY: key });
+    assert.equal(keyed.status, 0, keyed.text);
+    assert.equal(keyed.file.keyed, true, '--keyed must write keyed:true');
+    assert.notEqual(keyed.file.entries[0].h, plain.file.entries[0].h, 'keyed hashes differ');
+    assert.ok(!/UNKEYED/.test(keyed.text));
+    assert.equal(run(['--check'], { LEAK_GATE_KEY: key }).status, 0);
+    assert.notEqual(run(['--check']).status, 0, 'a keyed file cannot be checked without the key');
+    const noKey = run(['--keyed']);
+    assert.notEqual(noKey.status, 0, '--keyed without a key fails');
+    assert.ok(!noKey.text.toLowerCase().includes(CTX_REQ.toLowerCase()));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanFiles: symlinks are findings, missing files are skipped, required targets are checked', async () => {
+  const { mkdtempSync, writeFileSync, symlinkSync, rmSync } = await import('node:fs');
+  const os = await import('node:os');
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'leak-gate-tree-'));
+  try {
+    writeFileSync(path.join(dir, 'a.txt'), `plain ${CANARY} text`);
+    writeFileSync(path.join(dir, 'b.txt'), 'nothing here');
+    const clean = scanFiles(dir, ['b.txt', 'gone.txt'], canaryIdx);
+    assert.deepEqual(clean.findings, []);
+    assert.equal(clean.scanned, 1, 'a tracked-but-deleted file is skipped');
+    const dirty = scanFiles(dir, ['a.txt'], canaryIdx);
+    assert.equal(dirty.findings.length, 1);
+    assert.ok(!dirty.findings[0].includes('a.txt'), 'the finding does not name the path');
+    assert.deepEqual(missingRequired(dir, ['a.txt', 'b.txt', 'c.txt'], ['a.txt', 'c.txt', 'd.txt']), ['c.txt', 'd.txt']);
+    try {
+      symlinkSync(path.join(dir, 'a.txt'), path.join(dir, 'link.txt'));
+    } catch {
+      return; // symlinks need privileges on some Windows setups; the rest is still asserted above
+    }
+    const linked = scanFiles(dir, ['link.txt'], canaryIdx);
+    assert.equal(linked.findings.length, 1);
+    assert.match(linked.findings[0], /symlink or submodule/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('local roster freshness (warns locally; skipped where the roster is absent, e.g. CI)', (t) => {
@@ -430,33 +495,13 @@ test('local roster freshness (warns locally; skipped where the roster is absent,
 
 test('no active confidential-deal term appears in dist/, tracked source, data, edge functions or PDFs', (t) => {
   const idx = indexDenylist(loadDenylist());
-  const files = [...new Set([...distFiles(), ...trackedFiles(), ...MUST_SCAN.filter((f) => !f.startsWith('dist/'))])];
+  const files = [...new Set([...distFiles(), ...listTracked(ROOT), ...MUST_SCAN.filter((f) => !f.startsWith('dist/'))])];
   const tracked = files.filter((f) => !f.startsWith('dist/'));
   assert.ok(tracked.length >= 200, `only ${tracked.length} tracked files found: the file listing is broken, so the scan would be vacuous`);
-  for (const must of MUST_SCAN) assert.ok(files.includes(must) && existsSync(path.join(ROOT, must)), `required scan target missing: ${must}`);
+  assert.deepEqual(missingRequired(ROOT, files, MUST_SCAN), [], 'required scan targets are missing');
 
-  const findings = [];
-  const counts = { text: 0, pdf: 0, image: 0, binary: 0 };
-  const showPaths = process.env.LEAK_GATE_SHOW_PATHS === '1';
-  for (const rel of files) {
-    const full = path.join(ROOT, rel);
-    let st;
-    try {
-      st = lstatSync(full);
-    } catch {
-      continue; // tracked-but-deleted in this worktree
-    }
-    if (!st.isFile()) {
-      findings.push(`${findingLabel(rel, idx, process.env.LEAK_GATE_SHOW_PATHS === '1')} is a symlink or submodule entry, which the gate cannot read; replace it with a real file`);
-      continue;
-    }
-    const r = scanFile(rel, readFileSync(full), idx);
-    counts[r.kind]++;
-    // A file that matched is NEVER named in the log by default: its path may itself carry the term in a form the
-    // path check cannot see (glued slug, context term). Show a short salted fingerprint and the extension instead;
-    // LEAK_GATE_SHOW_PATHS=1 prints real paths for local debugging.
-    findings.push(...formatFinding(rel, r, idx, showPaths));
-  }
+  // Matched files are shown only as file#<fingerprint><ext> (see findingLabel); LEAK_GATE_SHOW_PATHS=1 prints real paths locally.
+  const { findings, counts } = scanFiles(ROOT, files, idx, process.env.LEAK_GATE_SHOW_PATHS === '1');
   t.diagnostic(
     `scanned ${files.length} files vs ${idx.size} denylist hashes (${counts.text} text, ${counts.pdf} pdf, ${counts.image} image, ${counts.binary} binary). ` +
       'Images: file names and embedded metadata strings only; pixel content (text drawn into images) is NOT scanned, OCR is out of scope.'

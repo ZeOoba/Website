@@ -392,15 +392,26 @@ test('only the ios asset class gets the IOS size exemption; basis edges at the p
 const canon = (o) => (o && typeof o === 'object' ? '{' + Object.keys(o).sort().map((k) => JSON.stringify(k) + ':' + canon(o[k])).join(',') + '}' : JSON.stringify(o));
 const hashValues = (o) => crypto.createHash('sha256').update(canon(o)).digest('hex');
 
-test('changing any scorecard value forces a SCORECARD_VERSION bump', () => {
-  // versionHistory maps each released version to the hash of its VALUES. Editing a value without adding a new
-  // version leaves the current version's hash stale and fails here. Overwriting an old entry to silence this is
-  // visible in review (the fixture diff shows a released version's hash changing).
+// Released version hashes are hard-coded HERE (not only in the fixture) so that silently rewriting a released
+// entry in the fixture also needs a visible edit to this file. Append a new entry when a version ships.
+// NOT covered by the hash: vintageFloor (rct-benchmark.json, pinned separately above) and the per-market $/SF
+// figures in rct-benchmark.json, which have their own provenance and tests.
+const RELEASED = { 'site-1.1': 'd9d02e29964d745fae343e979839ff435ded7462c0e3db3e1ba2e30ad64c6753' };
+
+test('version history is append-only and tied to VALUES (a value change needs a visible version/hash edit)', () => {
+  for (const [version, hash] of Object.entries(RELEASED)) {
+    assert.equal(retained.versionHistory[version], hash,
+      'Released version ' + version + ' was edited in the fixture versionHistory. Released entries are append-only: add a new version instead.');
+  }
   const entry = retained.versionHistory[SCORECARD_VERSION];
   assert.ok(entry, 'SCORECARD_VERSION ' + SCORECARD_VERSION + ' has no versionHistory entry in the fixture.' + HOW_TO);
   assert.equal(hashValues(VALUES), entry,
-    'Scorecard VALUES changed but SCORECARD_VERSION did not. Bump SCORECARD_VERSION (e.g. site-1.1.1) and add its hash to versionHistory in the fixture; never edit an existing history entry.' + HOW_TO);
+    'Scorecard VALUES changed but SCORECARD_VERSION did not. Bump SCORECARD_VERSION (e.g. site-1.1.1), add its hash to versionHistory in the fixture and to RELEASED in this test; never edit an existing entry.' + HOW_TO);
   assert.equal(hashValues(retained.values), entry, 'Fixture values do not match their own versionHistory hash.');
+  if (RELEASED[SCORECARD_VERSION]) {
+    assert.equal(hashValues(VALUES), RELEASED[SCORECARD_VERSION],
+      'VALUES no longer match the released hash for ' + SCORECARD_VERSION + '. Bump SCORECARD_VERSION.');
+  }
 });
 
 test('deal-size labels and credit just below the target minimum', () => {

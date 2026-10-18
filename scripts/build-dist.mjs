@@ -7,7 +7,7 @@
  * allowlist or in EXPECTED_EXCLUSIONS fails the build — a new file can neither
  * silently ship nor silently vanish. Dot-prefixed entries are always private.
  *
- * Run via: node scripts/build-dist.mjs   (also the Netlify [build] command)
+ * Run via: node scripts/build-dist.mjs   (final step of `npm run build`, the Netlify [build] command)
  */
 
 import { promises as fs } from 'node:fs';

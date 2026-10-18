@@ -353,6 +353,16 @@ test('WP-11 the chat facts file agrees with the pages on the founding claim (200
   assert.ok(!/2008/.test(md), 'meta.md still carries the 2008 direct-ownership distinction the pages do not make');
 });
 
+test('WP-11b the chat KB and prompt state the buy box as transaction size, never equity or check size (Gabriel 2026-10-17)', () => {
+  for (const file of ['scripts/meta.md', 'netlify/edge-functions/chat.ts', 'llms.txt']) {
+    const t = read(file);
+    assert.ok(!/equity per deal/i.test(t), `${file} describes the $1M-$10M buy box as "equity per deal"; the public pages say transaction size`);
+    assert.ok(!/\$1M\s*[–-]\s*\$10M\s+check size/i.test(t), `${file} describes the $1M-$10M buy box as "check size"`);
+  }
+  assert.match(read('scripts/meta.md'), /Transaction size:\*\* \$1M–\$10M per transaction/);
+  assert.match(read('netlify/edge-functions/chat.ts'), /\$1M–\$10M transaction size/);
+});
+
 test('WP-12 every file in images/ is referenced by something that ships', () => {
   const refs = [];
   const walk = (rel) => {

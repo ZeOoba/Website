@@ -40,6 +40,11 @@ const { spawnSync, execFileSync } = require("child_process");
 
 const REAL_CLI_ENTRY = path.join(__dirname, "..", "node_modules", "netlify-cli", "bin", "run.js");
 const CHECK_SCRIPT = "C:\\Users\\Owner\\.claude\\hooks\\lib\\check_website_deploy.py";
+// Fixed absolute interpreter, never process.env.PYTHON: an env-var interpreter let any
+// caller that could set a session id point the validator at `true`/`cmd.exe` and
+// self-authorize. If Python moves this fails CLOSED (ENOENT -> DENIED, exit 5): update
+// this constant, do not reintroduce an env/PATH lookup. Mirrors hooks/bin/netlify-guard-global.js.
+const PYTHON_EXE = "C:\\Users\\Owner\\AppData\\Local\\Programs\\Python\\Python313\\python.exe";
 const DRY_RUN = process.env.NETLIFY_GUARD_DRY_RUN === "1";
 
 function log(message) {
@@ -130,8 +135,8 @@ function main() {
   }
 
   try {
-    const output = execFileSync(process.env.PYTHON || "python",
-      [CHECK_SCRIPT, "--session", sessionId],
+    // -I (isolated): ignores PYTHON* env vars (PYTHONPATH/PYTHONSTARTUP/...) and user site.
+    const output = execFileSync(PYTHON_EXE, ["-I", CHECK_SCRIPT, "--session", sessionId],
       { encoding: "utf8" });
     log("authorized prod deploy for session " + sessionId + " -- " + output.trim());
   } catch (err) {

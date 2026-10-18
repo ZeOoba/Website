@@ -68,6 +68,24 @@ test('a session with no valid website-deploy token is DENIED by the validator, n
   assert.doesNotMatch(r.stderr, /DRY RUN/);
 });
 
+// The validator interpreter is fixed in the script. An inherited PYTHON env var used to be
+// executed as the validator, so `PYTHON=true` (or cmd.exe) self-authorized any session id.
+for (const fake of ['true', 'cmd.exe']) {
+  test(`PYTHON=${fake} cannot replace the validator: still DENIED by check_website_deploy`, () => {
+    const env = {
+      ...process.env,
+      NETLIFY_GUARD_DRY_RUN: '1',
+      CLAUDE_CODE_SESSION_ID: 'netlify-guard-test-no-such-session',
+      PYTHON: fake,
+    };
+    const r = spawnSync(process.execPath, [GUARD, 'deploy', '-p'], { env, encoding: 'utf8' });
+    assert.equal(r.status, 5, `expected exit 5; stderr:\n${r.stderr}`);
+    // Asserts the real validator's own verdict, not merely "something exited non-zero".
+    assert.match(r.stderr, /check_website_deploy: DENY/);
+    assert.doesNotMatch(r.stderr, /authorized prod deploy|DRY RUN/);
+  });
+}
+
 const NON_PROD = [
   ['deploy'],
   ['deploy', '--draft'],

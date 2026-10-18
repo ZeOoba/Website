@@ -110,6 +110,35 @@ test('oversize bodies: 413 anywhere but multipart on the attachment form, which 
   assert.equal((await body.text()).length, clean.length, 'the original body must still be readable after the guard passes it');
 }));
 
+test('large multipart: a name straddling exactly 1 MiB, an encoded late part, a boundary-less type and CPU cost', () => quiet(async () => {
+  const { guard } = await load();
+  const MIB = 1024 * 1024;
+  const opts = { path: '/application-received', headers: { 'content-type': 'multipart/form-data; boundary=b' } };
+  const chunked = (str, size, o = opts) => {
+    const bytes = new TextEncoder().encode(str);
+    let at = 0;
+    const stream = new ReadableStream({ pull(c) { if (at >= bytes.length) return c.close(); c.enqueue(bytes.subarray(at, at + size)); at += size; } });
+    return new Request(`https://oxfordra.net${o.path}`, { method: 'POST', body: stream, duplex: 'half', headers: o.headers });
+  };
+  const head = '--b\r\nContent-Disposition: form-data; name="f"\r\n\r\n';
+  const name = 'broker-network-ledger';
+  // The 1 MiB mark falls mid-name, with chunk sizes that divide 1 MiB exactly.
+  const pad = 'a'.repeat(MIB - head.length - 6);
+  const split = `${head}${pad}${name}\r\n--b--`;
+  for (const size of [65536, 16384, 4096, 1000]) {
+    assert.equal((await guard(chunked(split, size), { secret: SECRET })).status, 403, `chunk ${size}`);
+  }
+  const lateEnc = `${head}${'a'.repeat(MIB + 5)}\r\n--b\r\nContent-Disposition: form-data; name="form-name"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\npipeline=2Dfailures\r\n--b--`;
+  assert.equal((await guard(chunked(lateEnc, 65536), { secret: SECRET })).status, 415);
+  const noBoundary = { path: '/application-received', headers: { 'content-type': 'multipart/form-data' } };
+  assert.equal((await guard(chunked(`x=${'a'.repeat(MIB + 5)}`, 65536, noBoundary), { secret: SECRET })).status, 413);
+  // Worst-case CPU for the 1 MiB prefix scan stays far below the edge budget.
+  const worst = `x=${'%41'.repeat(349000)}`;
+  const t = performance.now();
+  await guard(post(worst), { secret: SECRET });
+  assert.ok(performance.now() - t < 40, `prefix scan took ${performance.now() - t} ms`);
+}));
+
 test('refuses encodings the platform parser might undo', () => quiet(async () => {
   const { guard } = await load();
   const qp = '--b\r\nContent-Disposition: form-data; name="form-name"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\npipeline=2Dfailures\r\n--b--';
@@ -121,6 +150,6 @@ test('edge config: POST only, all paths except platform and chat routes, bypass 
   const { config: cfg } = await load();
   assert.equal(cfg.method, 'POST');
   assert.equal(cfg.path, '/*');
-  assert.deepEqual(cfg.excludedPath, ['/.netlify/*', '/api/chat', '/api/broker-*']);
+  assert.deepEqual(cfg.excludedPath, ['/.netlify/*', '/api/chat', '/api/broker-upload-session', '/api/broker-finalize', '/api/broker-score-status']);
   assert.equal(cfg.onError, 'bypass');
 });

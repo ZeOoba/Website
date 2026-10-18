@@ -19,7 +19,7 @@ import { deflateSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
-import { activeEntries, buildDenylist, hmac, indexDenylist, scanFile, scanText, HASH_FILE_VERSION } from '../../scripts/lib/leak-gate.mjs';
+import { activeEntries, buildDenylist, findingLabel, formatFinding, hmac, indexDenylist, rosterDigest, scanFile, scanText, HASH_FILE_VERSION } from '../../scripts/lib/leak-gate.mjs';
 import { localRosterStatus } from '../../scripts/leak-gate-hashes.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -306,12 +306,123 @@ test('extractor sanity on the real shipped files: a public brand phrase is found
   }
 });
 
+test('canary: substring matching across words, plurals and look-alike capitals', () => {
+  const idx = indexDenylist(buildDenylist([{ kind: 'always', term: 'Foo Holding Group' }, { kind: 'always', term: 'Acme Yard' }], salt));
+  const hit = (name, body) => assert.deepEqual(scanFile(name, Buffer.from(body, 'utf8'), idx).hits, ['always'], body.slice(0, 50));
+  hit('a.html', 'Foo Holding Groups LLC'); // long term: plain substring, like the hook
+  hit('a.html', 'Foo-Holding-GroupY');
+  assert.deepEqual(scanFile('a.html', Buffer.from('XFoo-Holding-Group'), idx).hits, [], 'documented gap: prefix glued onto a short token');
+  hit('a.html', '<li>Foo</li><li>Holding Group</li>');
+  hit('a.html', 'The Acme Yards'); // short term: whole words, plural tolerated
+  hit('a.html', 'ACME  YARD');
+  assert.deepEqual(scanFile('a.html', Buffer.from('Acmes Yard'), idx).hits, [], 'documented gap: possessive/plural inside the name');
+  assert.deepEqual(scanFile('a.html', Buffer.from('Foo Holding and Group'), idx).hits, [], 'documented gap: "and" is not equated with an ampersand or dropped');
+  const idx2 = indexDenylist(buildDenylist([{ kind: 'always', term: 'Hezuny Network' }, { kind: 'always', term: 'Nuvon Tower' }], salt));
+  for (const t of ['ΗΕZUNY Network', 'HEZUNY NETWORK', 'Νuvon Tower', 'Неzuny Nеtwork', 'Hеzuny Nеtwork', 'Hezuny Network']) {
+    assert.ok(scanFile('a.html', Buffer.from(t), idx2).hits.includes('always'), 'look-alike: ' + t);
+  }
+  assert.ok(scanFile('a.html', Buffer.from('Nuvon Tower'), idx2).hits.includes('always'));
+});
+
+test('canary: PDF literal-string metadata with octal escapes is found', () => {
+  const lit = '\\376\\377' + [...`Memo ${CANARY} 2026`].map((c) => '\\000' + c).join('');
+  const doc = pdf(['<</Type /Catalog>>', `<</Title (${lit})>>`, streamObj('', 'BT /F1 12 Tf (' + 'a readable filler sentence about ordinary business '.repeat(2) + ') Tj ET')]);
+  assert.ok(scan('o.pdf', doc).hits.some((h) => h.endsWith('always')));
+});
+
+test('keyed mode: hashes depend on LEAK_GATE_KEY and fail closed without it', () => {
+  const saved = process.env.LEAK_GATE_KEY;
+  try {
+    process.env.LEAK_GATE_KEY = 'k'.repeat(24);
+    const keyed = buildDenylist([{ kind: 'always', term: CANARY }], salt, true);
+    assert.equal(keyed.keyed, true);
+    assert.notEqual(keyed.entries[0].h, buildDenylist([{ kind: 'always', term: CANARY }], salt).entries[0].h, 'keyed hashes differ from unkeyed');
+    assert.deepEqual(scanFile('a.html', Buffer.from(CANARY), indexDenylist(keyed)).hits, ['always']);
+    process.env.LEAK_GATE_KEY = 'j'.repeat(24);
+    assert.throws(() => indexDenylist(keyed), /malformed/, 'wrong key');
+    delete process.env.LEAK_GATE_KEY;
+    assert.throws(() => indexDenylist(keyed), /keyed|LEAK_GATE_KEY/, 'no key');
+  } finally {
+    if (saved === undefined) delete process.env.LEAK_GATE_KEY;
+    else process.env.LEAK_GATE_KEY = saved;
+  }
+});
+
+test('roster staleness is detected against a temporary roster (alias handling included)', async () => {
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const os = await import('node:os');
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'leak-gate-roster-'));
+  const rosterFile = path.join(dir, 'roster.json');
+  const saved = process.env.LEAK_GATE_ROSTER;
+  try {
+    process.env.LEAK_GATE_ROSTER = rosterFile;
+    const committed = buildDenylist([], salt);
+    committed.roster_digest = rosterDigest([], salt);
+    assert.equal(localRosterStatus(committed).state, 'absent', 'no roster file');
+    writeFileSync(rosterFile, JSON.stringify({ _meta: {}, d1: { active: false, always: [CANARY] } }));
+    assert.equal(localRosterStatus(committed).state, 'fresh', 'only inactive deals: still fresh');
+    writeFileSync(rosterFile, JSON.stringify({ d1: { aliases: [CANARY_SHORT] } }));
+    const s = localRosterStatus(committed);
+    assert.equal(s.state, 'stale', 'an active deal (alias only) the hash file lacks');
+    assert.equal(s.active, 1);
+    const entries = activeEntries(JSON.parse(readFileSync(rosterFile, 'utf8')));
+    const fresh = buildDenylist(entries, salt);
+    fresh.roster_digest = rosterDigest(entries, salt);
+    assert.equal(localRosterStatus(fresh).state, 'fresh', 'regenerated file matches');
+    writeFileSync(rosterFile, '{ not json');
+    assert.equal(localRosterStatus(fresh).state, 'unreadable');
+  } finally {
+    if (saved === undefined) delete process.env.LEAK_GATE_ROSTER;
+    else process.env.LEAK_GATE_ROSTER = saved;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('aliases are hashed as always-terms', () => {
+  assert.deepEqual(activeEntries({ d: { aliases: ['Old Name'] } }), [{ kind: 'always', term: 'Old Name' }]);
+});
+
+test('the Netlify build command runs this gate (previews and production are gated)', () => {
+  const toml = readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8');
+  const cmd = /^\s*command\s*=\s*"([^"]*)"/m.exec(toml);
+  assert.ok(cmd, 'netlify.toml has a build command');
+  assert.ok(cmd[1].includes('node --test tests/site/leak-gate.test.mjs'), 'the build command must run the leak-gate test');
+  assert.ok(cmd[1].indexOf('build-dist.mjs') < cmd[1].indexOf('leak-gate.test.mjs'), 'the gate must run after dist/ is built');
+});
+
+test('canary: round-3 regressions (short-term plurals, glued/context paths, gzipped PDFs, capital sharp s)', async () => {
+  const only = indexDenylist(buildDenylist([{ kind: 'always', term: 'Acme Yard' }], salt));
+  const hit = (name, body, idx = only) => assert.deepEqual(scanFile(name, Buffer.from(body), idx).hits.filter((h) => !h.startsWith('path:')), ['always'], body.slice(0, 40));
+  hit('a.html', 'The Acme Yards'); // plural with the longest term being short
+  hit('a.html', 'The Acme Yardes');
+  const longAlias = indexDenylist(buildDenylist([{ kind: 'always', term: 'Foo Holding Group' }], salt));
+  assert.ok(scanFile('dist/foo-holding-groupsite.html', Buffer.from('nothing'), longAlias).hits.length, 'a long alias glued into a file name is found');
+  assert.deepEqual(scanFile('dist/images/planeview.png', Buffer.alloc(8), indexDenylist(buildDenylist([{ kind: 'always', term: 'Lane' }], salt))).hits, [], 'short terms do not false-positive on glued file names');
+  const lines = formatFinding('dist/foo-holding-groupsite.html', scanFile('dist/foo-holding-groupsite.html', Buffer.from('x'), longAlias), longAlias);
+  assert.ok(lines.length && lines.every((l) => !/foo|holding|group/i.test(l)), 'a matched file is never named in the finding text');
+  const unreadable = formatFinding('dist/glimmer-memo.pdf', { kind: 'pdf', hits: [], problems: ['PDF yielded no readable text'] }, longAlias);
+  assert.ok(unreadable.length && unreadable.every((l) => !/glimmer|memo/i.test(l)), 'problem lines also hide the path');
+  const label = findingLabel('dist/foo-holding-groupsite.html', longAlias);
+  assert.match(label, /^file#[0-9a-f]{8}\.html$/);
+  assert.ok(!label.includes('foo'), 'the label never contains the path');
+  assert.equal(findingLabel('dist/a.html', longAlias, true), 'dist/a.html');
+  const ctx = indexDenylist(buildDenylist([{ kind: 'context', term: CTX }, { kind: 'ctxreq', term: CTX_REQ }], salt));
+  assert.deepEqual(scanFile(`dist/${CTX.toLowerCase()}.html`, Buffer.from(`${CTX_REQ} body`), ctx).hits, ['context+ctxreq'], 'context term in the file name, anchor in the body');
+  const { gzipSync } = await import('node:zlib');
+  const lzw = pdf(['<</Type /Catalog>>', '<</Filter /LZWDecode /Length 4>>\nstream\nabcd\nendstream']);
+  assert.ok(scanFile('x.pdf.gz', gzipSync(lzw), canaryIdx).problems.length, 'a gzipped PDF is still judged as a PDF');
+  assert.ok(scanFile('x.docx.gz', gzipSync(Buffer.from('PK')), canaryIdx).problems.length, 'a gzipped container still fails closed');
+  const ss = indexDenylist(buildDenylist([{ kind: 'always', term: 'Straße Kilnmoor' }], salt));
+  hit('a.html', 'STRAẞE KILNMOOR', ss);
+});
+
 test('local roster freshness (warns locally; skipped where the roster is absent, e.g. CI)', (t) => {
   const committed = JSON.parse(readFileSync(HASH_FILE, 'utf8'));
   const s = localRosterStatus(committed);
   if (s.state === 'absent') return t.diagnostic('roster not present on this machine (CI): freshness check skipped');
   if (s.state === 'fresh') return t.diagnostic(`hash file matches the local roster (${s.active} active terms)`);
-  const msg = `LEAK-GATE HASHES ARE ${s.state.toUpperCase()} vs the local roster: run \`node scripts/leak-gate-hashes.mjs\` and commit scripts/leak-gate-hashes.json`;
+  const why = { stale: 'ARE STALE vs the local roster', unreadable: 'cannot be checked: the local roster file is not valid JSON', 'needs-key': 'cannot be checked: the file is keyed and LEAK_GATE_KEY is not set' }[s.state] || 'are in state ' + s.state;
+  const msg = `LEAK-GATE HASHES ${why}: run \`node scripts/leak-gate-hashes.mjs\` and commit scripts/leak-gate-hashes.json`;
   console.warn('\n[leak-gate] WARNING: ' + msg + '\n');
   t.diagnostic(msg);
   if (process.env.LEAK_GATE_STRICT_ROSTER === '1') assert.fail(msg);
@@ -320,11 +431,13 @@ test('local roster freshness (warns locally; skipped where the roster is absent,
 test('no active confidential-deal term appears in dist/, tracked source, data, edge functions or PDFs', (t) => {
   const idx = indexDenylist(loadDenylist());
   const files = [...new Set([...distFiles(), ...trackedFiles(), ...MUST_SCAN.filter((f) => !f.startsWith('dist/'))])];
+  const tracked = files.filter((f) => !f.startsWith('dist/'));
+  assert.ok(tracked.length >= 200, `only ${tracked.length} tracked files found: the file listing is broken, so the scan would be vacuous`);
   for (const must of MUST_SCAN) assert.ok(files.includes(must) && existsSync(path.join(ROOT, must)), `required scan target missing: ${must}`);
 
   const findings = [];
   const counts = { text: 0, pdf: 0, image: 0, binary: 0 };
-  let hidden = 0;
+  const showPaths = process.env.LEAK_GATE_SHOW_PATHS === '1';
   for (const rel of files) {
     const full = path.join(ROOT, rel);
     let st;
@@ -334,14 +447,15 @@ test('no active confidential-deal term appears in dist/, tracked source, data, e
       continue; // tracked-but-deleted in this worktree
     }
     if (!st.isFile()) {
-      findings.push(`${rel} is a symlink or submodule entry, which the gate cannot read; replace it with a real file`);
+      findings.push(`${findingLabel(rel, idx, process.env.LEAK_GATE_SHOW_PATHS === '1')} is a symlink or submodule entry, which the gate cannot read; replace it with a real file`);
       continue;
     }
     const r = scanFile(rel, readFileSync(full), idx);
     counts[r.kind]++;
-    const label = r.pathHit ? `(path withheld #${++hidden})` : rel;
-    if (r.hits.length) findings.push(`${label} [${r.kind}] matched: ${r.hits.join(', ')}`);
-    for (const p of r.problems) findings.push(`${label} [${r.kind}] ${p}`);
+    // A file that matched is NEVER named in the log by default: its path may itself carry the term in a form the
+    // path check cannot see (glued slug, context term). Show a short salted fingerprint and the extension instead;
+    // LEAK_GATE_SHOW_PATHS=1 prints real paths for local debugging.
+    findings.push(...formatFinding(rel, r, idx, showPaths));
   }
   t.diagnostic(
     `scanned ${files.length} files vs ${idx.size} denylist hashes (${counts.text} text, ${counts.pdf} pdf, ${counts.image} image, ${counts.binary} binary). ` +
@@ -350,7 +464,7 @@ test('no active confidential-deal term appears in dist/, tracked source, data, e
   assert.deepEqual(
     findings,
     [],
-    'Invariant 3 breach or unprovable file. Remove the content (the matched text is deliberately not shown) and rebuild; see docs/leak-gate.md.'
+    'Invariant 3 breach or unprovable file. Matched files are shown as file#<fingerprint><ext> only; re-run locally with LEAK_GATE_SHOW_PATHS=1 to see paths. Remove the content and rebuild; see docs/leak-gate.md.'
   );
   void statSync;
 });

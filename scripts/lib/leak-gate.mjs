@@ -34,28 +34,32 @@ import { extractPdfText, printableRuns } from './leak-gate-pdf.mjs';
 
 export const MAX_WINDOW = 64; // tokens; the char-length bound below is what really limits a window
 export const SUBSTRING_MIN = 10;
-export const MAX_SUBSTRING_TOKEN = 4096; // only a sanity bound for pathological blobs
 export const HASH_FILE_VERSION = 2;
 export const KINDS = new Set(['always', 'context', 'ctxreq']);
 
-// Look-alike letters that NFKD does not fold (Cyrillic and Greek to Latin).
-const CONFUSABLES = new Map(
-  Object.entries({
-    а: 'a', в: 'b', е: 'e', к: 'k', м: 'm', н: 'h', о: 'o', р: 'p', с: 'c', т: 't', у: 'y', х: 'x', і: 'i', ј: 'j', ѕ: 's', ԁ: 'd', ԛ: 'q', ԝ: 'w',
-    α: 'a', β: 'b', ε: 'e', ι: 'i', κ: 'k', ν: 'v', ο: 'o', ρ: 'p', τ: 't', υ: 'u', χ: 'x', γ: 'y',
-  })
+// Look-alike letters that NFKD does not fold, mapped BEFORE lowercasing so capitals are covered
+// (Cyrillic, Greek, Armenian and small-capital forms to Latin). Case matters: Greek capital Nu
+// looks like N, small nu like v.
+const LOOKALIKE_PAIRS =
+  'аa вb еe кk мm нh оo рp сc тt уy хx іi јj ѕs ԁd ԛq ԝw ӏi Ү=y ɴn ɪi ᴀa ʙb ᴄc ᴅd ᴇe ɢg ʜh ᴊj ᴋk ʟl ᴍm ᴏo ᴘp ʀr ᴛt ᴜu ᴠv ᴡw ʏy ᴢz օo ս=u ց=g ո=n ' +
+  'АA ВB ЕE КK МM НH ОO РP СC ТT УY ХX ІI ЈJ ЅS ' +
+  'αa βb εe ιi κk νv οo ρp τt υu χx γy ΑA ΒB ΕE ΖZ ΗH ΙI ΚK ΜM ΝN ΟO ΡP ΤT ΥY ΧX';
+const LOOKALIKES = new Map(
+  LOOKALIKE_PAIRS.split(' ')
+    .filter(Boolean)
+    .map((p) => [p[0], p[p.length - 1]])
 );
+const LIGATURES = { ẞ: 'ss', Ӏ: 'i', ø: 'o', Ø: 'o', ß: 'ss', æ: 'ae', Æ: 'ae', œ: 'oe', Œ: 'oe', ł: 'l', Ł: 'l', đ: 'd', Đ: 'd', ı: 'i', þ: 'th', Þ: 'th' };
 
 export function tokens(text) {
-  const t = String(text)
+  let t = String(text)
     .replace(/[®©℠-™²³¹⁰-₟]/g, ' ')
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
-  const LIG = { ø: 'o', ß: 'ss', æ: 'ae', œ: 'oe', ł: 'l', đ: 'd', ı: 'i', þ: 'th', ɪ: 'i', ӏ: 'i' };
-  let folded = t.replace(/[øßæœłđıþɪӏ]/g, (c) => LIG[c]);
-  if (/[^\u0000-ɏ]/.test(folded)) folded = [...folded].map((c) => CONFUSABLES.get(c) ?? c).join('');
-  return folded.match(/[a-z0-9]+/g) || [];
+    .replace(/[̀-ͯ]/g, '');
+  if (/[^\u0000-\u007f]/.test(t)) {
+    t = [...t].map((c) => LOOKALIKES.get(c) ?? LIGATURES[c] ?? c).join('');
+  }
+  return t.toLowerCase().match(/[a-z0-9]+/g) || [];
 }
 
 export const compact = (term) => tokens(term).join('');
@@ -79,7 +83,21 @@ export function hmac(saltHex, s) {
 }
 
 /** Build the committed denylist structure from plain terms. Never logs terms. */
-export function buildDenylist(entries, saltHex) {
+/**
+ * Optional keyed mode: the hashes are computed with a salt derived from the committed
+ * salt AND a secret (env LEAK_GATE_KEY, held in CI/Netlify and locally, never in the repo),
+ * so the committed file cannot be brute-forced without the secret. Unkeyed files use the
+ * committed salt directly.
+ */
+export function effectiveSalt(saltHex, keyed) {
+  if (!keyed) return saltHex;
+  const key = process.env.LEAK_GATE_KEY || '';
+  if (key.length < 16) throw new Error('this hash file is keyed: set LEAK_GATE_KEY (16+ chars) in the environment');
+  return crypto.createHmac('sha256', key).update(saltHex).digest('hex');
+}
+
+export function buildDenylist(entries, saltHex, keyed = false) {
+  const eff = effectiveSalt(saltHex, keyed);
   const seen = new Set();
   const out = [];
   for (const { kind, term } of entries) {
@@ -88,22 +106,23 @@ export function buildDenylist(entries, saltHex) {
     const key = kind + ':' + c;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ kind, h: hmac(saltHex, c), len: c.length });
+    out.push({ kind, h: hmac(eff, c), len: c.length });
   }
   out.sort((a, b) => (a.h < b.h ? -1 : a.h > b.h ? 1 : a.kind < b.kind ? -1 : 1));
   const file = {
     version: HASH_FILE_VERSION,
     algo: 'HMAC-SHA256 truncated to 128 bits; key = salt; message = compact normalized term',
     salt: saltHex,
+    keyed: Boolean(keyed),
     entries: out,
   };
-  file.selfcheck = selfcheckOf(file);
+  file.selfcheck = selfcheckOf(file, eff);
   return file;
 }
 
 /** Binds the salt AND every entry, so a mixed-up or edited file fails validation. */
-export function selfcheckOf(file) {
-  return hmac(file.salt, 'leak-gate-selfcheck|' + file.entries.map((e) => `${e.kind}:${e.h}:${e.len}`).join('|'));
+export function selfcheckOf(file, salt = file.salt) {
+  return hmac(salt, 'leak-gate-selfcheck|' + file.entries.map((e) => `${e.kind}:${e.h}:${e.len}`).join('|'));
 }
 
 /** Digest of the active term set, for the local staleness check. */
@@ -140,7 +159,8 @@ export function indexDenylist(file) {
   if (!file || typeof file !== 'object' || file.version !== HASH_FILE_VERSION) throw bad('version');
   if (!/^[0-9a-f]{64}$/.test(file.salt || '')) throw bad('salt');
   if (!Array.isArray(file.entries)) throw bad('entries');
-  if (file.selfcheck !== selfcheckOf(file)) throw bad('selfcheck (salt or entries were changed or mixed up)');
+  const eff = effectiveSalt(file.salt, file.keyed === true);
+  if (file.selfcheck !== selfcheckOf(file, eff)) throw bad('selfcheck (salt, key or entries were changed or mixed up)');
   const byHash = new Map();
   const lengths = new Set();
   for (const e of file.entries) {
@@ -151,7 +171,7 @@ export function indexDenylist(file) {
   }
   const maxLen = Math.max(0, ...lengths);
   const subLengths = [...lengths].filter((l) => l >= SUBSTRING_MIN);
-  return { salt: file.salt, byHash, lengths, maxLen, subLengths, size: file.entries.length, cache: new Map() };
+  return { salt: eff, byHash, lengths, maxLen, subLengths, size: file.entries.length, cache: new Map() };
 }
 
 const CACHE_CAP = 600000;
@@ -176,7 +196,7 @@ const classify = (kinds) => {
  * Scan one document's text. Returns an array of hit classes
  * ('always' | 'context+ctxreq'); never the matched text.
  */
-export function scanText(text, idx) {
+export function scanText(text, idx, { substring = true } = {}) {
   if (idx.size === 0) return [];
   const toks = tokens(text);
   const kinds = new Set();
@@ -188,14 +208,30 @@ export function scanText(text, idx) {
     let acc = '';
     for (let w = 0; w < MAX_WINDOW && i + w < toks.length; w++) {
       acc += toks[i + w];
-      if (acc.length > idx.maxLen) break;
+      if (acc.length > idx.maxLen + 2) break; // +2: room for an s/es plural on the longest term
       if (idx.lengths.has(acc.length)) look(acc);
-    }
-    const t = toks[i];
-    if (t.length <= MAX_SUBSTRING_TOKEN) {
-      for (const L of idx.subLengths) {
-        if (t.length > L) for (let j = 0; j + L <= t.length; j++) look(t.slice(j, j + L));
+      // Plural of a short name ("Foos" for "Foo"): the final token may carry a trailing s/es.
+      if (acc.endsWith('s')) {
+        if (idx.lengths.has(acc.length - 1)) look(acc.slice(0, -1));
+        if (acc.endsWith('es') && idx.lengths.has(acc.length - 2)) look(acc.slice(0, -2));
       }
+    }
+  }
+  // Terms of SUBSTRING_MIN+ chars are matched as substrings of the compacted document, like the
+  // hook: windows START at every token boundary and may END anywhere, so plurals ("Foo Holding"
+  // in "Foo Holdings"), suffix glue and names split by tags or entities are found. Inside tokens
+  // longer than SUBSTRING_MIN every start is tried (camelCase identifiers, glued slugs).
+  // Known gaps: "&" versus "and" is not equated; a prefix glued onto a short token is missed.
+  // Shorter terms stay word-bounded (above) to keep false positives out.
+  if (substring && idx.subLengths.length) {
+    const c = toks.join('');
+    let start = 0;
+    for (const t of toks) {
+      for (const L of idx.subLengths) {
+        if (start + L <= c.length) look(c.slice(start, start + L));
+        if (t.length > SUBSTRING_MIN) for (let j = start + 1; j < start + t.length && j + L <= c.length; j++) look(c.slice(j, j + L));
+      }
+      start += t.length;
     }
   }
   return classify(kinds);
@@ -206,11 +242,12 @@ export function scanText(text, idx) {
  * window of every denylist length is hashed. Fail-closed by design; short
  * terms can false-positive here (see docs/leak-gate.md).
  */
-export function scanGlued(text, idx) {
+export function scanGlued(text, idx, minLen = 0) {
   if (idx.size === 0) return [];
   const c = compact(text);
   const kinds = new Set();
   for (const L of idx.lengths) {
+    if (L < minLen) continue;
     for (let j = 0; j + L <= c.length; j++) {
       const k = lookup(idx, c.slice(j, j + L));
       if (k) for (const x of k) kinds.add(x);
@@ -271,14 +308,36 @@ function decodeTextBuffer(buf) {
   return buf.toString('utf8');
 }
 
+/** Report lines for one scanned file: hits and problems, file named only by findingLabel(). */
+export function formatFinding(relPath, r, idx, showPaths = false) {
+  const label = findingLabel(relPath, idx, showPaths);
+  const out = [];
+  if (r.hits.length) out.push(`${label} [${r.kind}] matched: ${r.hits.map((h) => h.replace(/^path:/, 'path ')).join(', ')}`);
+  for (const pr of r.problems) out.push(`${label} [${r.kind}] ${pr}`);
+  return out;
+}
+
 /**
  * Scan one file. Returns { hits, kind, pathHit, problems[] }. `problems` are
  * fail-closed conditions (a file we cannot read), not term hits. The file's
  * repo-relative PATH is scanned too.
  */
+const pathText = (relPath) => decodeEscapes(relPath).replace(/[\\/]/g, ' ');
+// Paths are also scanned glued for terms of SUBSTRING_MIN+ chars (a slug such as "foo-holding-groupsite.html"); shorter
+// terms glued would false-positive on ordinary file names.
+export const scanPath = (relPath, idx) => [...new Set([...scanText(pathText(relPath), idx), ...scanGlued(pathText(relPath), idx, SUBSTRING_MIN)])];
+
+/**
+ * How a finding names a file in logs: never the path (it may carry the term in a form no check sees), only a keyed
+ * fingerprint and the extension. showPaths is for local debugging.
+ */
+export function findingLabel(relPath, idx, showPaths = false) {
+  return showPaths ? relPath : `file#${hmac(idx.salt, 'path:' + relPath).slice(0, 8)}${(/\.[A-Za-z0-9]{1,8}$/.exec(relPath) || [''])[0]}`;
+}
+
 export function scanFile(relPath, buf, idx) {
   const problems = [];
-  const pathHits = scanText(decodeEscapes(relPath).replace(/[\\/]/g, ' '), idx);
+  const pathHits = scanPath(relPath, idx);
   let kind = 'text';
   let variants;
   let gluedText = '';
@@ -326,7 +385,11 @@ export function scanFile(relPath, buf, idx) {
   }
   const hits = new Set(pathHits.map((h) => 'path:' + h));
   for (const h of extra) hits.add(h);
-  for (const v of variants) for (const h of scanText(v, idx)) hits.add(h);
+  // Binary/image strings are word-like metadata; the whole-document substring pass is reserved for text and PDFs.
+  const substring = kind === 'text' || kind === 'pdf';
+  // The path rides along with every variant, so a context term in a file name and its anchor in the body combine.
+  const pt = '\n' + pathText(relPath);
+  for (const v of variants) for (const h of scanText(v + pt, idx, { substring })) hits.add(h);
   if (gluedText) for (const h of scanGlued(gluedText, idx)) hits.add('glued:' + h);
   return { kind, hits: [...hits], pathHit: pathHits.length > 0, problems };
 }

@@ -83,6 +83,10 @@ jobs:
       # literally identical — a developer can reproduce a red build with
       # `npm run verify` and nothing else.
       - name: Verify
+        # Only needed once scripts/leak-gate-hashes.json is generated with --keyed (docs/leak-gate.md);
+        # empty or unset is correct while the committed hashes are unkeyed.
+        env:
+          LEAK_GATE_KEY: ${{ secrets.LEAK_GATE_KEY }}
         run: npm run verify
 
   # NOT part of the PR gate, on purpose. eval-chat.mjs drives the live

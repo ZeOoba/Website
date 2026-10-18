@@ -173,6 +173,9 @@ export function extractPdfText(buf) {
   // Compressed stream bodies are binary noise here; their decoded text is in `decoded`.
   const outside = raw.replace(/stream\r?\n[\s\S]*?endstream/g, ' ');
   const spaced = [outside, ...decoded];
+  // Literal metadata strings may use octal escapes (and UTF-16BE with a NUL byte per letter).
+  const unesc = unescapeLiteral(outside);
+  spaced.push(unesc, unesc.replace(/\0/g, ''));
   // Metadata strings (Info /Title, outlines, annotation /Contents) are often <FEFF...> UTF-16BE hex.
   for (const hx of (outside + '\n' + decoded.join('\n')).matchAll(/<([0-9a-fA-F\s]{6,})>/g)) {
     const h = hx[1].replace(/\s+/g, '');

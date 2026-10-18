@@ -16,6 +16,17 @@
 //
 // When a check is added or tightened, add the breakage it exists to catch here.
 
+import { hmac, compact, selfcheckOf } from '../../scripts/lib/leak-gate.mjs';
+
+// Rewrite the committed leak-gate denylist to hold one entry (or none for null),
+// keyed with the file's own salt.
+const plantDenylist = (phrase) => (s) => {
+  const f = JSON.parse(s);
+  f.entries = phrase ? [{ kind: 'always', h: hmac(f.salt, compact(phrase)), len: compact(phrase).length }] : [];
+  f.selfcheck = selfcheckOf(f);
+  return JSON.stringify(f, null, 2) + '\n';
+};
+
 export const sub = (find, repl) => (s) => {
   if (s === null || !s.includes(find)) throw new Error(`anchor not found: ${find}`);
   return s.replace(find, repl);
@@ -175,6 +186,14 @@ export const CASES = [
   // --- build-dist.mjs ---------------------------------------------------------------
   { id: 'B1', what: 'Overview PDF in both SITE_FILES and EXPECTED_EXCLUSIONS', edits: [['scripts/build-dist.mjs', sub("const EXPECTED_EXCLUSIONS = ['application-script.file-size.test.js',", "const EXPECTED_EXCLUSIONS = ['Oxford-Realty-Advisors-Overview.pdf', 'application-script.file-size.test.js',")]], run: 'buildFailsClean', expect: 'PASS' },
   { id: 'BP1', what: 'a dot-file in resources/ does not ship', edits: [['resources/.draft-notes', () => 'private']], run: 'buildNoDotfile', expect: 'PASS' },
+
+  // --- leak-gate.test.mjs (Hard Invariant 3) --------------------------------------
+  // The denylist is edited to hold a PUBLIC phrase that the shipped pages really contain,
+  // standing in for a roster term, so no deal name is ever involved.
+  { id: 'LG1', what: 'a denylisted phrase appears in the shipped pages', edits: [['scripts/leak-gate-hashes.json', plantDenylist('Oxford Realty Advisors')]], run: 'leak', expect: 'no active confidential-deal term' },
+  { id: 'LG2', what: 'the hash file is emptied to {} (gate must fail closed, not pass)', edits: [['scripts/leak-gate-hashes.json', () => '{}']], run: 'leak', expect: 'no active confidential-deal term' },
+  { id: 'LG5', what: 'the salt is swapped for another valid-looking one (entries no longer match)', edits: [['scripts/leak-gate-hashes.json', (t) => t.replace(/"salt": "[0-9a-f]{64}"/, '"salt": "' + 'ab'.repeat(32) + '"')]], run: 'leak', expect: 'no active confidential-deal term' },
+  { id: 'LG3', what: 'the PDF extractor goes blind (skips every content stream)', edits: [['scripts/lib/leak-gate-pdf.mjs', sub('if (!/\\bBT\\b/.test(d)) continue;', 'continue;')]], run: 'leak', expect: 'PDF text layers' },
 ];
 
 // validate-jsonld.js run directly on synthetic pages: [id, what, html, wantExit0]

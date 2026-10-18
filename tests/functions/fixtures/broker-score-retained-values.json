@@ -46,8 +46,9 @@
       "buildingSfMax": 5000000,
       "clearHeightMinFt": 6,
       "clearHeightMaxFt": 100,
-      "pricePerSfMin": 5,
-      "pricePerSfMax": 2000
+      "pricePerSfMin": 1,
+      "pricePerSfMax": 2000,
+      "iosBuildingSfMin": 1
     }
   },
   "vintageFloor": {

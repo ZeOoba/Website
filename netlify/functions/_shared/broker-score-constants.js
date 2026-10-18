@@ -57,8 +57,9 @@ const VALUES = deepFreeze({
   plausibility: {
     askingPriceMin: 50_000, askingPriceMax: 500_000_000,
     buildingSfMin: 500, buildingSfMax: 5_000_000,
+    iosBuildingSfMin: 1, // IOS (outside storage) assets only: just "positive"
     clearHeightMinFt: 6, clearHeightMaxFt: 100,
-    pricePerSfMin: 5, pricePerSfMax: 2_000,
+    pricePerSfMin: 1, pricePerSfMax: 2_000,
   },
 });
 

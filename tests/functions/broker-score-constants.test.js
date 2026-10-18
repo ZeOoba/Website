@@ -48,13 +48,13 @@ test('engine behaviour follows the fixture values at every threshold', () => {
   assert.equal(pts(engine.scoreBuildingSize(v.buildingSize.zeroAtSF)), 0);
   assert.equal(pts(engine.scoreClearHeight(v.clearHeight.fullAtFt)), v.weights.clearHeight);
   assert.equal(pts(engine.scoreClearHeight(v.clearHeight.zeroBelowFt - 0.1)), 0);
-  assert.equal(pts(engine.scoreComplexity(['a', 'b'])), v.weights.complexity);
-  assert.equal(pts(engine.scoreComplexity(['a'])), Math.round(v.weights.complexity * v.complexity.singleSignalFraction));
-  assert.equal(engine.scoreBasis(1, 1, 2000, 'Columbus', rctBenchmark).possible, v.weights.basis);
+  assert.equal(pts(engine.scoreComplexity(['vacancy', 'legal_issue'])), v.weights.complexity);
+  assert.equal(pts(engine.scoreComplexity(['vacancy'])), Math.round(v.weights.complexity * v.complexity.singleSignalFraction));
+  assert.equal(engine.scoreBasis(2_000_000, 40_000, 2000, 'Columbus', rctBenchmark).possible, v.weights.basis);
 });
 
 test('scoreDeal output carries the scorecard version', () => {
-  const r = engine.scoreDeal({ askingPrice: 2_000_000, buildingSizeSF: 40_000, clearHeightFt: 20, valueAddSignals: ['a'], assetClass: 'industrial', matchedRctMarket: 'Columbus', city: 'Columbus', state: 'OH', yearBuilt: 2000 }, rctBenchmark);
+  const r = engine.scoreDeal({ askingPrice: 2_000_000, buildingSizeSF: 40_000, clearHeightFt: 20, valueAddSignals: ['vacancy'], assetClass: 'industrial', matchedRctMarket: 'Columbus', city: 'Columbus', state: 'OH', yearBuilt: 2000 }, rctBenchmark);
   assert.equal(r.scorecardVersion, retained.scorecardVersion);
 });
 
@@ -139,7 +139,7 @@ test('dense sweeps: every taper matches the fixture-derived reference', () => {
 });
 
 test('gate FAIL caps the score at the fixture cap', () => {
-  const r = engine.scoreDeal({ askingPrice: 2_000_000, buildingSizeSF: 40_000, clearHeightFt: 20, valueAddSignals: ['a', 'b'], assetClass: 'retail', matchedRctMarket: 'Columbus', city: 'Columbus', state: 'OH', yearBuilt: 2000 }, rctBenchmark);
+  const r = engine.scoreDeal({ askingPrice: 2_000_000, buildingSizeSF: 40_000, clearHeightFt: 20, valueAddSignals: ['vacancy', 'legal_issue'], assetClass: 'retail', matchedRctMarket: 'Columbus', city: 'Columbus', state: 'OH', yearBuilt: 2000 }, rctBenchmark);
   assert.equal(r.gateFailed, true);
   assert.equal(r.finalScore, retained.values.gateFailScoreCap);
 });
@@ -270,7 +270,7 @@ test('coverage minimum withholds the score exactly at the fixture boundary', () 
   assert.equal(shown.coveragePct, w.dealSize + w.basis + w.buildingSize);
   assert.equal(shown.insufficientData, shown.coveragePct < v.minCoveragePct);
   // Exactly minCoveragePct: dealSize + clearHeight + complexity(0) ... choose categories summing to the minimum.
-  const exact = engine.scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: null, clearHeightFt: 20, valueAddSignals: ['a'] }, rctBenchmark);
+  const exact = engine.scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: null, clearHeightFt: 20, valueAddSignals: ['vacancy'] }, rctBenchmark);
   assert.equal(exact.coveragePct, w.dealSize + w.clearHeight + w.complexity);
   assert.equal(exact.insufficientData, exact.coveragePct < v.minCoveragePct);
   const below = engine.scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: null, clearHeightFt: 20, valueAddSignals: null }, rctBenchmark);
@@ -303,8 +303,14 @@ test('plausibility bounds are exported from the fixture values', () => {
   assert.equal(engine.scoreClearHeight(p.clearHeightMaxFt + 0.1).invalid, true);
   const rct = rctBenchmark;
   const sf = 10_000;
-  assert.equal(engine.scoreBasis(p.pricePerSfMin * sf, sf, 2000, 'Columbus', rct).invalid, undefined);
-  assert.equal(engine.scoreBasis(p.pricePerSfMin * sf - 1, sf, 2000, 'Columbus', rct).invalid, true);
+  const bigSf = 1_000_000; // keeps price >= askingPriceMin at the per-SF minimum
+  assert.equal(engine.scoreBasis(p.pricePerSfMin * bigSf, bigSf, 2000, 'Columbus', rct).invalid, undefined);
+  assert.equal(engine.scoreBasis(p.pricePerSfMin * bigSf - 1, bigSf, 2000, 'Columbus', rct).invalid, true);
+  // IOS assets: only 'positive' building SF is required.
+  assert.equal(engine.scoreBuildingSize(p.iosBuildingSfMin, { ios: true }).invalid, undefined);
+  assert.equal(engine.scoreBuildingSize(p.iosBuildingSfMin - 0.5, { ios: true }).invalid, true);
+  assert.equal(engine.scoreBuildingSize(p.iosBuildingSfMin, {}).invalid, true);
+  assert.equal(engine.PLAUSIBLE_IOS_BUILDING_SF_MIN, p.iosBuildingSfMin);
   assert.equal(engine.scoreBasis(p.pricePerSfMax * sf, sf, 2000, 'Columbus', rct).invalid, undefined);
   assert.equal(engine.scoreBasis(p.pricePerSfMax * sf + 1, sf, 2000, 'Columbus', rct).invalid, true);
 });
@@ -318,7 +324,7 @@ test('coverage is withheld at 55 and shown at exactly the 60 minimum (literal ex
   assert.equal(at60.coveragePct, 60);
   assert.equal(at60.insufficientData, false);
   assert.notEqual(at60.finalScore, null);
-  const at55 = engine.scoreDeal({ ...none, askingPrice: 2_000_000, buildingSizeSF: null, clearHeightFt: 20, valueAddSignals: ['a'] }, rctBenchmark);
+  const at55 = engine.scoreDeal({ ...none, askingPrice: 2_000_000, buildingSizeSF: null, clearHeightFt: 20, valueAddSignals: ['vacancy'] }, rctBenchmark);
   assert.equal(at55.coveragePct, 55);
   assert.equal(at55.insufficientData, true);
   assert.equal(at55.finalScore, null);
@@ -326,11 +332,58 @@ test('coverage is withheld at 55 and shown at exactly the 60 minimum (literal ex
 
 test('implied price-per-SF plausibility edges apply without a market match', () => {
   const p = retained.values.plausibility;
-  const none = { assetClass: 'industrial', matchedRctMarket: null, city: null, state: null, yearBuilt: 2000, clearHeightFt: 20, valueAddSignals: ['a', 'b'] };
+  const none = { assetClass: 'industrial', matchedRctMarket: null, city: null, state: null, yearBuilt: 2000, clearHeightFt: 20, valueAddSignals: ['vacancy', 'legal_issue'] };
   const run = (price, sf) => engine.scoreDeal({ ...none, askingPrice: price, buildingSizeSF: sf }, rctBenchmark);
-  const sf = 50_000;
+  const sf = 1_000_000;
   assert.equal(run(p.pricePerSfMin * sf, sf).needsReview, false);
   assert.equal(run(p.pricePerSfMin * sf - 1, sf).needsReview, true);
   assert.equal(run(p.pricePerSfMax * 1_000, 1_000).needsReview, false);
   assert.equal(run(p.pricePerSfMax * 1_000 + 1, 1_000).needsReview, true);
+});
+
+test('scoreBasis and scoreDeal apply the same size/height bounds at the point of use (incl. IOS)', () => {
+  const p = retained.values.plausibility;
+  const rct = rctBenchmark;
+  const basis = (price, sf, opts) => engine.scoreBasis(price, sf, 2000, 'Columbus', rct, opts);
+  // IOS: only positive SF; the per-SF floor still applies.
+  assert.equal(basis(2_000_000, p.iosBuildingSfMin, { ios: true }).invalid, undefined);
+  assert.equal(basis(2_000_000, p.iosBuildingSfMin - 0.5, { ios: true }).invalid, true);
+  assert.equal(basis(p.pricePerSfMin * 1_000_000, 1_000_000, { ios: true }).invalid, undefined);
+  assert.equal(basis(p.pricePerSfMin * 1_000_000 - 1, 1_000_000, { ios: true }).invalid, true);
+  assert.equal(basis(p.pricePerSfMax * 1_000, 1_000, { ios: true }).invalid, undefined);
+  // IOS is exempt from the per-SF ceiling (land-heavy), but not from the floor above; non-IOS is not exempt.
+  assert.equal(basis(p.pricePerSfMax * 1_000 + 1, 1_000, { ios: true }).invalid, undefined);
+  assert.equal(basis(p.pricePerSfMax * 1_000 + 1, 1_000, {}).invalid, true);
+  // Non-IOS: buildingSfMin applies.
+  assert.equal(basis(900_000, p.buildingSfMin, {}).invalid, undefined);
+  assert.equal(basis(900_000, p.buildingSfMin - 1, {}).invalid, true);
+  assert.equal(basis(p.askingPriceMin, 50_000, {}).invalid, undefined);
+  assert.equal(basis(p.askingPriceMin - 1, 50_000, {}).invalid, true);
+  assert.equal(basis(p.askingPriceMax, 5_000_000, {}).invalid, undefined);
+  assert.equal(basis(p.askingPriceMax + 1, 5_000_000, {}).invalid, true);
+  // scoreDeal level: IOS passes at the IOS minimum SF, industrial does not; clear-height max edge fails closed.
+  const deal = (assetClass, sf, h, price = 2_000_000) => engine.scoreDeal({ assetClass, matchedRctMarket: 'Columbus', city: 'Columbus', state: 'OH', yearBuilt: 2000, askingPrice: price, buildingSizeSF: sf, clearHeightFt: h, valueAddSignals: ['vacancy', 'legal_issue'] }, rct);
+  assert.equal(deal('ios', p.iosBuildingSfMin, 20).needsReview, false);
+  assert.equal(deal('industrial', p.iosBuildingSfMin, 20).needsReview, true);
+  assert.equal(deal('industrial', p.buildingSfMin, 20, 900_000).needsReview, false);
+  assert.equal(deal('industrial', p.buildingSfMin - 1, 20, 900_000).needsReview, true);
+  assert.equal(deal('industrial', 40_000, p.clearHeightMaxFt).needsReview, false);
+  assert.equal(deal('industrial', 40_000, p.clearHeightMaxFt + 1e-6).needsReview, true);
+  assert.equal(deal('industrial', 40_000, p.clearHeightMinFt).needsReview, false);
+  assert.equal(deal('industrial', 40_000, p.clearHeightMinFt - 1e-6).needsReview, true);
+});
+
+test('only the ios asset class gets the IOS size exemption; basis edges at the point of use', () => {
+  const p = retained.values.plausibility;
+  const rct = rctBenchmark;
+  const deal = (assetClass, sf, price) => engine.scoreDeal({ assetClass, matchedRctMarket: 'Columbus', city: 'Columbus', state: 'OH', yearBuilt: 2000, askingPrice: price, buildingSizeSF: sf, clearHeightFt: 20, valueAddSignals: ['vacancy', 'legal_issue'] }, rct);
+  for (const cls of ['flex', 'shallow_bay', 'industrial', 'IOS']) {
+    assert.equal(deal(cls, p.buildingSfMin - 1, 900_000).needsReview, true, `${cls} below the SF minimum`);
+    assert.equal(deal(cls, 400, 2_000_000).needsReview, true, `${cls} 400 SF`);
+  }
+  assert.equal(deal('ios', 400, 2_000_000).needsReview, false);
+  const basis = (price, sf) => engine.scoreBasis(price, sf, 2000, 'Columbus', rct, {});
+  assert.equal(basis(10_000_000, p.buildingSfMax).invalid, undefined);
+  assert.equal(basis(10_000_000, p.buildingSfMax + 1).invalid, true);
+  assert.equal(basis(p.askingPriceMin - 1, 40_000).invalid, true);
 });

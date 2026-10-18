@@ -44,7 +44,7 @@ export const KINDS = new Set(['always', 'context', 'ctxreq']);
 // (Cyrillic, Greek, Armenian and small-capital forms to Latin). Case matters: Greek capital Nu
 // looks like N, small nu like v.
 const LOOKALIKE_PAIRS =
-  'аa вb еe кk мm нh оo рp сc тt уy хx іi јj ѕs ԁd ԛq ԝw ӏi Ү=y Ϲc ϲc Օo ү=y Ԛq һh Һh ɑa Ꭺa Ϲc ɴn ɪi ᴀa ʙb ᴄc ᴅd ᴇe ɢg ʜh ᴊj ᴋk ʟl ᴍm ᴏo ᴘp ʀr ᴛt ᴜu ᴠv ᴡw ʏy ᴢz օo ս=u ց=g ո=n ' +
+  'аa вb еe кk мm нh оo рp сc тt уy хx іi јj ѕs ԁd ԛq ԝw ӏi ɡg Ⲟo ⲟo Ү=y Ϲc ϲc Օo ү=y Ԛq һh Һh ɑa Ꭺa Ϲc ɴn ɪi ᴀa ʙb ᴄc ᴅd ᴇe ɢg ʜh ᴊj ᴋk ʟl ᴍm ᴏo ᴘp ʀr ᴛt ᴜu ᴠv ᴡw ʏy ᴢz օo ս=u ց=g ո=n ' +
   'АA ВB ЕE КK МM НH ОO РP СC ТT УY ХX ІI ЈJ ЅS ' +
   'αa βb εe ιi κk νv οo ρp τt υu χx γy ΑA ΒB ΕE ΖZ ΗH ΙI ΚK ΜM ΝN ΟO ΡP ΤT ΥY ΧX';
 const LOOKALIKES = new Map(
@@ -305,6 +305,7 @@ export function decodeEscapes(s, spaceEntities = false) {
       .replace(/\\u\{([0-9a-f]{1,6})\}/gi, (_, h) => cp(parseInt(h, 16)))
       .replace(/\\u([0-9a-f]{4})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
       .replace(/\\x([0-9a-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+      .replace(/\\[nrt]/g, ' ') // a literal backslash-n/-t/-r inside a JSON or JS string
       .replace(/\\([0-9a-f]{2,6})\s?/gi, (_, h) => cp(parseInt(h, 16)))
   );
 }

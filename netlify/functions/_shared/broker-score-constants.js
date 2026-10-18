@@ -18,11 +18,13 @@ const SOURCE = Object.freeze({
   // Skill file revision this was cross-checked against. The skill file iterates (procedure edits) without
   // moving the ratified Buy Box revision; the revision above is what matters.
   skillFileRevisionChecked: 'v4.31 (2026-10-17)',
-  // The public site scorecard (5 categories, 25/25/20/15/15) is a site-side distillation of the ratified
-  // Buy Box (size/price, physical, basis-vs-replacement-cost floor with vintage ramp). The ratified document
-  // does not itself print this exact weighting; the weights and tapers below were retained as-is by owner
-  // decision (Gabriel, 2026-10-17: keep every value).
-  note: 'Site-side distillation of Buy Box & Scorecard rev 1.1; weights/tapers retained as-is by owner decision 2026-10-17.',
+  // PLAINLY: the site values are NOT derivable from Buy Box & Scorecard rev 1.1. Rev 1.1 is a 7-category
+  // scorecard (Basis 25 / Yield 20 / Product 20 / Market 12 / Seller 10 / Tenancy 7 / Value-add) with a different
+  // basis scale, size range ($500K-$10M) and height rule. The public site scorecard (5 categories,
+  // 25/25/20/15/15), the 0.85 comfort factor and the tapers are a separate, site-side scheme. "Keep every
+  // value as-is" was Gabriel's answer in parent session adfd24fd on 2026-10-17; this module only adds the
+  // version and provenance link. Ratifying the site weights themselves is an open item.
+  note: 'Site-side scorecard, NOT derivable from Buy Box & Scorecard rev 1.1; values retained as-is by owner decision 2026-10-17 (parent session adfd24fd).',
 });
 
 function deepFreeze(o) {
@@ -48,6 +50,16 @@ const VALUES = deepFreeze({
   minCoveragePct: 60,
   // Score ceiling when a property-type or market gate FAILs.
   gateFailScoreCap: 30,
+  // Input-plausibility bounds for LLM-extracted figures (PR #176). NOT scoring thresholds: they never earn or
+  // cost points, they only decide whether an extracted figure is believable enough to score (else the result is
+  // withheld for team review). Pinned here with the scorecard values because loosening them changes which
+  // deals a broker is shown a score for.
+  plausibility: {
+    askingPriceMin: 50_000, askingPriceMax: 500_000_000,
+    buildingSfMin: 500, buildingSfMax: 5_000_000,
+    clearHeightMinFt: 6, clearHeightMaxFt: 100,
+    pricePerSfMin: 5, pricePerSfMax: 2_000,
+  },
 });
 
 module.exports = { SCORECARD_VERSION, SOURCE, VALUES };

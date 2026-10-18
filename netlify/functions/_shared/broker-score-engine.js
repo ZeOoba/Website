@@ -98,6 +98,8 @@ function scoreClearHeight(clearHeightFt) {
   if (bad) return invalidCategory(possible, 'Clear height', bad);
   if (clearHeightFt >= 18) return { possible, earned: possible, note: `${clearHeightFt}' clear height — meets 18'+ target.` };
   if (clearHeightFt < 14) return { possible, earned: 0, note: `${clearHeightFt}' clear height — below target.` };
+  // Exactly 14' earns 0 (the taper starts at 0 here); label it as the floor, not as tapering credit.
+  if (clearHeightFt === 14) return { possible, earned: 0, note: `${clearHeightFt}' clear height — at the 14' floor, below target; no credit.` };
   const t = (clearHeightFt - 14) / 4;
   return { possible, earned: Math.round(t * possible), note: `${clearHeightFt}' clear height — below target, tapering credit.` };
 }
@@ -117,6 +119,11 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
   }
   const rctLow = rctBenchmark.marketToRctLowPerSF[matchedRctMarket];
   if (typeof rctLow !== 'number' || !Number.isFinite(rctLow) || rctLow <= 0) {
+    // A market that IS in the benchmark but carries a bad value (string, NaN, negative, zero) is a broken
+    // benchmark, not a missing one: hold for review instead of silently renormalising around it.
+    if (Object.prototype.hasOwnProperty.call(rctBenchmark.marketToRctLowPerSF, matchedRctMarket)) {
+      return invalidCategory(possible, 'Replacement-cost benchmark', 'is not a positive number');
+    }
     return { possible, excluded: true, note: `No RCT v03 benchmark for "${matchedRctMarket}" — excluded from scoring.` };
   }
   // Markets whose benchmark is a proxy for another market's figure (RCT v3.1 `proxy: true`). Shown in the
@@ -218,7 +225,22 @@ function scoreDeal(extractedIn, rctBenchmark) {
   // that would let the remaining categories print a clean-looking score. Any such category, or any
   // non-finite number anywhere in the arithmetic, withholds the score for human review. Even a gate FAIL
   // does not exempt it: the cap of 30 is only trustworthy if the figures behind it were readable.
-  const reviewReasons = rawCategories.filter((c) => c.invalid).map((c) => c.reviewReason);
+  // An invalid price or SF fails both its own category and basis with the same text: de-duplicate.
+  const reviewReasons = [...new Set(rawCategories.filter((c) => c.invalid).map((c) => c.reviewReason))];
+  // The implied $/SF plausibility check lives in scoreBasis, which is skipped when no RCT market matched,
+  // so a 600 SF "building" at $5M would otherwise score cleanly. Run it here whenever both figures are
+  // individually valid, independent of the market.
+  if (
+    extracted.askingPrice != null && extracted.buildingSizeSF != null
+    && !invalidNumberReason(extracted.askingPrice, PLAUSIBLE_ASKING_PRICE_MIN, PLAUSIBLE_ASKING_PRICE_MAX)
+    && !invalidNumberReason(extracted.buildingSizeSF, PLAUSIBLE_BUILDING_SF_MIN, PLAUSIBLE_BUILDING_SF_MAX)
+  ) {
+    const perSF = extracted.askingPrice / extracted.buildingSizeSF;
+    const reason = 'Implied price per SF is outside the plausible range';
+    if (!(perSF >= PLAUSIBLE_PRICE_PER_SF_MIN && perSF <= PLAUSIBLE_PRICE_PER_SF_MAX) && !reviewReasons.includes(reason)) {
+      reviewReasons.push(reason);
+    }
+  }
   const arithmeticBroken = included.some((c) => !Number.isFinite(c.earned)) || !Number.isFinite(rawWeightedScore) || !Number.isFinite(coveragePct);
   if (arithmeticBroken) reviewReasons.push('Scoring arithmetic produced a non-finite value');
   const needsReview = reviewReasons.length > 0;

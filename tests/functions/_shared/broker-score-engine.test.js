@@ -520,6 +520,41 @@ test('scoreDeal: each figure plausible alone but implied $/SF implausible needs 
   assert.equal(cheap.needsReview, true);
 });
 
+test('scoreDeal: implausible implied $/SF needs review even when no RCT market matched', () => {
+  // Basis is excluded when no market matched, so the basis category cannot be the only place this is caught.
+  for (const matchedRctMarket of [null, undefined, 'Phoenix']) {
+    const r = engine.scoreDeal({ ...goodDeal, askingPrice: 5_000_000, buildingSizeSF: 600, matchedRctMarket }, rctBenchmark);
+    assert.equal(r.needsReview, true, String(matchedRctMarket));
+    assert.equal(r.finalScore, null, String(matchedRctMarket));
+    assert.ok(r.reviewReasons.some((x) => /price per SF/i.test(x)), String(matchedRctMarket));
+  }
+  // A plausible ratio with no market is still just an excluded basis, not a review.
+  const ok = engine.scoreDeal({ ...goodDeal, matchedRctMarket: null }, rctBenchmark);
+  assert.equal(ok.needsReview, false);
+});
+
+test('scoreDeal: review reasons are not duplicated across categories', () => {
+  const r = engine.scoreDeal({ ...goodDeal, askingPrice: 0 }, rctBenchmark);
+  assert.equal(r.needsReview, true);
+  assert.equal(new Set(r.reviewReasons).size, r.reviewReasons.length, JSON.stringify(r.reviewReasons));
+});
+
+test('scoreBasis: a matched market with a non-numeric / non-positive benchmark needs review, not silent exclusion', () => {
+  for (const bad of ['229', NaN, -5, 0]) {
+    const bench = { ...rctBenchmark, marketToRctLowPerSF: { ...rctBenchmark.marketToRctLowPerSF, Columbus: bad } };
+    const r = engine.scoreDeal({ ...goodDeal, matchedRctMarket: 'Columbus' }, bench);
+    assert.equal(r.needsReview, true, String(bad));
+    assert.equal(r.finalScore, null, String(bad));
+  }
+});
+
+test('scoreClearHeight: exactly 14 ft earns 0 and is labelled as the floor, not as tapering credit', () => {
+  const at = engine.scoreClearHeight(14);
+  assert.equal(at.earned, 0);
+  assert.doesNotMatch(at.note, /tapering credit/);
+  assert.match(engine.scoreClearHeight(16).note, /tapering credit/);
+});
+
 test('scoreDeal: an invalid figure does not exempt a gate failure from review', () => {
   const r = engine.scoreDeal({ ...goodDeal, assetClass: 'multifamily', askingPrice: 0 }, rctBenchmark);
   assert.equal(r.gateFailed, true);

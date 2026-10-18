@@ -1,5 +1,7 @@
 'use strict';
 
+const { SCORECARD_VERSION, VALUES: SC } = require('./broker-score-constants');
+
 function vintageFloorPct(yearBuilt, cfg) {
   const yb = (yearBuilt == null || !Number.isFinite(yearBuilt)) ? cfg.earlyYear : yearBuilt;
   if (yb <= cfg.earlyYear) return cfg.earlyPct;
@@ -28,41 +30,41 @@ function evaluateMarketGate(matchedRctMarket, city, state) {
 function fmtMoney(n) { return n.toLocaleString('en-US'); }
 
 function scoreDealSize(askingPrice) {
-  const possible = 25;
+  const possible = SC.weights.dealSize;
   if (askingPrice == null) return { possible, excluded: true, note: 'Asking price not stated in OM — excluded from scoring.' };
-  if (askingPrice >= 1_000_000 && askingPrice <= 10_000_000) {
+  if (askingPrice >= SC.dealSize.targetMin && askingPrice <= SC.dealSize.targetMax) {
     return { possible, earned: possible, note: `Asking price $${fmtMoney(askingPrice)} — within target $1M-$10M.` };
   }
-  if (askingPrice < 1_000_000) {
-    if (askingPrice <= 500_000) return { possible, earned: 0, note: `Asking price $${fmtMoney(askingPrice)} — below target range.` };
-    const t = (askingPrice - 500_000) / 500_000;
+  if (askingPrice < SC.dealSize.targetMin) {
+    if (askingPrice <= SC.dealSize.zeroBelow) return { possible, earned: 0, note: `Asking price $${fmtMoney(askingPrice)} — below target range.` };
+    const t = (askingPrice - SC.dealSize.zeroBelow) / (SC.dealSize.targetMin - SC.dealSize.zeroBelow);
     return { possible, earned: Math.round(t * possible), note: `Asking price $${fmtMoney(askingPrice)} — below target, tapering credit.` };
   }
-  if (askingPrice >= 15_000_000) return { possible, earned: 0, note: `Asking price $${fmtMoney(askingPrice)} — above target range.` };
-  const t = (15_000_000 - askingPrice) / 5_000_000;
+  if (askingPrice >= SC.dealSize.zeroAbove) return { possible, earned: 0, note: `Asking price $${fmtMoney(askingPrice)} — above target range.` };
+  const t = (SC.dealSize.zeroAbove - askingPrice) / (SC.dealSize.zeroAbove - SC.dealSize.targetMax);
   return { possible, earned: Math.round(t * possible), note: `Asking price $${fmtMoney(askingPrice)} — above target, tapering credit.` };
 }
 
 function scoreBuildingSize(buildingSizeSF) {
-  const possible = 20;
+  const possible = SC.weights.buildingSize;
   if (buildingSizeSF == null) return { possible, excluded: true, note: 'Building size not stated in OM — excluded from scoring.' };
-  if (buildingSizeSF < 50_000) return { possible, earned: possible, note: `${fmtMoney(buildingSizeSF)} SF — within target (<50,000 SF).` };
-  if (buildingSizeSF >= 100_000) return { possible, earned: 0, note: `${fmtMoney(buildingSizeSF)} SF — well above target size.` };
-  const t = (100_000 - buildingSizeSF) / 50_000;
+  if (buildingSizeSF < SC.buildingSize.fullBelowSF) return { possible, earned: possible, note: `${fmtMoney(buildingSizeSF)} SF — within target (<50,000 SF).` };
+  if (buildingSizeSF >= SC.buildingSize.zeroAtSF) return { possible, earned: 0, note: `${fmtMoney(buildingSizeSF)} SF — well above target size.` };
+  const t = (SC.buildingSize.zeroAtSF - buildingSizeSF) / (SC.buildingSize.zeroAtSF - SC.buildingSize.fullBelowSF);
   return { possible, earned: Math.round(t * possible), note: `${fmtMoney(buildingSizeSF)} SF — above target, tapering credit.` };
 }
 
 function scoreClearHeight(clearHeightFt) {
-  const possible = 15;
+  const possible = SC.weights.clearHeight;
   if (clearHeightFt == null) return { possible, excluded: true, note: 'Clear height not stated in OM — excluded from scoring.' };
-  if (clearHeightFt >= 18) return { possible, earned: possible, note: `${clearHeightFt}' clear height — meets 18'+ target.` };
-  if (clearHeightFt < 14) return { possible, earned: 0, note: `${clearHeightFt}' clear height — below target.` };
-  const t = (clearHeightFt - 14) / 4;
+  if (clearHeightFt >= SC.clearHeight.fullAtFt) return { possible, earned: possible, note: `${clearHeightFt}' clear height — meets 18'+ target.` };
+  if (clearHeightFt < SC.clearHeight.zeroBelowFt) return { possible, earned: 0, note: `${clearHeightFt}' clear height — below target.` };
+  const t = (clearHeightFt - SC.clearHeight.zeroBelowFt) / (SC.clearHeight.fullAtFt - SC.clearHeight.zeroBelowFt);
   return { possible, earned: Math.round(t * possible), note: `${clearHeightFt}' clear height — below target, tapering credit.` };
 }
 
 function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rctBenchmark) {
-  const possible = 25;
+  const possible = SC.weights.basis;
   if (askingPrice == null || buildingSizeSF == null || !matchedRctMarket) {
     return { possible, excluded: true, note: 'Insufficient data to compute basis vs. replacement cost — excluded from scoring.' };
   }
@@ -76,7 +78,7 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
     ? ` [proxy benchmark for ${matchedRctMarket}, not a directly sourced figure]` : '';
   const floorPct = vintageFloorPct(yearBuilt, rctBenchmark.vintageFloor);
   const floorPerSF = rctLow * (1 - floorPct);
-  const impliedPricePerSF = (askingPrice * 1.02) / buildingSizeSF;
+  const impliedPricePerSF = (askingPrice * SC.basis.closingCostMultiplier) / buildingSizeSF;
   // `note` is what the BROKER sees (broker-score-status returns it). It must never carry the floor or
   // the implied basis in dollars (2026-09-30 audit). `internalNote` keeps the figures for the
   // Gabriel/Eric email and the ledger only.
@@ -92,7 +94,7 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
       internalNote: `Implied basis $${impliedPricePerSF.toFixed(2)}/SF exceeds the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF for ${matchedRctMarket} — does not clear ORA's replacement-cost discipline.${proxySuffix}`,
     };
   }
-  const comfortableFloor = floorPerSF * 0.85;
+  const comfortableFloor = floorPerSF * SC.basis.comfortableFloorFactor;
   if (impliedPricePerSF <= comfortableFloor) {
     return {
       possible, earned: possible,
@@ -109,18 +111,18 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
 }
 
 function scoreComplexity(valueAddSignals) {
-  const possible = 15;
+  const possible = SC.weights.complexity;
   if (!valueAddSignals || valueAddSignals.length === 0) {
     return { possible, excluded: true, note: 'Value-add signals not stated in OM — excluded from scoring.' };
   }
   const realSignals = valueAddSignals.filter((s) => s !== 'none_stabilized');
-  if (realSignals.length >= 2) return { possible, earned: possible, note: `Value-add signals present: ${realSignals.join(', ')}.` };
-  if (realSignals.length === 1) return { possible, earned: Math.round(possible * 0.5), note: `One value-add signal present: ${realSignals[0]}.` };
+  if (realSignals.length >= SC.complexity.fullAtSignals) return { possible, earned: possible, note: `Value-add signals present: ${realSignals.join(', ')}.` };
+  if (realSignals.length === 1) return { possible, earned: Math.round(possible * SC.complexity.singleSignalFraction), note: `One value-add signal present: ${realSignals[0]}.` };
   return { possible, earned: 0, note: 'Fully stabilized, turnkey asset — limited value-add angle for ORA\'s underwriting edge.' };
 }
 
 // Minimum share of the 100 scoring points that must have been extractable before a score is shown.
-const MIN_COVERAGE_PCT = 60;
+const MIN_COVERAGE_PCT = SC.minCoveragePct;
 
 function scoreDeal(extracted, rctBenchmark) {
   const propertyTypeGate = evaluatePropertyTypeGate(extracted.assetClass);
@@ -154,9 +156,10 @@ function scoreDeal(extracted, rctBenchmark) {
   // markets was extracted still shows the broker a capped score at low coverage. Kept deliberately
   // (owner decision 2026-10-01, independent review F1): a city outside the benchmark markets is outside the box.
   const insufficientData = !gateFailed && coveragePct < MIN_COVERAGE_PCT;
-  const finalScore = insufficientData ? null : (gateFailed ? Math.min(rawWeightedScore, 30) : rawWeightedScore);
+  const finalScore = insufficientData ? null : (gateFailed ? Math.min(rawWeightedScore, SC.gateFailScoreCap) : rawWeightedScore);
 
   return {
+    scorecardVersion: SCORECARD_VERSION,
     finalScore,
     coveragePct,
     insufficientData,

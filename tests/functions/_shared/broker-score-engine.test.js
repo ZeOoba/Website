@@ -577,8 +577,22 @@ test('scoreDeal: a clean deal is unchanged (needsReview false, same score)', () 
   assertNoNaN(r);
 });
 
-test('scoreDeal: non-array valueAddSignals does not throw', () => {
-  assert.doesNotThrow(() => engine.scoreDeal({ ...goodDeal, valueAddSignals: 'vacancy' }, rctBenchmark));
+test('scoreDeal: a non-array valueAddSignals fails closed to review (the original engine threw, failing closed to unavailable)', () => {
+  for (const shape of ['vacancy', 'vacancy,legal_issue', { 0: 'vacancy', length: 1 }, {}, 5, true, new String('vacancy'), '', 0, false, { length: 0 }]) {
+    const r = engine.scoreDeal({ ...goodDeal, valueAddSignals: shape }, rctBenchmark);
+    assert.equal(r.needsReview, true, JSON.stringify(shape));
+    assert.equal(r.finalScore, null);
+    assert.match(r.reviewReasons.join(' '), /Value-add signals is not a list/);
+    assertNoNaN(r);
+  }
+});
+
+test('scoreDeal: null/undefined/empty valueAddSignals stay "not stated" (excluded, no review)', () => {
+  for (const v of [null, undefined, []]) {
+    const r = engine.scoreDeal({ ...goodDeal, valueAddSignals: v }, rctBenchmark);
+    assert.equal(r.needsReview, false);
+    assert.equal(r.categories.find((c) => c.key === 'complexity').excluded, true);
+  }
 });
 
 test('plausibility bounds are inclusive: values exactly at each limit are accepted', () => {

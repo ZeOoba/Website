@@ -78,6 +78,7 @@ const CMDS = {
   listings: test('listings-ui.test.mjs'),
   csp: test('csp-hashes.test.mjs'),
   cspPages: test('csp-all-pages.test.mjs'),
+  leak: test('leak-gate.test.mjs'),
   verify: ['scripts/verify-jsonld.mjs'],
   build: ['scripts/build-dist.mjs'],
   // probe: the build must fail AND leave no dist/ behind
@@ -103,7 +104,7 @@ for (const step of [['scripts/build-listings.mjs', '--check'], ['scripts/build-k
 }
 let baselineBad = 0;
 console.log('== baseline (unmodified copy)');
-for (const cmd of ['forms', 'integ', 'seo', 'csp', 'verify', ...(HAVE_BROWSER ? ['nav', 'budget', 'listings', 'cspPages'] : [])]) {
+for (const cmd of ['forms', 'integ', 'seo', 'csp', 'leak', 'verify', ...(HAVE_BROWSER ? ['nav', 'budget', 'listings', 'cspPages'] : [])]) {
   const r = run(cmd);
   console.log(`  ${cmd}: exit ${r.status}`);
   if (r.status !== 0) { baselineBad++; console.log(r.out.slice(-2500)); }

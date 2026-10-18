@@ -7,7 +7,7 @@
 # the allowlisted copy in dist/. Deploy with `netlify deploy --build` so dist/
 # is rebuilt first; never deploy --dir=. (that re-publishes the whole repo root).
 [build]
-  command = "node scripts/build-kb.mjs && node scripts/build-dist.mjs"
+  command = "node scripts/build-kb.mjs && node scripts/build-dist.mjs && node --test tests/site/leak-gate.test.mjs"
   publish = "dist"
 
 [build.environment]

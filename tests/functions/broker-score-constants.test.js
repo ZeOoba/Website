@@ -5,6 +5,7 @@ const { SCORECARD_VERSION, SOURCE, VALUES } = require('../../netlify/functions/_
 const engine = require('../../netlify/functions/_shared/broker-score-engine.js');
 const rctBenchmark = require('../../netlify/functions/_shared/rct-benchmark.json');
 const retained = require('./fixtures/broker-score-retained-values.json');
+const crypto = require('node:crypto');
 
 const HOW_TO = ' To change a scorecard value on purpose: get Gabriel\'s approval, then update BOTH '
   + 'netlify/functions/_shared/broker-score-constants.js and tests/functions/fixtures/broker-score-retained-values.json '
@@ -269,7 +270,7 @@ test('coverage minimum withholds the score exactly at the fixture boundary', () 
   const shown = engine.scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: 40_000, clearHeightFt: null }, rctBenchmark);
   assert.equal(shown.coveragePct, w.dealSize + w.basis + w.buildingSize);
   assert.equal(shown.insufficientData, shown.coveragePct < v.minCoveragePct);
-  // Exactly minCoveragePct: dealSize + clearHeight + complexity(0) ... choose categories summing to the minimum.
+  // Just below the minimum: dealSize + clearHeight + complexity = 55%.
   const exact = engine.scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: null, clearHeightFt: 20, valueAddSignals: ['vacancy'] }, rctBenchmark);
   assert.equal(exact.coveragePct, w.dealSize + w.clearHeight + w.complexity);
   assert.equal(exact.insufficientData, exact.coveragePct < v.minCoveragePct);
@@ -386,4 +387,31 @@ test('only the ios asset class gets the IOS size exemption; basis edges at the p
   assert.equal(basis(10_000_000, p.buildingSfMax).invalid, undefined);
   assert.equal(basis(10_000_000, p.buildingSfMax + 1).invalid, true);
   assert.equal(basis(p.askingPriceMin - 1, 40_000).invalid, true);
+});
+
+const canon = (o) => (o && typeof o === 'object' ? '{' + Object.keys(o).sort().map((k) => JSON.stringify(k) + ':' + canon(o[k])).join(',') + '}' : JSON.stringify(o));
+const hashValues = (o) => crypto.createHash('sha256').update(canon(o)).digest('hex');
+
+test('changing any scorecard value forces a SCORECARD_VERSION bump', () => {
+  // versionHistory maps each released version to the hash of its VALUES. Editing a value without adding a new
+  // version leaves the current version's hash stale and fails here. Overwriting an old entry to silence this is
+  // visible in review (the fixture diff shows a released version's hash changing).
+  const entry = retained.versionHistory[SCORECARD_VERSION];
+  assert.ok(entry, 'SCORECARD_VERSION ' + SCORECARD_VERSION + ' has no versionHistory entry in the fixture.' + HOW_TO);
+  assert.equal(hashValues(VALUES), entry,
+    'Scorecard VALUES changed but SCORECARD_VERSION did not. Bump SCORECARD_VERSION (e.g. site-1.1.1) and add its hash to versionHistory in the fixture; never edit an existing history entry.' + HOW_TO);
+  assert.equal(hashValues(retained.values), entry, 'Fixture values do not match their own versionHistory hash.');
+});
+
+test('deal-size labels and credit just below the target minimum', () => {
+  const d = retained.values.dealSize;
+  for (const price of [d.targetMin - 10_000, d.targetMin - 1]) {
+    assert.match(engine.scoreDealSize(price).note, /below target, tapering credit/, `label @ ${price}`);
+  }
+  assert.ok(engine.scoreDealSize(d.targetMin - 1).earned <= retained.values.weights.dealSize);
+  assert.match(engine.scoreDealSize(d.targetMin).note, /within target/);
+  const e = (p) => Math.round(((p - d.zeroBelow) / (d.targetMin - d.zeroBelow)) * retained.values.weights.dealSize);
+  for (const price of [990_000, 995_000, 999_000, 999_999]) {
+    assert.equal(engine.scoreDealSize(price).earned, e(price), `credit @ ${price}`);
+  }
 });

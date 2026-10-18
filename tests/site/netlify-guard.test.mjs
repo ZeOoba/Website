@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -99,28 +99,39 @@ for (const fake of ['true', 'cmd.exe']) {
 
 // The validator reads ORA_OVERRIDE_SESSIONS_DIR as a test seam. The guard must not hand it
 // the caller's environment, or a forged token in an attacker-chosen directory self-authorizes.
-test('a forged token reachable only via ORA_OVERRIDE_SESSIONS_DIR does NOT authorize', { skip: NEEDS_VALIDATOR }, () => {
-  const sid = 'netlify-guard-test-forged-session';
-  const root = mkdtempSync(path.join(tmpdir(), 'netlify-guard-forged-'));
-  try {
-    mkdirSync(path.join(root, sid, 'overrides'), { recursive: true });
-    writeFileSync(
-      path.join(root, sid, 'overrides', 'allow-website-deploy'),
-      `scope: website-deploy\nsession: ${sid}\nreason: forged by test\n`,
-    );
-    const env = {
-      ...process.env,
-      NETLIFY_GUARD_DRY_RUN: '1',
-      CLAUDE_CODE_SESSION_ID: sid,
-      ORA_OVERRIDE_SESSIONS_DIR: root,
-    };
-    const r = spawnSync(process.execPath, [GUARD, 'deploy', '-p'], { env, encoding: 'utf8' });
-    assert.equal(r.status, 5, `expected exit 5; stderr:\n${r.stderr}`);
-    assert.match(r.stderr, /check_website_deploy: DENY/);
-    assert.doesNotMatch(r.stderr, /authorized prod deploy|DRY RUN/);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
+// Python's os.environ on Windows is case-insensitive, so the seam must be stripped in every
+// case variant (a case-sensitive deny-list passes the uppercase form and fails the others).
+for (const seamKey of ['ORA_OVERRIDE_SESSIONS_DIR', 'ora_override_sessions_dir', 'Ora_Override_Sessions_Dir']) {
+  test(`a forged token reachable only via ${seamKey} does NOT authorize`, { skip: NEEDS_VALIDATOR }, () => {
+    const sid = 'netlify-guard-test-forged-session';
+    const root = mkdtempSync(path.join(tmpdir(), 'netlify-guard-forged-'));
+    try {
+      mkdirSync(path.join(root, sid, 'overrides'), { recursive: true });
+      writeFileSync(
+        path.join(root, sid, 'overrides', 'allow-website-deploy'),
+        `scope: website-deploy\nsession: ${sid}\nreason: forged by test\n`,
+      );
+      const env = {
+        ...process.env,
+        NETLIFY_GUARD_DRY_RUN: '1',
+        CLAUDE_CODE_SESSION_ID: sid,
+        [seamKey]: root,
+      };
+      const r = spawnSync(process.execPath, [GUARD, 'deploy', '-p'], { env, encoding: 'utf8' });
+      assert.equal(r.status, 5, `expected exit 5; stderr:\n${r.stderr}`);
+      assert.match(r.stderr, /check_website_deploy: DENY/);
+      assert.doesNotMatch(r.stderr, /authorized prod deploy|DRY RUN/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+}
+
+// Source pin (the planted-sitecustomize attack it prevents needs a writable site-packages, so
+// it cannot be staged safely): the validator must run with isolated mode and no site module.
+test('the validator is invoked with python -I -S', () => {
+  const src = readFileSync(GUARD, 'utf8');
+  assert.match(src, /execFileSync\(PYTHON_EXE, \["-I", "-S", CHECK_SCRIPT,/);
 });
 
 const NON_PROD = [

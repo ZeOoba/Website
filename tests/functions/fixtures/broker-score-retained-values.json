@@ -1,5 +1,5 @@
 {
-  "_comment": "Checked-in copy of the site scorecard values retained as-is by Gabriel (2026-10-17); they are a site-side distillation of Buy Box & Scorecard rev 1.1, not printed verbatim in it. tests/functions/broker-score-constants.test.js fails if netlify/functions/_shared/broker-score-constants.js drifts from this file. To change a value: get Gabriel's approval, then edit BOTH files in the same PR and bump scorecardVersion; move source.revision only if a new Buy Box & Scorecard revision was ratified.",
+  "_comment": "Checked-in copy of the site scorecard values retained as-is by Gabriel (2026-10-17); they are a site scorecard independent of Buy Box & Scorecard rev 1.1 (not derivable from it). tests/functions/broker-score-constants.test.js fails if netlify/functions/_shared/broker-score-constants.js drifts from this file. To change a value: get Gabriel's approval, then edit BOTH files in the same PR and bump scorecardVersion; move source.revision only if a new Buy Box & Scorecard revision was ratified.",
   "scorecardVersion": "site-1.1",
   "source": {
     "document": "ORA Buy Box & Scorecard (acquisition-underwriting skill)",
@@ -57,5 +57,8 @@
     "earlyPct": 0.65,
     "latePct": 0.6
   },
-  "vintageFloorRatified": "2026-07-14 (RCT v03 ramp recalibration; SKILL.md STAGE 1)"
+  "vintageFloorRatified": "2026-07-14 (RCT v03 ramp recalibration; SKILL.md STAGE 1)",
+  "versionHistory": {
+    "site-1.1": "d9d02e29964d745fae343e979839ff435ded7462c0e3db3e1ba2e30ad64c6753"
+  }
 }

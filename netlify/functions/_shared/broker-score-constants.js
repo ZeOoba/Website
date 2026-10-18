@@ -9,7 +9,7 @@
 // SCORECARD_VERSION (move SOURCE.revision only if a new Buy Box & Scorecard revision was ratified).
 // tests/functions/broker-score-constants.test.js fails on any drift between the two.
 
-const SCORECARD_VERSION = 'site-1.1'; // site scorecard distilled from Buy Box & Scorecard rev 1.1 (see SOURCE)
+const SCORECARD_VERSION = 'site-1.1'; // site scorecard, independent of Buy Box & Scorecard rev 1.1 (see SOURCE)
 
 const SOURCE = Object.freeze({
   document: 'ORA Buy Box & Scorecard (acquisition-underwriting skill)',
@@ -24,7 +24,7 @@ const SOURCE = Object.freeze({
   // 25/25/20/15/15), the 0.85 comfort factor and the tapers are a separate, site-side scheme. "Keep every
   // value as-is" was Gabriel's answer in parent session adfd24fd on 2026-10-17; this module only adds the
   // version and provenance link. Ratifying the site weights themselves is an open item.
-  note: 'Site-side scorecard, NOT derivable from Buy Box & Scorecard rev 1.1; values retained as-is by owner decision 2026-10-17 (parent session adfd24fd).',
+  note: 'Site-side scorecard, independent of Buy Box & Scorecard rev 1.1 (not derivable from it); values retained as-is by Gabriel, 2026-10-17, parent session adfd24fd.',
 });
 
 function deepFreeze(o) {

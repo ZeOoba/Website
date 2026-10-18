@@ -150,6 +150,10 @@ function validateMessages(input: unknown): { ok: true; msgs: Msg[] } | { ok: fal
     if (content.trim().length === 0) continue; // drop empty
     msgs.push({ role, content });
   }
+  // The Messages API requires the first message to be from the user. The widget sends the last 20
+  // history entries, so once a chat passes 20 messages the window starts on an assistant turn;
+  // drop leading assistant turns rather than letting upstream 400 (which surfaces as a 502).
+  while (msgs.length > 0 && msgs[0].role === 'assistant') msgs.shift();
   if (msgs.length === 0) return { ok: false, error: 'no non-empty messages' };
   // The last message should be from the user — Anthropic API requires it.
   if (msgs[msgs.length - 1].role !== 'user') return { ok: false, error: 'last message must be user' };
@@ -189,7 +193,10 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
   const ip = req.headers.get('x-nf-client-connection-ip')
           || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
           || 'unknown';
-  const max = parseInt(Deno.env.get('CHAT_RATE_LIMIT_PER_10MIN') || String(RATE_DEFAULT), 10);
+  // A malformed override ("abc") parses to NaN, and `bucket.length >= NaN` is never true, which
+  // would switch the limiter off on a billed endpoint. Fall back to the default instead.
+  const parsedMax = parseInt(Deno.env.get('CHAT_RATE_LIMIT_PER_10MIN') || '', 10);
+  const max = Number.isFinite(parsedMax) && parsedMax >= 1 ? parsedMax : RATE_DEFAULT;
   const rl = rateLimit(ip, max);
   if (!rl.ok) {
     return new Response(JSON.stringify({ error: 'rate_limited' }), {
@@ -210,9 +217,15 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
   const model = Deno.env.get('CHAT_MODEL') || MODEL_DEFAULT;
 
   const t0 = Date.now();
-  const sessionId = (body as { sessionId?: string }).sessionId || 'unknown';
+  // Client-supplied and only used for log correlation: bound it so it cannot bloat or forge logs.
+  const rawSession = (body as { sessionId?: unknown }).sessionId;
+  const sessionId = typeof rawSession === 'string' && rawSession
+    ? rawSession.slice(0, 64).replace(/[^\w.-]/g, '_')
+    : 'unknown';
 
-  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+  let upstream: Response;
+  try {
+    upstream = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -234,11 +247,19 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
       messages: valid.msgs,
       stream: true,
     }),
-  });
+    });
+  } catch (e) {
+    // Network failure / DNS / abort: answer with the same shape as an upstream HTTP error instead
+    // of letting the edge runtime turn the throw into a generic 500.
+    console.error('[chat] upstream fetch failed', { sessionId, err: String(e).slice(0, 200).split(apiKey).join('[redacted]') });
+    return new Response(JSON.stringify({ error: 'upstream_error', status: 0 }), {
+      status: 502, headers: { 'content-type': 'application/json' },
+    });
+  }
 
   if (!upstream.ok || !upstream.body) {
     const text = await upstream.text().catch(() => '');
-    console.error('[chat] upstream error', { sessionId, status: upstream.status, snippet: text.slice(0, 200) });
+    console.error('[chat] upstream error', { sessionId, status: upstream.status, snippet: text.slice(0, 200).split(apiKey).join('[redacted]') });
     return new Response(JSON.stringify({ error: 'upstream_error', status: upstream.status }), {
       status: 502, headers: { 'content-type': 'application/json' },
     });
@@ -252,6 +273,7 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
       let buf = '';
       let bytesIn = 0;
       let outputTokens = 0;
+      let streamErr: string | null = null;
       try {
         while (true) {
           const { value, done } = await reader.read();
@@ -270,9 +292,14 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
                 controller.enqueue(sseLine({ type: 'text', text: evt.delta.text }));
               } else if (evt.type === 'message_delta' && evt.usage?.output_tokens) {
                 outputTokens = evt.usage.output_tokens;
+              } else if (evt.type === 'error') {
+                // Mid-stream upstream failure (e.g. overloaded_error): surface it rather than
+                // closing with `done`, which the widget would treat as an empty successful reply.
+                streamErr = `upstream stream error: ${String(evt.error?.type || 'unknown')}`;
               }
             } catch { /* ignore malformed line */ }
           }
+          if (streamErr) throw new Error(streamErr);
         }
         controller.enqueue(sseLine({ type: 'done' }));
         controller.close();
@@ -280,6 +307,8 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
         console.log('[chat] ok', { sessionId, model, ms: dt, msgCount: valid.msgs.length, outputTokens, bytesIn });
       } catch (e) {
         console.error('[chat] stream error', { sessionId, err: String(e) });
+        // Stop reading so the upstream generation (billed per output token) is not left running.
+        try { await reader.cancel(); } catch { /* already closed */ }
         try { controller.enqueue(sseLine({ type: 'error', message: 'stream_error' })); } catch {}
         controller.close();
       }

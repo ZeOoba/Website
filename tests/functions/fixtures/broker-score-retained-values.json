@@ -1,0 +1,22 @@
+{
+  "_comment": "Checked-in copy of the site scorecard values retained as-is by Gabriel (2026-10-17); they are a site-side distillation of Buy Box & Scorecard rev 1.1, not printed verbatim in it. tests/functions/broker-score-constants.test.js fails if netlify/functions/_shared/broker-score-constants.js drifts from this file. To change a value: get Gabriel's approval, then edit BOTH files in the same PR and bump scorecardVersion; move source.revision only if a new Buy Box & Scorecard revision was ratified.",
+  "scorecardVersion": "site-1.1",
+  "source": {
+    "document": "ORA Buy Box & Scorecard (acquisition-underwriting skill)",
+    "revision": "1.1",
+    "dateRatified": "2026-06-09",
+    "skillFileRevisionChecked": "v4.31 (2026-10-17)"
+  },
+  "values": {
+    "weights": { "dealSize": 25, "basis": 25, "buildingSize": 20, "clearHeight": 15, "complexity": 15 },
+    "dealSize": { "targetMin": 1000000, "targetMax": 10000000, "zeroBelow": 500000, "zeroAbove": 15000000 },
+    "buildingSize": { "fullBelowSF": 50000, "zeroAtSF": 100000 },
+    "clearHeight": { "fullAtFt": 18, "zeroBelowFt": 14 },
+    "basis": { "closingCostMultiplier": 1.02, "comfortableFloorFactor": 0.85 },
+    "complexity": { "fullAtSignals": 2, "singleSignalFraction": 0.5 },
+    "minCoveragePct": 60,
+    "gateFailScoreCap": 30
+  },
+  "vintageFloor": { "earlyYear": 1995, "lateYear": 2005, "earlyPct": 0.65, "latePct": 0.6 },
+  "vintageFloorRatified": "2026-07-14 (RCT v03 ramp recalibration; SKILL.md STAGE 1)"
+}

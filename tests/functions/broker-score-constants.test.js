@@ -148,7 +148,7 @@ test('boundary notes are stable at exact thresholds', () => {
   const d = retained.values.dealSize;
   assert.match(engine.scoreDealSize(d.targetMax + 1).note, /above target, tapering credit/);
   assert.match(engine.scoreDealSize(d.targetMax).note, /within target/);
-  assert.match(engine.scoreBuildingSize(retained.values.buildingSize.fullBelowSF).note, /above target, tapering credit/);
+  assert.match(engine.scoreBuildingSize(retained.values.buildingSize.fullBelowSF).note, new RegExp(`at the ${retained.values.buildingSize.fullBelowSF.toLocaleString('en-US')} SF target ceiling`));
   assert.match(engine.scoreBuildingSize(retained.values.buildingSize.fullBelowSF - 1).note, /within target/);
 });
 
@@ -160,7 +160,8 @@ test('boundary notes at the zero-credit thresholds are stable', () => {
   assert.match(engine.scoreDealSize(v.dealSize.zeroAbove - 1).note, /above target, tapering credit/);
   assert.match(engine.scoreBuildingSize(v.buildingSize.zeroAtSF).note, /well above target size/);
   assert.match(engine.scoreBuildingSize(v.buildingSize.zeroAtSF - 1).note, /above target, tapering credit/);
-  assert.match(engine.scoreClearHeight(v.clearHeight.zeroBelowFt).note, /below target, tapering credit/);
+  assert.match(engine.scoreClearHeight(v.clearHeight.zeroBelowFt).note, new RegExp(`at the ${retained.values.clearHeight.zeroBelowFt}' floor`));
+  assert.match(engine.scoreClearHeight(v.clearHeight.zeroBelowFt + 0.5).note, /below target, tapering credit/);
   assert.match(engine.scoreClearHeight(v.clearHeight.zeroBelowFt - 0.01).note, /below target\.$/);
 });
 
@@ -168,7 +169,7 @@ test('boundary notes at the zero-credit thresholds are stable', () => {
 // neighbours directly, with expectations derived from the fixture only.
 test('taper half-point flip points match the fixture-derived reference', () => {
   const v = retained.values;
-  const probe = (w, zero, full, score, near, step) => {
+  const probe = (w, zero, full, score, step) => {
     for (let k = 0; k < w; k++) {
       const x = zero + (full - zero) * ((k + 0.5) / w);
       for (let d = -3; d <= 3; d++) {
@@ -179,16 +180,16 @@ test('taper half-point flip points match the fixture-derived reference', () => {
         assert.equal(score(input), e, `flip probe ${input}`);
       }
     }
-    assert.ok(near);
   };
-  probe(v.weights.dealSize, v.dealSize.zeroBelow, v.dealSize.targetMin, (p) => engine.scoreDealSize(p).earned, true, 1);
-  probe(v.weights.dealSize, v.dealSize.zeroAbove, v.dealSize.targetMax, (p) => engine.scoreDealSize(p).earned, true, 1);
-  probe(v.weights.buildingSize, v.buildingSize.zeroAtSF, v.buildingSize.fullBelowSF, (s) => engine.scoreBuildingSize(s).earned, true, 1);
+  probe(v.weights.dealSize, v.dealSize.zeroBelow, v.dealSize.targetMin, (p) => engine.scoreDealSize(p).earned, 1);
+  probe(v.weights.dealSize, v.dealSize.zeroAbove, v.dealSize.targetMax, (p) => engine.scoreDealSize(p).earned, 1);
+  probe(v.weights.buildingSize, v.buildingSize.zeroAtSF, v.buildingSize.fullBelowSF, (s) => engine.scoreBuildingSize(s).earned, 1);
   for (let sf = v.buildingSize.fullBelowSF; sf <= v.buildingSize.zeroAtSF; sf++) {
-    const e = sf === v.buildingSize.fullBelowSF ? Math.round(((v.buildingSize.zeroAtSF - sf) / (v.buildingSize.zeroAtSF - v.buildingSize.fullBelowSF)) * v.weights.buildingSize) : Math.round(((v.buildingSize.zeroAtSF - sf) / (v.buildingSize.zeroAtSF - v.buildingSize.fullBelowSF)) * v.weights.buildingSize);
-    assert.equal(engine.scoreBuildingSize(sf).earned, sf >= v.buildingSize.zeroAtSF ? 0 : e, `building @ ${sf}`);
+    const e = sf >= v.buildingSize.zeroAtSF ? 0
+      : Math.round(((v.buildingSize.zeroAtSF - sf) / (v.buildingSize.zeroAtSF - v.buildingSize.fullBelowSF)) * v.weights.buildingSize);
+    assert.equal(engine.scoreBuildingSize(sf).earned, e, `building @ ${sf}`);
   }
-  probe(v.weights.clearHeight, v.clearHeight.zeroBelowFt, v.clearHeight.fullAtFt, (h) => engine.scoreClearHeight(h).earned, true, 0.001);
+  probe(v.weights.clearHeight, v.clearHeight.zeroBelowFt, v.clearHeight.fullAtFt, (h) => engine.scoreClearHeight(h).earned, 0.001);
 });
 
 test('basis note tier follows the fixture at the exact floor and comfort edges', () => {
@@ -208,8 +209,8 @@ test('basis note tier follows the fixture at the exact floor and comfort edges',
 
 test('exact floating-point equality at the floor and comfort edges keeps its tier', () => {
   // Integer inputs whose implied basis lands exactly on the floor / comfort floor (found by exhaustive
-  // search against the pre-extraction engine). Equality must stay on the lenient side of each comparison.
-  assert.match(engine.scoreBasis(2772343, 34680, null, 'Maryland', rctBenchmark).note, /but not comfortably/);
+  // search against the pre-extraction engine). Equality at the floor is labelled as such (earned 0, PR #176); equality at the comfort floor earns full credit.
+  assert.match(engine.scoreBasis(2772343, 34680, null, 'Maryland', rctBenchmark).note, /at the replacement-cost floor/);
   assert.match(engine.scoreBasis(2912125, 40000, 2000, 'Maryland', rctBenchmark).note, /meaningful margin/);
 });
 
@@ -258,4 +259,78 @@ test('clear-height taper matches the fixture reference at literal feet, tenths, 
   for (let n = 130; n <= 190; n++) heights.push(n / 10);
   for (let f = 13; f <= 19; f++) for (let i = 0; i < 12; i++) heights.push(f + i / 12);
   for (const h of heights) assert.equal(engine.scoreClearHeight(h).earned, ref(h), `clear height @ ${h}`);
+});
+
+test('coverage minimum withholds the score exactly at the fixture boundary', () => {
+  const v = retained.values;
+  const base = { assetClass: 'industrial', matchedRctMarket: 'Columbus', city: 'Columbus', state: 'OH', yearBuilt: 2000, valueAddSignals: null };
+  // dealSize + basis + buildingSize extracted = 70% coverage (>= min): shown. Drop buildingSize and basis: 25%.
+  const w = v.weights;
+  const shown = engine.scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: 40_000, clearHeightFt: null }, rctBenchmark);
+  assert.equal(shown.coveragePct, w.dealSize + w.basis + w.buildingSize);
+  assert.equal(shown.insufficientData, shown.coveragePct < v.minCoveragePct);
+  // Exactly minCoveragePct: dealSize + clearHeight + complexity(0) ... choose categories summing to the minimum.
+  const exact = engine.scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: null, clearHeightFt: 20, valueAddSignals: ['a'] }, rctBenchmark);
+  assert.equal(exact.coveragePct, w.dealSize + w.clearHeight + w.complexity);
+  assert.equal(exact.insufficientData, exact.coveragePct < v.minCoveragePct);
+  const below = engine.scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: null, clearHeightFt: 20, valueAddSignals: null }, rctBenchmark);
+  assert.equal(below.insufficientData, below.coveragePct < v.minCoveragePct);
+  assert.equal(below.insufficientData, true);
+});
+
+test('plausibility bounds are exported from the fixture values', () => {
+  const p = retained.values.plausibility;
+  assert.equal(engine.PLAUSIBLE_ASKING_PRICE_MIN, p.askingPriceMin);
+  assert.equal(engine.PLAUSIBLE_ASKING_PRICE_MAX, p.askingPriceMax);
+  assert.equal(engine.PLAUSIBLE_BUILDING_SF_MIN, p.buildingSfMin);
+  assert.equal(engine.PLAUSIBLE_BUILDING_SF_MAX, p.buildingSfMax);
+  assert.equal(engine.PLAUSIBLE_CLEAR_HEIGHT_MIN_FT, p.clearHeightMinFt);
+  assert.equal(engine.PLAUSIBLE_CLEAR_HEIGHT_MAX_FT, p.clearHeightMaxFt);
+  assert.equal(engine.PLAUSIBLE_PRICE_PER_SF_MIN, p.pricePerSfMin);
+  assert.equal(engine.PLAUSIBLE_PRICE_PER_SF_MAX, p.pricePerSfMax);
+  // Behaviour at each bound edge: inside scores, just outside is held for review.
+  assert.equal(engine.scoreDealSize(p.askingPriceMin).invalid, undefined);
+  assert.equal(engine.scoreDealSize(p.askingPriceMin - 1).invalid, true);
+  assert.equal(engine.scoreDealSize(p.askingPriceMax).invalid, undefined);
+  assert.equal(engine.scoreDealSize(p.askingPriceMax + 1).invalid, true);
+  assert.equal(engine.scoreBuildingSize(p.buildingSfMin).invalid, undefined);
+  assert.equal(engine.scoreBuildingSize(p.buildingSfMin - 1).invalid, true);
+  assert.equal(engine.scoreBuildingSize(p.buildingSfMax).invalid, undefined);
+  assert.equal(engine.scoreBuildingSize(p.buildingSfMax + 1).invalid, true);
+  assert.equal(engine.scoreClearHeight(p.clearHeightMinFt).invalid, undefined);
+  assert.equal(engine.scoreClearHeight(p.clearHeightMinFt - 0.1).invalid, true);
+  assert.equal(engine.scoreClearHeight(p.clearHeightMaxFt).invalid, undefined);
+  assert.equal(engine.scoreClearHeight(p.clearHeightMaxFt + 0.1).invalid, true);
+  const rct = rctBenchmark;
+  const sf = 10_000;
+  assert.equal(engine.scoreBasis(p.pricePerSfMin * sf, sf, 2000, 'Columbus', rct).invalid, undefined);
+  assert.equal(engine.scoreBasis(p.pricePerSfMin * sf - 1, sf, 2000, 'Columbus', rct).invalid, true);
+  assert.equal(engine.scoreBasis(p.pricePerSfMax * sf, sf, 2000, 'Columbus', rct).invalid, undefined);
+  assert.equal(engine.scoreBasis(p.pricePerSfMax * sf + 1, sf, 2000, 'Columbus', rct).invalid, true);
+});
+
+test('coverage is withheld at 55 and shown at exactly the 60 minimum (literal expectations)', () => {
+  const w = retained.values.weights;
+  assert.equal(retained.values.minCoveragePct, 60);
+  assert.equal(w.dealSize + w.buildingSize + w.clearHeight, 60);
+  const none = { assetClass: 'industrial', matchedRctMarket: null, city: null, state: null, yearBuilt: 2000 };
+  const at60 = engine.scoreDeal({ ...none, askingPrice: 2_000_000, buildingSizeSF: 40_000, clearHeightFt: 20, valueAddSignals: null }, rctBenchmark);
+  assert.equal(at60.coveragePct, 60);
+  assert.equal(at60.insufficientData, false);
+  assert.notEqual(at60.finalScore, null);
+  const at55 = engine.scoreDeal({ ...none, askingPrice: 2_000_000, buildingSizeSF: null, clearHeightFt: 20, valueAddSignals: ['a'] }, rctBenchmark);
+  assert.equal(at55.coveragePct, 55);
+  assert.equal(at55.insufficientData, true);
+  assert.equal(at55.finalScore, null);
+});
+
+test('implied price-per-SF plausibility edges apply without a market match', () => {
+  const p = retained.values.plausibility;
+  const none = { assetClass: 'industrial', matchedRctMarket: null, city: null, state: null, yearBuilt: 2000, clearHeightFt: 20, valueAddSignals: ['a', 'b'] };
+  const run = (price, sf) => engine.scoreDeal({ ...none, askingPrice: price, buildingSizeSF: sf }, rctBenchmark);
+  const sf = 50_000;
+  assert.equal(run(p.pricePerSfMin * sf, sf).needsReview, false);
+  assert.equal(run(p.pricePerSfMin * sf - 1, sf).needsReview, true);
+  assert.equal(run(p.pricePerSfMax * 1_000, 1_000).needsReview, false);
+  assert.equal(run(p.pricePerSfMax * 1_000 + 1, 1_000).needsReview, true);
 });

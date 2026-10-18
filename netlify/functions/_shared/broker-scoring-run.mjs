@@ -111,7 +111,7 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
       'score-total': result.finalScore == null ? '' : result.finalScore,
       'score-coverage': result.coveragePct,
       // A needs-review hold and a low-coverage withhold both leave score-total empty; this tells them apart
-      // at the row level (reasons are in score-breakdown's internal notes and the review email).
+      // at the row level (reasons are in score-breakdown's internal notes and the review email; a non-finite arithmetic hold appears only in the email).
       'score-needs-review': result.needsReview ? 'true' : 'false',
       'score-gate-property-type': result.gates.propertyType,
       'score-gate-market': result.gates.market,

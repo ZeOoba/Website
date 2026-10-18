@@ -37,9 +37,21 @@ function safeEqual(a, b) {
   return diff === 0;
 }
 
-// Reads a clone of the body. The first SCAN_LIMIT bytes come back as `text` (latin1). If more
-// follows, `rest` says what happened to it: 'none' (no more), 'clean' (scanned raw, no protected
-// name), 'hit' (a protected name occurs later), 'refused' (too big / not scannable).
+// A protected name, allowing any character to be percent-encoded (`pipeline%2Dfailures`, `%70ipeline…`).
+// One linear regex pass: decoding a 1 MiB body first costs more CPU than the edge allows.
+const hex = (c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0');
+const NAME_RE = new RegExp(
+  internal.forms.map((n) => [...n].map((c) => `(?:${c.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&')}|${hex(c)})`).join('')).join('|'),
+  'i',
+);
+const NAME_MAX = Math.max(...internal.forms.map((n) => n.length)) * 3;
+// Encodings the platform's parser might undo but we do not.
+const ENC_RE = /content-transfer-encoding:\s*(?:quoted-printable|base64)/i;
+const SCAN_OVERLAP = Math.max(NAME_MAX, 'content-transfer-encoding: quoted-printable'.length + 8);
+
+// Reads a clone of the body. The first SCAN_LIMIT bytes come back as `text` (latin1). Bytes
+// beyond that are scanned chunk by chunk (with an overlap tail) when `scanRest`, else refused:
+// `rest` is 'none' | 'clean' | 'hit' (protected name later) | 'encoded' | 'refused'.
 async function readBody(req, { scanRest }) {
   if (!req.body) return { text: '', rest: 'none' };
   const reader = req.clone().body.getReader();
@@ -48,28 +60,28 @@ async function readBody(req, { scanRest }) {
   let size = 0;
   let rest = 'none';
   let tail = '';
-  const overlap = Math.max(...internal.forms.map((n) => n.length)) - 1;
   for (;;) {
-    const { done, value: chunkValue } = await reader.read();
+    const { done, value } = await reader.read();
     if (done) break;
-    let value = chunkValue;
+    let past = value;
     if (size < SCAN_LIMIT) {
       const take = value.subarray(0, SCAN_LIMIT - size);
       text += decoder.decode(take, { stream: true });
       size += take.length;
-      if (take.length === value.length) continue;
-      value = value.subarray(take.length);
-      tail = text.slice(-overlap).toLowerCase();
+      past = value.subarray(take.length);
+      // Whatever the chunking, the overlap must start from the end of the scanned prefix.
+      if (size >= SCAN_LIMIT) tail = text.slice(-SCAN_OVERLAP);
     }
-    // Past the limit.
+    if (past.length === 0) continue;
     if (!scanRest) {
       rest = 'refused';
     } else {
-      const chunk = tail + decoder.decode(value, { stream: true }).toLowerCase();
-      if (internal.forms.some((n) => chunk.includes(n))) rest = 'hit';
+      const chunk = tail + decoder.decode(past, { stream: true });
+      if (NAME_RE.test(chunk)) rest = 'hit';
+      else if (ENC_RE.test(chunk)) rest = 'encoded';
       else if (rest === 'none') rest = 'clean';
-      tail = chunk.slice(-overlap);
-      if (rest === 'hit') {
+      tail = chunk.slice(-SCAN_OVERLAP);
+      if (rest === 'hit' || rest === 'encoded') {
         reader.cancel().catch(() => {});
         break;
       }
@@ -81,17 +93,6 @@ async function readBody(req, { scanRest }) {
     break;
   }
   return { text, rest };
-}
-
-// Percent-decode leniently: a malformed escape elsewhere in the body must not stop the rest
-// from decoding (form parsers keep a bad %xx literal and carry on).
-function decoded(raw) {
-  return raw.replace(/\+/g, ' ').replace(/%([0-9a-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
-}
-
-function mentionsProtectedForm(...haystacks) {
-  const text = haystacks.flatMap((h) => [h, decoded(h)]).join('\n').toLowerCase();
-  return internal.forms.some((name) => text.includes(name));
 }
 
 function deny(status, body) {
@@ -107,16 +108,15 @@ export async function guard(req, { secret }) {
   }
   const url = new URL(req.url);
   // The one public form that legitimately posts >1 MiB (file attachments) is multipart; its
-  // remaining bytes are scanned raw (multipart values are never percent-encoded).
-  const multipart = /^multipart\/form-data/i.test(req.headers.get('content-type') || '');
+  // remaining bytes are scanned raw (multipart values are never percent-encoded). A multipart
+  // type without a boundary is not a real multipart body, so it gets no exemption.
+  const contentType = req.headers.get('content-type') || '';
+  const multipart = /^multipart\/form-data\s*;.*\bboundary=/i.test(contentType);
   const { text, rest } = await readBody(req, { scanRest: url.pathname === LARGE_BODY_PATH && multipart });
   if (rest === 'refused') return deny(413, 'payload too large');
-  // Encodings the platform's parser might undo but we do not: refuse them outright.
   const encoded = (req.headers.get('content-encoding') || '').trim().toLowerCase();
-  if ((encoded && encoded !== 'identity') || /content-transfer-encoding:\s*(quoted-printable|base64)/i.test(text)) {
-    return deny(415, 'unsupported encoding');
-  }
-  if (rest !== 'hit' && !mentionsProtectedForm(text, url.search)) return null;
+  if ((encoded && encoded !== 'identity') || rest === 'encoded' || ENC_RE.test(text)) return deny(415, 'unsupported encoding');
+  if (rest !== 'hit' && !NAME_RE.test(text) && !NAME_RE.test(url.search)) return null;
   const presented = req.headers.get(internal.header);
   if (presented && safeEqual(presented, await signature(secret))) return null;
   console.warn('[forms-guard] rejected unsigned POST to an internal form', url.pathname);
@@ -133,7 +133,7 @@ export default async (req, context) => {
 // endpoints and the chat edge route never carry form submissions.
 export const config = {
   path: '/*',
-  excludedPath: ['/.netlify/*', '/api/chat', '/api/broker-*'],
+  excludedPath: ['/.netlify/*', '/api/chat', '/api/broker-upload-session', '/api/broker-finalize', '/api/broker-score-status'],
   method: 'POST',
   onError: 'bypass',
 };

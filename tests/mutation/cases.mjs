@@ -193,6 +193,11 @@ export const CASES = [
   { id: 'LG1', what: 'a denylisted phrase appears in the shipped pages', edits: [['scripts/leak-gate-hashes.json', plantDenylist('Oxford Realty Advisors')]], run: 'leak', expect: 'no active confidential-deal term' },
   { id: 'LG2', what: 'the hash file is emptied to {} (gate must fail closed, not pass)', edits: [['scripts/leak-gate-hashes.json', () => '{}']], run: 'leak', expect: 'no active confidential-deal term' },
   { id: 'LG5', what: 'the salt is swapped for another valid-looking one (entries no longer match)', edits: [['scripts/leak-gate-hashes.json', (t) => t.replace(/"salt": "[0-9a-f]{64}"/, '"salt": "' + 'ab'.repeat(32) + '"')]], run: 'leak', expect: 'no active confidential-deal term' },
+  { id: 'LG6', what: 'the tracked-file listing silently returns nothing (scan would be vacuous)', edits: [['tests/site/leak-gate.test.mjs', sub("    return execFileSync('git', ['ls-files', '-z']", "    return [] ?? execFileSync('git', ['ls-files', '-z']")]], run: 'leak', expect: 'no active confidential-deal term' },
+  { id: 'LG7', what: 'the local roster staleness check is disabled (always "absent")', edits: [['scripts/leak-gate-hashes.mjs', sub("if (!existsSync(p)) return { state: 'absent', active: 0 };", "return { state: 'absent', active: 0 };")]], run: 'leak', expect: 'roster staleness is detected' },
+  { id: 'LG8', what: 'roster aliases are no longer hashed', edits: [['scripts/lib/leak-gate.mjs', sub("    for (const t of strs(deal.aliases)) out.push({ kind: 'always', term: t });\n", '')]], run: 'leak', expect: 'aliases are hashed' },
+  { id: 'LG9', what: 'the gate step is removed from the Netlify build command', edits: [['netlify.toml', sub(' && node --test tests/site/leak-gate.test.mjs', '')]], run: 'leak', expect: 'Netlify build command' },
+  { id: 'LG10', what: 'findings name the matched file by its real path again', edits: [['scripts/lib/leak-gate.mjs', sub('return showPaths ? relPath : `file#', 'return true ? relPath : `file#')]], run: 'leak', expect: 'round-3 regressions' },
   { id: 'LG3', what: 'the PDF extractor goes blind (skips every content stream)', edits: [['scripts/lib/leak-gate-pdf.mjs', sub('if (!/\\bBT\\b/.test(d)) continue;', 'continue;')]], run: 'leak', expect: 'PDF text layers' },
 ];
 

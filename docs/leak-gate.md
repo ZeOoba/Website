@@ -14,14 +14,14 @@ works on salted hashes only.
 | `scripts/leak-gate-hashes.json` | Committed. Per-repo random salt + HMAC-SHA256 (truncated to 128 bits) of each normalized term, with its length and kind. No term text. |
 | `scripts/lib/leak-gate.mjs`, `leak-gate-pdf.mjs` | Normalizer, scanner, dependency-free PDF text extractor. Contain no roster data. |
 | `tests/site/leak-gate.test.mjs` | The gate (`npm run test:leak-gate`). Run by `npm run verify` right after the build **and** by the Netlify build command in `netlify.toml`, so deploy previews and production cannot ship a hit. |
-| `tests/mutation/cases.mjs` `LG1`-`LG3`, `LG5` | Mutation cases: a planted hit, a gutted hash file, a swapped salt and a blind PDF extractor must each fail the gate. |
+| `tests/mutation/cases.mjs` `LG1`-`LG10` | Mutation cases: a planted hit, a gutted or re-salted hash file, a blind PDF extractor, a vacuous file listing, a disabled staleness check, dropped aliases and a missing Netlify step must each fail the gate. |
 
 ## What is scanned
 
 `dist/**` (the shipped output), every git-tracked file (source, tests, docs, `data/*.json`,
 `netlify/edge-functions/chat.ts`, `scripts/meta.md`), the generated `netlify/edge-functions/knowledge-base.json`,
 and both root PDFs (also scanned inside `dist/`). File **paths** are scanned too; if a path itself matches, the
-report withholds it. A tracked symlink or submodule is itself a finding (the gate cannot read it).
+report never prints the path of a matched file. A tracked symlink or submodule is itself a finding (the gate cannot read it).
 
 - Text: raw, escape-decoded (HTML numeric and named entities, `\uXXXX`, `\u{...}`, `\xHH`, CSS `\HHHH`, percent-encoding,
   UTF-16 with BOM), and tag-stripped (HTML/SVG) variants. Named entities that are not letters (`&rsquo;`, `&ndash;`,
@@ -41,15 +41,17 @@ report withholds it. A tracked symlink or submodule is itself a finding (the gat
 Terms and text are normalized (NFKD, strip diacritics, drop trademark/superscript marks, fold common Cyrillic/Greek
 look-alikes, lowercase, alphanumeric tokens), so spacing, hyphens, case and punctuation variants of one name are the
 same string. A hit is any run of consecutive tokens, compacted, whose HMAC is in the denylist (no token-count cap; the
-character length of the longest term bounds the window). Terms of 10+ normalized characters are also found *inside* a
-single longer token up to 64 chars (the roster's own matching is substring-based). In PDFs, every window of every term
-length is checked in the glued character stream, so a short alias can false-positive there (for example a common word
-inside "Oxford"); the failure label says `glued:`. The fix is a longer alias, not an exemption.
+character length of the longest term bounds the window). Terms of 10+ normalized characters are matched as substrings of the compacted document (like the hook; windows start at every token boundary and at every position inside tokens longer than 10 chars), so
+plurals ("Foo Holding" in "Foo Holdings"), glued suffixes and names split by tags or entities are found. Shorter
+terms are matched on whole words only (a trailing plural "s"/"es" is tolerated) to limit false positives. Known gaps: a prefix glued onto a short token ("XFoo Holding"), and "&"
+versus "and" (or a dropped word) is not equated. In PDFs, every window of every term length is checked in the glued character
+stream, so a short alias can false-positive there (for example a common word inside "Oxford"); the failure label says
+`glued:`. The fix is a longer alias, not an exemption.
 
 Roster mirroring (`activeEntries`): a deal is active unless its `active` key is present and falsy (same default as
 `hooks/confidentiality-guard.py`); a blank `context_requires_any` entry unanchors the deal's `context` terms, which then
 hit on their own, as in the hook; `context` terms otherwise count only when a requirement term also hits in the same file.
-A failure names the file (unless its path matched) and the class (`always`, `context+ctxreq`), never the term.
+A failure shows a matched file only as `file#<fingerprint><ext>` plus the class (`always`, `context+ctxreq`), never the term or the path (a path can carry the term in a form the path check misses, and CI/Netlify logs are readable). Re-run locally with `LEAK_GATE_SHOW_PATHS=1` to see the paths. The file path is scanned together with the content, so a context term in a file name combines with its anchor in the body.
 
 ## When the roster changes (deal added, aliases edited, deal retired)
 
@@ -75,9 +77,6 @@ All pass today. When one trips, the output names the file and class (not the ter
 
 1. **Short or guessable terms are brute-forceable from the committed hashes.** The salt is committed (CI must be able to
    verify), so anyone with the repo can run a dictionary of names, addresses and city/street combinations against it.
-   A review measured an exhaustive search of a random 5-letter term in about 10 minutes on one CPU core; a GPU is orders of
-   magnitude faster. A one-word surname or a street address is recoverable in seconds; a long, multi-word, unusual
-   string is not.
    - Choice made: the generator never silently drops a term (that would remove protection), and prints a count-only
      warning for any term under 10 normalized characters.
    - Recommendation: treat a short form as *detected but not secret*. Add a distinctive multi-word alias
@@ -85,9 +84,16 @@ All pass today. When one trips, the output names the file and class (not the ter
      in `context` with a rare `context_requires_any` partner. If a deal's only identifier is a short common name, the
      hash file reveals that identity to anyone who guesses it; accept that, or keep that deal out of the hash file and rely
      on the local hook.
-   - Stronger option if ever needed: key the HMAC with a secret held in a GitHub Actions secret and the Netlify
-     environment (and `.env` locally), not in the repo. That makes the committed file unguessable, at the cost of a secret in
-     both places and no verification in forks.
+   - Measured: with the exact length known (the file stores it), an exhaustive search of a random 5-letter term took about
+     35 seconds on one CPU core with this repo's own hash routine; a GPU is orders of magnitude faster. Treat anything under
+     about 10 characters as recoverable by anyone with the repo.
+   - **Default once any deal is active: keyed mode.** Generate with `LEAK_GATE_KEY=<16+ random chars> node scripts/leak-gate-hashes.mjs --keyed`
+     and put the same value in the GitHub Actions secrets (exposed as `LEAK_GATE_KEY` to the verify job) and the Netlify
+     environment. The hashing salt is then derived from the committed salt AND the secret, so the committed file cannot be
+     brute-forced without it. A keyed file fails closed (the test throws) if the variable is missing or wrong, so wire the
+     secrets BEFORE merging a keyed file, or the build and deploys break. Unkeyed is acceptable only for
+     long, distinctive aliases. The generator warns when an active deal is unkeyed, and a dry scan of `dist/` reports counts of
+     files the new hashes would block.
 2. **Metadata leaks.** The file lists each term's normalized length and kind. Generic `context` and `ctxreq` words are
    labelled, which makes them the easiest targets; the same hash appearing under two kinds shows one term is in both;
    the entry count shows how many terms a deal has; `roster_digest` lets someone confirm a guessed full set.

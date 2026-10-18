@@ -1,8 +1,9 @@
 {
   "version": 2,
   "algo": "HMAC-SHA256 truncated to 128 bits; key = salt; message = compact normalized term",
-  "salt": "1578fb10cb3084826dae52a2076629b5dafc1a6b68e4a3f15d9fe122ed67251d",
+  "salt": "43390e5edff75116e0dc9ab04afcf39de8ae0f5d0fdc9672cfa5ee47e6589160",
+  "keyed": false,
   "entries": [],
-  "selfcheck": "c5fadf4bd424e6cef45465e6ed3e25d2",
-  "roster_digest": "1701c5edefcee002a246e9ac13356ed6"
+  "selfcheck": "eadc27e2fc6f0c1c5a1d0245f7729bb2",
+  "roster_digest": "63a6df3a7beb8f6196058365460c1fcf"
 }

@@ -1,5 +1,7 @@
 'use strict';
 
+const { internalFormHeaders } = require('./internal-forms');
+
 // Returns true on a successful forward, false otherwise — never throws, so
 // every existing fire-and-forget caller (that doesn't check the return
 // value) keeps working exactly as before. Callers that need to know (e.g.
@@ -14,7 +16,7 @@ async function forwardToNetlifyForm(siteUrl, formName, fields, { fetchImpl = fet
   try {
     const res = await fetchImpl(`${siteUrl}/`, {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', ...internalFormHeaders(formName) },
       body: params.toString(),
     });
     if (!res.ok) {

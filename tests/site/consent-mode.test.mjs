@@ -97,6 +97,38 @@ const waitForConfig = (page) =>
     { timeout: 30_000 },
   );
 
+// Click a link only once it is really there to be clicked. The site sets
+// `html{scroll-behavior:smooth}` and fades `.animate-on-scroll` blocks in with a 24px
+// transform transition, so right after scrollIntoView the link is still moving. A
+// `force: true` click skips Playwright's stability and hit-target checks and fires at
+// the coordinates computed mid-motion: under CPU load it landed on the surrounding
+// <section> and no GA4 event was ever sent (the phone_click flake, 5 of 40 loaded runs).
+// Wait on the page's own state instead: the rect has been identical for 5 consecutive
+// frames AND the element at its centre is the link (or inside it). If something such as
+// the fixed cookie banner ever covers the link, this wait times out and says what is on
+// top, rather than clicking the cover. The final click is forced only because the
+// settle check has already done Playwright's actionability work.
+async function clickSettled(page, locator) {
+  await locator.scrollIntoViewIfNeeded();
+  const handle = await locator.elementHandle();
+  await page.waitForFunction((el) => {
+    const r = el.getBoundingClientRect();
+    const key = [r.left, r.top, r.width, r.height].join(',');
+    const s = window.__settle && window.__settle.el === el ? window.__settle : (window.__settle = { el, key: '', n: 0 });
+    if (s.key === key) s.n++; else { s.key = key; s.n = 0; }
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return s.n >= 5 && !!hit && el.contains(hit);
+  }, handle, { polling: 'raf', timeout: 15_000 }).catch(async (err) => {
+    const seen = await handle.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { rect: [r.left, r.top, r.width, r.height].map(Math.round), scrollY: Math.round(window.scrollY), hit: hit ? `${hit.tagName}.${hit.getAttribute('class')}` : null };
+    }).catch(() => 'element detached');
+    throw new Error(`link never settled under the pointer: ${JSON.stringify(seen)}: ${err.message.split('\n')[0]}`);
+  });
+  await locator.click({ force: true });
+}
+
 for (const pagePath of PAGES) {
   test(`${pagePath}: a first-time visitor is denied before GA4 configures, and the banner is shown`, { timeout: 60_000 }, async () => {
     const { context, page } = await open(pagePath);
@@ -161,11 +193,11 @@ test('phone, email, PDF and CTA clicks each emit one GA4 event through the worke
     });
   await page.locator('.subpage-hero a.btn--gold[href="#broker-network"]').click();
   await expectEvent('cta_click', 'submit_deal');
-  await page.locator('a[href^="tel:"]').first().click({ force: true });
+  await clickSettled(page, page.locator('a[href^="tel:"]').first());
   await expectEvent('phone_click');
   // GA4 auto-redacts email-shaped values to "(redacted)", so a firm mailbox is labeled by
   // its name only (info), and any other address is never named (external).
-  await page.locator('a[href="mailto:info@oxfordra.net"]').first().click({ force: true });
+  await clickSettled(page, page.locator('a[href="mailto:info@oxfordra.net"]').first());
   await expectEvent('email_click', 'info');
   await page.evaluate(() => {
     const a = document.createElement('a');
@@ -182,7 +214,7 @@ test('phone, email, PDF and CTA clicks each emit one GA4 event through the worke
   const home = await open('/');
   await waitForConfig(home.page);
   await home.page.evaluate(() => document.addEventListener('click', (e) => { if (e.target.closest('a[href]')) e.preventDefault(); }));
-  await home.page.locator('a[href$=".pdf"]').first().click({ force: true });
+  await clickSettled(home.page, home.page.locator('a[href$=".pdf"]').first());
   await home.page.waitForFunction(
     () => document.documentElement.getAttributeNames().some((a) => a.startsWith('data-ga-') && document.documentElement.getAttribute(a).startsWith('event-pdf_download')),
     null,

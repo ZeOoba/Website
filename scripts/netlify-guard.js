@@ -47,6 +47,21 @@ const CHECK_SCRIPT = "C:\\Users\\Owner\\.claude\\hooks\\lib\\check_website_deplo
 const PYTHON_EXE = "C:\\Users\\Owner\\AppData\\Local\\Programs\\Python\\Python313\\python.exe";
 const DRY_RUN = process.env.NETLIFY_GUARD_DRY_RUN === "1";
 
+const VALIDATOR_ENV_ALLOWLIST = [
+  "systemroot", "windir", "systemdrive", "path", "pathext", "comspec",
+  "userprofile", "homedrive", "homepath", "home", "appdata", "localappdata",
+  "temp", "tmp",
+];
+
+// Case-insensitive (Windows env names are), values copied verbatim, everything else dropped.
+function validatorEnv() {
+  const env = {};
+  for (const key of Object.keys(process.env)) {
+    if (VALIDATOR_ENV_ALLOWLIST.indexOf(key.toLowerCase()) !== -1) env[key] = process.env[key];
+  }
+  return env;
+}
+
 function log(message) {
   process.stderr.write("[netlify-guard] " + message + "\n");
 }
@@ -136,8 +151,14 @@ function main() {
 
   try {
     // -I (isolated): ignores PYTHON* env vars (PYTHONPATH/PYTHONSTARTUP/...) and user site.
-    const output = execFileSync(PYTHON_EXE, ["-I", CHECK_SCRIPT, "--session", sessionId],
-      { encoding: "utf8" });
+    // env is an ALLOWLIST, not a copy of process.env: the validator reads test seams such as
+    // ORA_OVERRIDE_SESSIONS_DIR (override_tokens.py) that would let a caller point it at a
+    // directory holding a forged token and self-authorize. Only what Windows/Python needs is
+    // passed through (the sessions dir default is an absolute path in override_tokens.py).
+    // -S: no site module, so a planted sitecustomize/.pth in the user-writable site-packages
+    // cannot run inside the validator.
+    const output = execFileSync(PYTHON_EXE, ["-I", "-S", CHECK_SCRIPT, "--session", sessionId],
+      { encoding: "utf8", env: validatorEnv() });
     log("authorized prod deploy for session " + sessionId + " -- " + output.trim());
   } catch (err) {
     // A validator we cannot run, OR a validator that explicitly denied, both mean the

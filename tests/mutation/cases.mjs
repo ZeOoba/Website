@@ -16,15 +16,23 @@
 //
 // When a check is added or tightened, add the breakage it exists to catch here.
 
-import { hmac, compact, selfcheckOf } from '../../scripts/lib/leak-gate.mjs';
+import { hmac, compact, effectiveSalt, selfcheckOf } from '../../scripts/lib/leak-gate.mjs';
 
 // Rewrite the committed leak-gate denylist to hold one entry (or none for null),
 // keyed with the file's own salt.
 const plantDenylist = (phrase) => (s) => {
   const f = JSON.parse(s);
-  f.entries = phrase ? [{ kind: 'always', h: hmac(f.salt, compact(phrase)), len: compact(phrase).length }] : [];
-  f.selfcheck = selfcheckOf(f);
+  // Keyed files hash with the key-derived salt (LEAK_GATE_KEY must be in the environment, as in CI).
+  const eff = effectiveSalt(f.salt, f.keyed === true);
+  f.entries = phrase ? [{ kind: 'always', h: hmac(eff, compact(phrase)), len: compact(phrase).length }] : [];
+  f.selfcheck = selfcheckOf(f, eff);
   return JSON.stringify(f, null, 2) + '\n';
+};
+
+// Delete the first line matching a pattern, whatever the checkout's line endings (the self-hosted runner is Windows, CRLF).
+const dropLine = (re) => (s) => {
+  if (s === null || !re.test(s)) throw new Error(`anchor not found: ${re}`);
+  return s.replace(re, '');
 };
 
 export const sub = (find, repl) => (s) => {
@@ -193,12 +201,20 @@ export const CASES = [
   { id: 'LG1', what: 'a denylisted phrase appears in the shipped pages', edits: [['scripts/leak-gate-hashes.json', plantDenylist('Oxford Realty Advisors')]], run: 'leak', expect: 'no active confidential-deal term' },
   { id: 'LG2', what: 'the hash file is emptied to {} (gate must fail closed, not pass)', edits: [['scripts/leak-gate-hashes.json', () => '{}']], run: 'leak', expect: 'no active confidential-deal term' },
   { id: 'LG5', what: 'the salt is swapped for another valid-looking one (entries no longer match)', edits: [['scripts/leak-gate-hashes.json', (t) => t.replace(/"salt": "[0-9a-f]{64}"/, '"salt": "' + 'ab'.repeat(32) + '"')]], run: 'leak', expect: 'no active confidential-deal term' },
-  { id: 'LG6', what: 'the tracked-file listing silently returns nothing (scan would be vacuous)', edits: [['tests/site/leak-gate.test.mjs', sub("    return execFileSync('git', ['ls-files', '-z']", "    return [] ?? execFileSync('git', ['ls-files', '-z']")]], run: 'leak', expect: 'no active confidential-deal term' },
-  { id: 'LG7', what: 'the local roster staleness check is disabled (always "absent")', edits: [['scripts/leak-gate-hashes.mjs', sub("if (!existsSync(p)) return { state: 'absent', active: 0 };", "return { state: 'absent', active: 0 };")]], run: 'leak', expect: 'roster staleness is detected' },
-  { id: 'LG8', what: 'roster aliases are no longer hashed', edits: [['scripts/lib/leak-gate.mjs', sub("    for (const t of strs(deal.aliases)) out.push({ kind: 'always', term: t });\n", '')]], run: 'leak', expect: 'aliases are hashed' },
-  { id: 'LG9', what: 'the gate step is removed from the Netlify build command', edits: [['netlify.toml', sub(' && node --test tests/site/leak-gate.test.mjs', '')]], run: 'leak', expect: 'Netlify build command' },
-  { id: 'LG10', what: 'findings name the matched file by its real path again', edits: [['scripts/lib/leak-gate.mjs', sub('return showPaths ? relPath : `file#', 'return true ? relPath : `file#')]], run: 'leak', expect: 'round-3 regressions' },
-  { id: 'LG3', what: 'the PDF extractor goes blind (skips every content stream)', edits: [['scripts/lib/leak-gate-pdf.mjs', sub('if (!/\\bBT\\b/.test(d)) continue;', 'continue;')]], run: 'leak', expect: 'PDF text layers' },
+  { id: 'LG6', what: 'the tracked-file listing silently returns nothing (scan would be vacuous)', edits: [['scripts/lib/leak-gate.mjs', sub("    return execFileSync('git', ['ls-files', '-z']", "    return [] ?? execFileSync('git', ['ls-files', '-z']")]], run: 'leak', expect: 'no active confidential-deal term' },
+  { id: 'LG7', what: 'the local roster staleness check is disabled (always "absent")', edits: [['scripts/leak-gate-hashes.mjs', sub("if (!existsSync(p)) return { state: 'absent', active: 0 };", "return { state: 'absent', active: 0 };")]], run: 'leakFast', expect: 'roster staleness is detected' },
+  { id: 'LG8', what: 'roster aliases are no longer hashed', edits: [['scripts/lib/leak-gate.mjs', dropLine(/ *for \(const t of strs\(deal\.aliases\)\)[^\n]*\r?\n/)]], run: 'leakFast', expect: 'aliases are hashed' },
+  { id: 'LG9', what: 'the gate step is removed from the Netlify build command', edits: [['netlify.toml', sub(' && node --test tests/site/leak-gate.test.mjs', '')]], run: 'leakFast', expect: 'Netlify build command' },
+  { id: 'LG10', what: 'findings name the matched file by its real path again', edits: [['scripts/lib/leak-gate.mjs', sub('return showPaths ? relPath : `file#', 'return true ? relPath : `file#')]], run: 'leakFast', expect: 'round-3 regressions' },
+  { id: 'LG11', what: 'the generator ignores --keyed', edits: [['scripts/leak-gate-hashes.mjs', sub("const keyed = process.argv.includes('--keyed') ||", "const keyed = false && process.argv.includes('--keyed') ||")]], run: 'leakFast', expect: 'generator CLI' },
+  { id: 'LG12', what: 'the generator dry scan is removed', edits: [['scripts/leak-gate-hashes.mjs', sub('const dry = dryScan(file);', 'const dry = { files: 0, hasDist: true, tally: {} };')]], run: 'leakFast', expect: 'generator CLI' },
+  { id: 'LG13', what: 'the unkeyed-active-deal warning is removed', edits: [['scripts/leak-gate-hashes.mjs', sub('if (entries.length && !keyed) {', 'if (false) {')]], run: 'leakFast', expect: 'generator CLI' },
+  { id: 'LG14', what: 'the short-term warning is removed', edits: [['scripts/leak-gate-hashes.mjs', sub('  if (short) {', '  if (false) {')]], run: 'leakFast', expect: 'generator CLI' },
+  { id: 'LG15', what: 'the Netlify build command swallows a gate failure (|| true)', edits: [['netlify.toml', sub('node --test tests/site/leak-gate.test.mjs"', 'node --test tests/site/leak-gate.test.mjs || true"')]], run: 'leakFast', expect: 'Netlify build command' },
+  { id: 'LG16', what: 'a [context.production] block overrides the build command without the gate', edits: [['netlify.toml', (t) => t + '\n[context.production]\n  command = "node scripts/build-kb.mjs && node scripts/build-dist.mjs"\n']], run: 'leakFast', expect: 'Netlify build command' },
+  { id: 'LG17', what: 'a keyed file without the key is reported as fresh', edits: [['scripts/leak-gate-hashes.mjs', sub("return { state: 'needs-key', active: entries.length };", "return { state: 'fresh', active: entries.length };")]], run: 'leakFast', expect: 'roster staleness is detected' },
+  { id: 'LG18', what: 'missing required scan targets are no longer reported', edits: [['scripts/lib/leak-gate.mjs', sub('return required.filter((f) => !files.includes(f) || !existsSync(path.join(root, f)));', 'return [];')]], run: 'leakFast', expect: 'scanFiles' },
+  { id: 'LG3', what: 'the PDF extractor goes blind (skips every content stream)', edits: [['scripts/lib/leak-gate-pdf.mjs', sub('if (!/\\bBT\\b/.test(d)) continue;', 'continue;')]], run: 'leakFast', expect: 'PDF text layers' },
 ];
 
 // validate-jsonld.js run directly on synthetic pages: [id, what, html, wantExit0]

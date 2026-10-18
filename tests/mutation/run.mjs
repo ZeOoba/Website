@@ -79,6 +79,8 @@ const CMDS = {
   csp: test('csp-hashes.test.mjs'),
   cspPages: test('csp-all-pages.test.mjs'),
   leak: test('leak-gate.test.mjs'),
+  // leakFast skips the slow real-tree scan: for cases the unit-level leak-gate tests catch (keeps this job inside its time limit).
+  leakFast: ['--test', '--test-reporter=spec', '--test-name-pattern=^(?!no active)', 'tests/site/leak-gate.test.mjs'],
   verify: ['scripts/verify-jsonld.mjs'],
   build: ['scripts/build-dist.mjs'],
   // probe: the build must fail AND leave no dist/ behind

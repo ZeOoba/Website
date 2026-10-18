@@ -29,6 +29,9 @@
  */
 
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import zlib from 'node:zlib';
 import { extractPdfText, printableRuns } from './leak-gate-pdf.mjs';
 
@@ -41,7 +44,7 @@ export const KINDS = new Set(['always', 'context', 'ctxreq']);
 // (Cyrillic, Greek, Armenian and small-capital forms to Latin). Case matters: Greek capital Nu
 // looks like N, small nu like v.
 const LOOKALIKE_PAIRS =
-  'аa вb еe кk мm нh оo рp сc тt уy хx іi јj ѕs ԁd ԛq ԝw ӏi Ү=y ɴn ɪi ᴀa ʙb ᴄc ᴅd ᴇe ɢg ʜh ᴊj ᴋk ʟl ᴍm ᴏo ᴘp ʀr ᴛt ᴜu ᴠv ᴡw ʏy ᴢz օo ս=u ց=g ո=n ' +
+  'аa вb еe кk мm нh оo рp сc тt уy хx іi јj ѕs ԁd ԛq ԝw ӏi Ү=y Ϲc ϲc Օo ү=y Ԛq һh Һh ɑa Ꭺa Ϲc ɴn ɪi ᴀa ʙb ᴄc ᴅd ᴇe ɢg ʜh ᴊj ᴋk ʟl ᴍm ᴏo ᴘp ʀr ᴛt ᴜu ᴠv ᴡw ʏy ᴢz օo ս=u ց=g ո=n ' +
   'АA ВB ЕE КK МM НH ОO РP СC ТT УY ХX ІI ЈJ ЅS ' +
   'αa βb εe ιi κk νv οo ρp τt υu χx γy ΑA ΒB ΕE ΖZ ΗH ΙI ΚK ΜM ΝN ΟO ΡP ΤT ΥY ΧX';
 const LOOKALIKES = new Map(
@@ -51,15 +54,21 @@ const LOOKALIKES = new Map(
 );
 const LIGATURES = { ẞ: 'ss', Ӏ: 'i', ø: 'o', Ø: 'o', ß: 'ss', æ: 'ae', Æ: 'ae', œ: 'oe', Œ: 'oe', ł: 'l', Ł: 'l', đ: 'd', Đ: 'd', ı: 'i', þ: 'th', Þ: 'th' };
 
+const foldLookalikes = (t) => (/[^\u0000-\u007f]/.test(t) ? [...t].map((c) => LOOKALIKES.get(c) ?? LIGATURES[c] ?? c).join('') : t);
+
 export function tokens(text) {
-  let t = String(text)
+  // Folded before NFKD too: some look-alikes (Greek lunate sigma) decompose into a different letter first.
+  let t = foldLookalikes(String(text))
     .replace(/[®©℠-™²³¹⁰-₟]/g, ' ')
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '');
   if (/[^\u0000-\u007f]/.test(t)) {
     t = [...t].map((c) => LOOKALIKES.get(c) ?? LIGATURES[c] ?? c).join('');
   }
-  return t.toLowerCase().match(/[a-z0-9]+/g) || [];
+  t = t.toLowerCase();
+  // Second pass: lowercasing can itself produce a look-alike (e.g. a capital whose small form is mapped).
+  if (/[^\u0000-\u007f]/.test(t)) t = [...t].map((c) => LOOKALIKES.get(c) ?? LIGATURES[c] ?? c).join('');
+  return t.match(/[a-z0-9]+/g) || [];
 }
 
 export const compact = (term) => tokens(term).join('');
@@ -196,7 +205,7 @@ const classify = (kinds) => {
  * Scan one document's text. Returns an array of hit classes
  * ('always' | 'context+ctxreq'); never the matched text.
  */
-export function scanText(text, idx, { substring = true } = {}) {
+export function scanText(text, idx, { substring = true, everyStart = false } = {}) {
   if (idx.size === 0) return [];
   const toks = tokens(text);
   const kinds = new Set();
@@ -220,8 +229,9 @@ export function scanText(text, idx, { substring = true } = {}) {
   // Terms of SUBSTRING_MIN+ chars are matched as substrings of the compacted document, like the
   // hook: windows START at every token boundary and may END anywhere, so plurals ("Foo Holding"
   // in "Foo Holdings"), suffix glue and names split by tags or entities are found. Inside tokens
-  // longer than SUBSTRING_MIN every start is tried (camelCase identifiers, glued slugs).
-  // Known gaps: "&" versus "and" is not equated; a prefix glued onto a short token is missed.
+  // longer than SUBSTRING_MIN every start is tried (camelCase identifiers, glued slugs); with
+  // everyStart (the file's most normalized variant) every start of the compacted text is tried, so a
+  // prefix glued onto a short token is found too. Known gap: "&" versus "and" is not equated.
   // Shorter terms stay word-bounded (above) to keep false positives out.
   if (substring && idx.subLengths.length) {
     const c = toks.join('');
@@ -229,7 +239,7 @@ export function scanText(text, idx, { substring = true } = {}) {
     for (const t of toks) {
       for (const L of idx.subLengths) {
         if (start + L <= c.length) look(c.slice(start, start + L));
-        if (t.length > SUBSTRING_MIN) for (let j = start + 1; j < start + t.length && j + L <= c.length; j++) look(c.slice(j, j + L));
+        if (everyStart || t.length > SUBSTRING_MIN) for (let j = start + 1; j < start + t.length && j + L <= c.length; j++) look(c.slice(j, j + L));
       }
       start += t.length;
     }
@@ -332,7 +342,7 @@ export const scanPath = (relPath, idx) => [...new Set([...scanText(pathText(relP
  * fingerprint and the extension. showPaths is for local debugging.
  */
 export function findingLabel(relPath, idx, showPaths = false) {
-  return showPaths ? relPath : `file#${hmac(idx.salt, 'path:' + relPath).slice(0, 8)}${(/\.[A-Za-z0-9]{1,8}$/.exec(relPath) || [''])[0]}`;
+  return showPaths ? relPath : `file#${hmac(idx.salt, 'path:' + relPath).slice(0, 8)}${(/\.(?:html?|css|js|mjs|cjs|json|xml|txt|md|pdf|png|jpe?g|webp|avif|gif|svg|ico|woff2?|ttf|otf|map|ts|yml|yaml|toml|webmanifest)$/i.exec(relPath) || [''])[0]}`;
 }
 
 export function scanFile(relPath, buf, idx) {
@@ -382,6 +392,9 @@ export function scanFile(relPath, buf, idx) {
       const stripped = dec.replace(/<[^>]*>/g, '');
       if (stripped !== dec && !variants.includes(stripped)) variants.push(stripped);
     }
+    // Attribute values (alt, title, aria-label, meta content, hrefs) vanish when tags are stripped: scan them as their own text.
+    const attrs = [...decodeEscapes(raw, true).matchAll(/[\w:-]+\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map((m) => m[1] ?? m[2]).join('\n');
+    if (attrs) variants.push(attrs);
   }
   const hits = new Set(pathHits.map((h) => 'path:' + h));
   for (const h of extra) hits.add(h);
@@ -389,7 +402,78 @@ export function scanFile(relPath, buf, idx) {
   const substring = kind === 'text' || kind === 'pdf';
   // The path rides along with every variant, so a context term in a file name and its anchor in the body combine.
   const pt = '\n' + pathText(relPath);
-  for (const v of variants) for (const h of scanText(v + pt, idx, { substring })) hits.add(h);
+  // Token-boundary starts on every variant; EVERY start on the most normalized (last) one, which carries the same text.
+  variants.forEach((v, i) => {
+    for (const h of scanText(v + pt, idx, { substring, everyStart: i >= variants.length - 2 })) hits.add(h);
+  });
   if (gluedText) for (const h of scanGlued(gluedText, idx)) hits.add('glued:' + h);
   return { kind, hits: [...hits], pathHit: pathHits.length > 0, problems };
+}
+
+/* ------------------------------------------------------------ tree scanning */
+
+/** Files git tracks under root (fallback: a directory walk). */
+export function listTracked(root) {
+  try {
+    return execFileSync('git', ['ls-files', '-z'], { cwd: root, maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\0').filter(Boolean);
+  } catch {
+    const out = [];
+    const walk = (d) => {
+      for (const e of readdirSync(path.join(root, d), { withFileTypes: true })) {
+        if (['node_modules', '.git', 'dist', '.claude'].includes(e.name)) continue;
+        const rel = d ? `${d}/${e.name}` : e.name;
+        if (e.isDirectory()) walk(rel);
+        else out.push(rel);
+      }
+    };
+    walk('');
+    return out;
+  }
+}
+
+/** Every file under root/dist as 'dist/...' paths. */
+export function listDist(root) {
+  const out = [];
+  const walk = (d) => {
+    for (const e of readdirSync(path.join(root, 'dist', d), { withFileTypes: true })) {
+      const rel = d ? `${d}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(rel);
+      else out.push('dist/' + rel);
+    }
+  };
+  walk('');
+  return out;
+}
+
+/** Required scan targets that are not in the file list or not on disk. */
+export function missingRequired(root, files, required) {
+  return required.filter((f) => !files.includes(f) || !existsSync(path.join(root, f)));
+}
+
+/**
+ * Scan a list of repo-relative files. A tracked-but-deleted file is skipped; a symlink or
+ * submodule entry is a finding (the gate cannot read it). Returns { findings, counts, scanned }.
+ */
+export function scanFiles(root, files, idx, showPaths = false) {
+  const findings = [];
+  const counts = { text: 0, pdf: 0, image: 0, binary: 0 };
+  let scanned = 0;
+  for (const rel of files) {
+    const full = path.join(root, rel);
+    let st;
+    try {
+      st = lstatSync(full);
+    } catch {
+      continue;
+    }
+    if (!st.isFile()) {
+      findings.push(`${findingLabel(rel, idx, showPaths)} is a symlink or submodule entry, which the gate cannot read; replace it with a real file`);
+      continue;
+    }
+    const r = scanFile(rel, readFileSync(full), idx);
+    scanned++;
+    counts[r.kind]++;
+    findings.push(...formatFinding(rel, r, idx, showPaths));
+  }
+  return { findings, counts, scanned };
 }

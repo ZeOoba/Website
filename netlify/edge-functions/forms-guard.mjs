@@ -39,15 +39,20 @@ function safeEqual(a, b) {
 
 // A protected name, allowing any character to be percent-encoded (`pipeline%2Dfailures`, `%70ipeline…`).
 // One linear regex pass: decoding a 1 MiB body first costs more CPU than the edge allows.
-const hex = (c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0');
+// %hh for a character in both letter cases, and with both hex-digit cases (%2d / %2D).
+const hexes = (c) => [...new Set([c.toLowerCase(), c.toUpperCase()])].flatMap((x) => {
+  const h = x.charCodeAt(0).toString(16).padStart(2, '0');
+  return [...new Set([h, h.toUpperCase()])];
+});
 const NAME_RE = new RegExp(
-  internal.forms.map((n) => [...n].map((c) => `(?:${c.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&')}|${hex(c)})`).join('')).join('|'),
+  internal.forms.map((n) => [...n].map((c) => `(?:${[c.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&'), ...hexes(c).map((h) => '%' + h)].join('|')})`).join('')).join('|'),
   'i',
 );
 const NAME_MAX = Math.max(...internal.forms.map((n) => n.length)) * 3;
 // Encodings the platform's parser might undo but we do not.
-const ENC_RE = /content-transfer-encoding:\s*(?:quoted-printable|base64)/i;
-const SCAN_OVERLAP = Math.max(NAME_MAX, 'content-transfer-encoding: quoted-printable'.length + 8);
+const ENC_RE = /content-transfer-encoding/i;
+const ENC_NAME = 'content-transfer-encoding';
+const SCAN_OVERLAP = Math.max(NAME_MAX, ENC_NAME.length) + 8;
 
 // Reads a clone of the body. The first SCAN_LIMIT bytes come back as `text` (latin1). Bytes
 // beyond that are scanned chunk by chunk (with an overlap tail) when `scanRest`, else refused:
@@ -77,8 +82,9 @@ async function readBody(req, { scanRest }) {
       rest = 'refused';
     } else {
       const chunk = tail + decoder.decode(past, { stream: true });
-      if (NAME_RE.test(chunk)) rest = 'hit';
-      else if (ENC_RE.test(chunk)) rest = 'encoded';
+      const lower = chunk.toLowerCase();
+      if (internal.forms.some((n) => lower.includes(n))) rest = 'hit';
+      else if (lower.includes(ENC_NAME)) rest = 'encoded';
       else if (rest === 'none') rest = 'clean';
       tail = chunk.slice(-SCAN_OVERLAP);
       if (rest === 'hit' || rest === 'encoded') {

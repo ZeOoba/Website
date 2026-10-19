@@ -55,6 +55,9 @@ test('rejects unsigned POSTs that name an internal form, however the name is spe
     post('form-name=broker-network-ledger&name=x'),
     post('form-name=pipeline-failures&detail=x', { path: '/contact' }),
     post('form%2Dname=pipeline%2Dfailures'),
+    post('form-name=%50ipeline-failures'),
+    post('form-name=%42roker-network-ledger'),
+    post('form-name=%70IPELINE-%46ailures'),
     post('form-name=%70ipeline-failures&detail=forged&x=%FF'),
     post('form-name=pipeline-failures&x=%ZZ&y=%'),
     post('form-name=Pipeline-Failures'),
@@ -137,6 +140,24 @@ test('large multipart: a name straddling exactly 1 MiB, an encoded late part, a 
   const t = performance.now();
   await guard(post(worst), { secret: SECRET });
   assert.ok(performance.now() - t < 40, `prefix scan took ${performance.now() - t} ms`);
+}));
+
+test('the transfer-encoding header is refused however it is spaced, and a 7 MiB scan stays cheap', () => quiet(async () => {
+  const { guard } = await load();
+  const MIB = 1024 * 1024;
+  const opts = { path: '/application-received', headers: { 'content-type': 'multipart/form-data; boundary=b' } };
+  const mk = (str) => new Request('https://oxfordra.net/application-received', { method: 'POST', body: str, headers: opts.headers });
+  const head = '--b\r\nContent-Disposition: form-data; name="f"\r\n\r\n';
+  const gap = ' '.repeat(80);
+  assert.equal((await guard(mk(`${head}x\r\n--b\r\nContent-Transfer-Encoding:${gap}quoted-printable\r\n\r\npipeline=2Dfailures\r\n--b--`), { secret: SECRET })).status, 415);
+  assert.equal((await guard(mk(`${head}x\r\n--b\r\nContent-Transfer-Encoding : quoted-printable\r\n\r\nx\r\n--b--`), { secret: SECRET })).status, 415);
+  // The 1 MiB mark falls inside the whitespace gap of a late header.
+  const lead = `${head}${'a'.repeat(MIB - head.length - 30)}\r\n--b\r\nContent-Transfer-Encoding:${gap}quoted-printable\r\n\r\nx\r\n--b--`;
+  assert.equal((await guard(mk(lead), { secret: SECRET })).status, 415);
+  const big = `${head}${'a'.repeat(7 * MIB)}\r\n--b--`;
+  const t = performance.now();
+  assert.equal(await guard(mk(big), { secret: SECRET }), null);
+  assert.ok(performance.now() - t < 60, `7 MiB scan took ${performance.now() - t} ms`);
 }));
 
 test('refuses encodings the platform parser might undo', () => quiet(async () => {

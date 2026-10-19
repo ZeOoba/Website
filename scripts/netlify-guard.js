@@ -40,7 +40,27 @@ const { spawnSync, execFileSync } = require("child_process");
 
 const REAL_CLI_ENTRY = path.join(__dirname, "..", "node_modules", "netlify-cli", "bin", "run.js");
 const CHECK_SCRIPT = "C:\\Users\\Owner\\.claude\\hooks\\lib\\check_website_deploy.py";
+// Fixed absolute interpreter, never process.env.PYTHON: an env-var interpreter let any
+// caller that could set a session id point the validator at `true`/`cmd.exe` and
+// self-authorize. If Python moves this fails CLOSED (ENOENT -> DENIED, exit 5): update
+// this constant, do not reintroduce an env/PATH lookup. Mirrors hooks/bin/netlify-guard-global.js.
+const PYTHON_EXE = "C:\\Users\\Owner\\AppData\\Local\\Programs\\Python\\Python313\\python.exe";
 const DRY_RUN = process.env.NETLIFY_GUARD_DRY_RUN === "1";
+
+const VALIDATOR_ENV_ALLOWLIST = [
+  "systemroot", "windir", "systemdrive", "path", "pathext", "comspec",
+  "userprofile", "homedrive", "homepath", "home", "appdata", "localappdata",
+  "temp", "tmp",
+];
+
+// Case-insensitive (Windows env names are), values copied verbatim, everything else dropped.
+function validatorEnv() {
+  const env = {};
+  for (const key of Object.keys(process.env)) {
+    if (VALIDATOR_ENV_ALLOWLIST.indexOf(key.toLowerCase()) !== -1) env[key] = process.env[key];
+  }
+  return env;
+}
 
 function log(message) {
   process.stderr.write("[netlify-guard] " + message + "\n");
@@ -58,23 +78,60 @@ function runRealCli(args) {
   process.exit(result.status === null ? 1 : result.status);
 }
 
+// Short flags of `netlify deploy` that consume a value (-d dir, -f functions, -b branch,
+// -m message, -s site). In a bundle like `-sfoo` everything after one of these is that
+// flag's value, not more flags, so a "p" inside it (a site named "app") is not `-p`.
+const VALUE_SHORT_FLAGS = "dfbms";
+// `netlify api <method>`: an ALLOWLIST of read-only methods. Every other method (restore,
+// rollback, disableSite, deleteSite, updateSite, split tests, DNS, env vars, snippets,
+// commits ...) can change the live site, so it goes through the authorization check.
+const READ_ONLY_API_METHOD = /^(get|list|show|search)[a-z0-9]*$/i;
+
+// Token-by-token argv parse. Long forms: --prod, --prod=true, --prod-if-unlocked and
+// anything else starting with --prod; --trigger is included because it starts a build of
+// the live site on Netlify without uploading local files.
+function hasProdFlag(args) {
+  for (const arg of args) {
+    const lowered = arg.toLowerCase();
+    if (lowered.indexOf("--prod") === 0 || lowered === "--trigger" || lowered.indexOf("--trigger=") === 0) {
+      return true;
+    }
+    // Short flags: commander lets boolean shorts bundle (`-ap`, `-Op`) and accepts
+    // `-p=true`. Case-sensitive on purpose (`-P` is not a flag), walked left to right.
+    if (/^-[^-]/.test(arg)) {
+      for (const ch of arg.slice(1)) {
+        if (ch === "p") return true;
+        if (ch === "=" || VALUE_SHORT_FLAGS.indexOf(ch) !== -1) break;
+      }
+    }
+  }
+  return false;
+}
+
+function isProdInvocation(args) {
+  // Substring match on the JOINED, lowercased argv for "deploy" (adversarial review,
+  // 2026-07-17): broad match, false positive costs a retry, false negative deploys
+  // unauthorized to the live site. The prod flag is parsed per token (2026-10-17): the
+  // earlier `indexOf("--prod")` over the joined string missed netlify-cli's documented
+  // short flag, so `netlify deploy -p` reached production with no authorization check.
+  const isDeploy = args.join(" ").toLowerCase().indexOf("deploy") !== -1;
+  if (isDeploy && hasProdFlag(args)) return true;
+  // `netlify api restoreSiteDeploy` and friends reach production with no `deploy --prod`.
+  // Candidates are the identifier-shaped non-flag tokens after `api` (JSON --data values
+  // never look like identifiers); any candidate that is not a read-only method is prod.
+  const apiAt = args.findIndex((a) => a.toLowerCase() === "api");
+  if (apiAt !== -1) {
+    return args
+      .slice(apiAt + 1)
+      .some((a) => /^[a-z][a-z0-9]*$/i.test(a) && !READ_ONLY_API_METHOD.test(a));
+  }
+  return false;
+}
+
 function main() {
   const args = process.argv.slice(2);
-  // Substring match on the JOINED, lowercased argv, not an exact-element array check
-  // (adversarial review, 2026-07-17 -- CONFIRMED CRITICAL BUG, fixed here): the original
-  // `args.indexOf("--prod") !== -1` requires "--prod" as its OWN argv element, so
-  // `--prod=true` and `--prod-if-unlocked` -- both real netlify-cli flags, the latter
-  // straight from netlify's own CLI docs, not a contrived edge case -- never matched,
-  // and the authorization check was never even invoked: a real prod deploy reached
-  // spawnSync with zero authorization. Mirrors ora-autonomy-gate.py's own Gate 2a
-  // philosophy exactly (`"deploy" in lowered and "--prod" in lowered`, a substring check
-  // over the whole command): broad match, false positive costs a retry, false negative
-  // deploys unauthorized to the live site.
-  const argsJoined = args.join(" ").toLowerCase();
-  const isDeploy = argsJoined.indexOf("deploy") !== -1;
-  const isProd = argsJoined.indexOf("--prod") !== -1;
 
-  if (!(isDeploy && isProd)) {
+  if (!isProdInvocation(args)) {
     // Every other command (dev, status, --version, a non-prod/preview deploy, ...) --
     // "Reads and preview deploys pass untouched", same philosophy as the PreToolUse gate.
     runRealCli(args);
@@ -93,9 +150,15 @@ function main() {
   }
 
   try {
-    const output = execFileSync(process.env.PYTHON || "python",
-      [CHECK_SCRIPT, "--session", sessionId],
-      { encoding: "utf8" });
+    // -I (isolated): ignores PYTHON* env vars (PYTHONPATH/PYTHONSTARTUP/...) and user site.
+    // env is an ALLOWLIST, not a copy of process.env: the validator reads test seams such as
+    // ORA_OVERRIDE_SESSIONS_DIR (override_tokens.py) that would let a caller point it at a
+    // directory holding a forged token and self-authorize. Only what Windows/Python needs is
+    // passed through (the sessions dir default is an absolute path in override_tokens.py).
+    // -S: no site module, so a planted sitecustomize/.pth in the user-writable site-packages
+    // cannot run inside the validator.
+    const output = execFileSync(PYTHON_EXE, ["-I", "-S", CHECK_SCRIPT, "--session", sessionId],
+      { encoding: "utf8", env: validatorEnv() });
     log("authorized prod deploy for session " + sessionId + " -- " + output.trim());
   } catch (err) {
     // A validator we cannot run, OR a validator that explicitly denied, both mean the
@@ -110,4 +173,8 @@ function main() {
   runRealCli(args);
 }
 
-main();
+if (require.main === module) {
+  main();
+} else {
+  module.exports = { isProdInvocation };
+}

@@ -6,8 +6,14 @@
 # internal tooling (scripts/, evals/, netlify/ source), so deploys publish only
 # the allowlisted copy in dist/. Deploy with `netlify deploy --build` so dist/
 # is rebuilt first; never deploy --dir=. (that re-publishes the whole repo root).
+#
+# The build command is `npm run build` (package.json): the same chain CI's
+# `npm run verify` runs first, including the listings/portfolio `--check` drift
+# gates, so a stale generated page fails the production build instead of
+# shipping. Keep the chain in ONE place (package.json) so the two cannot
+# diverge again.
 [build]
-  command = "node scripts/build-kb.mjs && node scripts/build-dist.mjs"
+  command = "npm run build"
   publish = "dist"
 
 [build.environment]

@@ -17,7 +17,7 @@ ORA's core markets are:
 ORA also holds a single property in Kansas City, Missouri (Raytown submarket), entered in 2024 — a portfolio holding, not a core market with dedicated sourcing/underwriting presence. ORA is also actively evaluating expansion into growing major Mid-Atlantic and Midwest markets. ORA does not actively pursue West Coast, Sun Belt-only, or coastal-California markets.
 
 ## Target Deal Parameters
-- **Check size:** $1M–$10M equity per deal
+- **Transaction size:** $1M–$10M per transaction (purchase price)
 - **Asset size:** sub-50,000 SF preferred
 - **Asset type:** Class B/C shallow-bay industrial, flex/industrial, light-industrial, occasionally industrial-adjacent retail
 - **Clear height:** 18'+ preferred

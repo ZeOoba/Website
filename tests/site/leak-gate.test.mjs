@@ -389,7 +389,9 @@ test('the Netlify build command runs this gate (previews and production are gate
   const cmd = /^\s*command\s*=\s*"([^"]*)"/m.exec(toml);
   assert.ok(cmd, 'netlify.toml has a build command');
   assert.ok(cmd[1].includes('node --test tests/site/leak-gate.test.mjs'), 'the build command must run the leak-gate test');
-  assert.ok(cmd[1].indexOf('build-dist.mjs') < cmd[1].indexOf('leak-gate.test.mjs'), 'the gate must run after dist/ is built');
+  assert.match(cmd[1].trim(), /^npm run build && node --test tests\/site\/leak-gate\.test\.mjs$/, 'the command must be exactly: the build, then the gate (no echo/true/extra steps)');
+  const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.ok(/node scripts\/build-dist\.mjs\s*$/.test(pkg.scripts.build), 'npm run build must end with the dist/ assembly, so dist/ exists when the gate runs');
   assert.ok(cmd[1].trim().endsWith('node --test tests/site/leak-gate.test.mjs'), 'nothing may follow the gate step in the command');
   assert.ok(!/\|\||;|\|(?!\|)|&(?!&)|(?<!&)&$/.test(cmd[1].replace(/&&/g, ' ')), 'the command may only chain with && (no || true, ;, pipes or a lone & that background the step)');
   const live = toml.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');

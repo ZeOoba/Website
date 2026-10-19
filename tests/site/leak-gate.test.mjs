@@ -454,7 +454,7 @@ test('generator CLI: --keyed writes a keyed file, unkeyed warns, dry scan runs, 
     assert.equal(plain.status, 0, plain.text);
     assert.equal(plain.file.keyed, false);
     assert.equal(plain.file.entries.length, 1);
-    assert.match(plain.text, /UNKEYED/, 'an active unkeyed deal must warn');
+    assert.match(plain.text, /an active deal is in this file and it is UNKEYED/, 'an active unkeyed deal must warn');
     assert.match(plain.text, /shorter than 10/, 'short terms must warn');
     const dry = /dry scan \((\d+) files\)/.exec(plain.text);
     assert.ok(dry && Number(dry[1]) >= 200, 'the dry scan must actually walk dist/ and the tracked files, and report how many');

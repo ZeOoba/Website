@@ -332,9 +332,10 @@ test('isolation: a hyperlink bomb the pre-scan misses is stopped by the child-pr
   const bomb = linkBombXlsx('A1:CV100000');
   assert.deepEqual(limits.inspectZip(bomb, { requireContentTypes: true }), { ok: true }, 'fixture must slip past the byte-level checks');
   const t0 = Date.now();
-  const r = await extractForScoring(bomb, 'xlsx', { parseTimeoutMs: 1500 });
-  assert.deepEqual(r, { ok: false, reason: 'extraction_timeout' });
-  assert.ok(Date.now() - t0 < 6000, `took ${Date.now() - t0} ms`);
+  const r = await extractForScoring(bomb, 'xlsx', { parseTimeoutMs: 3500 });
+  assert.equal(r.ok, false);
+  assert.ok(['extraction_timeout', 'extraction_resource_limit'].includes(r.reason), r.reason);
+  assert.ok(Date.now() - t0 < 12000, `took ${Date.now() - t0} ms`);
   const next = await extractForScoring(xlsxBuffer([['Rent Roll', [['Unit', 'Rent'], ['1', 1000]]]]), 'xlsx');
   assert.equal(next.ok, true);
 });
@@ -383,11 +384,61 @@ test('isolation: a parse that exhausts the child heap is contained (resource-lim
   assert.ok(['extraction_resource_limit', 'extraction_timeout'].includes(r.reason), r.reason);
 });
 
-test('isolation: if the child cannot start (e.g. a bundled runtime), parsing falls back in-process and still works', async () => {
+function pidGone(pid, withinMs = 4000) {
+  const t0 = Date.now();
+  return new Promise((resolve) => {
+    const check = () => {
+      try { process.kill(pid, 0); } catch { resolve(true); return; }
+      if (Date.now() - t0 > withinMs) { resolve(false); return; }
+      setTimeout(check, 50);
+    };
+    check();
+  });
+}
+
+test('isolation: if the child cannot start, extraction FAILS CLOSED (extraction_unavailable) and never parses in-process', async () => {
   const { extractForScoring } = await load('_shared/broker-extraction.mjs');
-  const r = await extractForScoring(xlsxBuffer([['Rent Roll', [['Unit', 'Rent'], ['1', 1000]]]]), 'xlsx', { workerPath: path.join(FN_DIR, 'does-not-exist.mjs') });
-  assert.equal(r.ok, true);
-  assert.match(r.text, /Rent Roll/);
+  const buf = xlsxBuffer([['Rent Roll', [['Unit', 'Rent'], ['1', 1000]]]]);
+  const r = await extractForScoring(buf, 'xlsx', { workerPath: path.join(FN_DIR, 'does-not-exist.mjs') });
+  assert.deepEqual(r, { ok: false, reason: 'extraction_unavailable' });
+});
+
+test('isolation: a child that never says ready is killed at the timeout and reported extraction_unavailable (no in-process parse, no hang)', async () => {
+  const { extractForScoring } = await load('_shared/broker-extraction.mjs');
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const stub = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'om-stub-')), 'silent.mjs');
+  fs.writeFileSync(stub, 'setInterval(() => {}, 1000);\n');
+  let pid;
+  const t0 = Date.now();
+  const r = await extractForScoring(xlsxBuffer([['Rent Roll', [['Unit', 'Rent'], ['1', 1000]]]]), 'xlsx', { workerPath: stub, parseTimeoutMs: 800, onSpawn: (c) => { pid = c.pid; } });
+  assert.deepEqual(r, { ok: false, reason: 'extraction_unavailable' });
+  assert.ok(Date.now() - t0 < 5000, 'must return promptly at the timeout, not hang');
+  assert.ok(pid, 'child was spawned');
+  assert.equal(await pidGone(pid), true, 'the silent child must be killed');
+});
+
+test('isolation: the child process is gone after a timeout kill', async () => {
+  const { extractForScoring } = await load('_shared/broker-extraction.mjs');
+  let pid;
+  const r = await extractForScoring(linkBombXlsx('A1:CV100000'), 'xlsx', { parseTimeoutMs: 3500, onSpawn: (c) => { pid = c.pid; } });
+  assert.equal(r.ok, false);
+  assert.ok(['extraction_timeout', 'extraction_resource_limit'].includes(r.reason), r.reason); // whichever ceiling the child hits first
+  assert.ok(pid);
+  assert.equal(await pidGone(pid), true, 'child pid ' + pid + ' still alive after the timeout');
+});
+
+test('isolation: the child environment carries only PATH and OM_PARSE_CHILD (no secrets)', async () => {
+  const { childEnv } = await load('_shared/broker-extraction.mjs');
+  const prev = process.env.ANTHROPIC_API_KEY;
+  process.env.ANTHROPIC_API_KEY = 'must-not-leak';
+  try {
+    const env = childEnv();
+    assert.deepEqual(Object.keys(env).sort(), ['OM_PARSE_CHILD', 'PATH']);
+    assert.equal(env.OM_PARSE_CHILD, '1');
+  } finally {
+    if (prev === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = prev;
+  }
 });
 
 test('isolation: legitimate files give identical results with and without the child process', async () => {

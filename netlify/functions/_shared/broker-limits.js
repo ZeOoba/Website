@@ -30,12 +30,14 @@ const MAX_DOCX_XML_TOTAL_BYTES = 6 * 1024 * 1024;
 // 1 KB file can declare A1:XFD1048576. Anything beyond the extraction window is not an OM hyperlink.
 const MAX_HYPERLINK_AREA = 2000 * 256;
 
-// Isolated parse (worker thread): wall-clock and V8 heap ceilings for XLSX.read / mammoth. The pre-scans above are
+// Isolated parse (child process): wall-clock and V8 heap ceilings for XLSX.read / mammoth. The pre-scans above are
 // cheap first filters; these are the actual bound.
 const PARSE_TIMEOUT_MS = 15_000;
-// 384 MB: parent (~100 MB) + this heap + up to ~150 MB of inflated zip buffers kept off-heap must stay under a
-// 1 GB function; at 512 MB a crafted file reached ~980 MB combined.
-const PARSE_HEAP_MB = 384;
+// Budget for a 1 GB function: parent ~100 MB + child V8 heap + child off-heap (the inflated zip buffers, up to
+// MAX_ZIP_UNCOMPRESSED_BYTES, plus the byte copy of the upload) + the caller's own inspectZip buffers/strings
+// (a few hundred MB while it runs). Measured peaks: 512 MB heap -> ~980 MB combined; 384 MB heap -> ~940 MB with
+// 3x48 MB padded XML; a 217 KB xlsx reached ~800 MB in the child alone. Hence 256 MB here and an 80 MB inflate cap.
+const PARSE_HEAP_MB = 256;
 const MAX_EXTRACTED_CHARS = 200_000;
 
 // ---------- Archive bounds (zip-bomb defence) ----------
@@ -46,7 +48,7 @@ const MAX_ZIP_ENTRIES = 2000;
 // 48 MB: a legitimate 18 MB workbook expands to ~66 MB in total (~13 MB per sheet part); an 85 MB sharedStrings.xml
 // took ~9 s and >1 GB to parse.
 const MAX_ZIP_ENTRY_BYTES = 48 * 1024 * 1024;
-const MAX_ZIP_UNCOMPRESSED_BYTES = 150 * 1024 * 1024;
+const MAX_ZIP_UNCOMPRESSED_BYTES = 80 * 1024 * 1024;
 
 function truncationMarker(detail) {
   return `\n\n[TRUNCATED: ${detail}. Content beyond this point was dropped and is NOT reflected in this extraction.]`;

@@ -150,7 +150,8 @@ export async function handleBrokerFinalize(req, {
   try {
     head = await withTimeout(getFileHeadImpl(claims.path, HEAD_BYTES, { fetchImpl }), HEAD_TIMEOUT_MS, 'getFileHead');
   } catch (err) {
-    // Fail CLOSED but retryable: nothing is consumed or quarantined, so the same token can be retried.
+    // Fail CLOSED: nothing is consumed or quarantined (the token stays valid for its TTL). The shipped client opens
+    // a fresh upload session per submit, so the broker resubmits; there is no automatic client retry.
     console.error('[broker-finalize] getFileHead failed', String(err));
     return fail(502, 'type_check_unavailable');
   }

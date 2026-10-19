@@ -453,8 +453,10 @@ test('the API key never appears in any response, header or log across success an
     { upstream: () => new Response(`leak ${SECRET}`, { status: 500 }) },
     { upstream: () => { throw new Error(`boom ${SECRET}`); } },
     // The key straddles the 200-char log cut: redaction must happen before truncation.
-    { upstream: () => new Response('a'.repeat(190) + SECRET, { status: 500 }) },
-    { upstream: () => { throw new Error('b'.repeat(190) + SECRET); } },
+    // Padding puts only the first 5 chars of the key before the 200-char cut ('Error: ' is 7 chars).
+    { upstream: () => new Response('a'.repeat(195) + SECRET, { status: 500 }) },
+    { upstream: () => { throw new Error('b'.repeat(188) + SECRET); } },
+    { upstream: () => sseResponse([`data: ${JSON.stringify({ type: 'error', error: { type: SECRET } })}\n\n`]) },
     { upstream: () => sseResponse([delta('a'), `data: ${JSON.stringify({ type: 'error', error: { type: 'x', message: SECRET } })}\n\n`]) },
     { upstream: () => sseResponse([delta('a')], { failAfter: 1 }) },
     { env: { ANTHROPIC_API_KEY: '' }, upstream: undefined },
@@ -464,9 +466,9 @@ test('the API key never appears in any response, header or log across success an
     const res = await handler(post(ask()), ctx);
     const text = res.body ? await readAll(res) : '';
     const everything = text + headerDump(res);
-    assert.ok(!everything.includes(SECRET.slice(0, 12)), 'response leaked (a prefix of) the key');
+    assert.ok(!everything.includes(SECRET.slice(0, 5)), 'response leaked (a prefix of) the key');
     // Logs too, including the snippets of upstream bodies and error messages that echo the key.
-    assert.ok(!JSON.stringify(logs).includes(SECRET.slice(0, 12)), 'log leaked (a prefix of) the key');
+    assert.ok(!JSON.stringify(logs).includes(SECRET.slice(0, 5)), 'log leaked (a prefix of) the key');
   }
   for (const method of ['OPTIONS', 'GET']) {
     const { handler } = load();

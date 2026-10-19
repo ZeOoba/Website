@@ -251,7 +251,7 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
   } catch (e) {
     // Network failure / DNS / abort: answer with the same shape as an upstream HTTP error instead
     // of letting the edge runtime turn the throw into a generic 500.
-    console.error('[chat] upstream fetch failed', { sessionId, err: String(e).slice(0, 200).split(apiKey).join('[redacted]') });
+    console.error('[chat] upstream fetch failed', { sessionId, err: String(e).split(apiKey).join('[redacted]').slice(0, 200) });
     return new Response(JSON.stringify({ error: 'upstream_error', status: 0 }), {
       status: 502, headers: { 'content-type': 'application/json' },
     });
@@ -259,7 +259,7 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
 
   if (!upstream.ok || !upstream.body) {
     const text = await upstream.text().catch(() => '');
-    console.error('[chat] upstream error', { sessionId, status: upstream.status, snippet: text.slice(0, 200).split(apiKey).join('[redacted]') });
+    console.error('[chat] upstream error', { sessionId, status: upstream.status, snippet: text.split(apiKey).join('[redacted]').slice(0, 200) });
     return new Response(JSON.stringify({ error: 'upstream_error', status: upstream.status }), {
       status: 502, headers: { 'content-type': 'application/json' },
     });

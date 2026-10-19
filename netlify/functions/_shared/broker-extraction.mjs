@@ -91,15 +91,25 @@ async function extractForScoring(buffer, ext, opts = {}) {
   // and that must take down only the disposable child, never this function.
   if (opts.isolate === false) return parseDocument(buffer, ext);
   const isolated = await runIsolated(buffer, ext, opts);
+  // Fail CLOSED: if the child cannot run (fork throws, dies or times out before "ready"), the upload is NOT parsed
+  // in this process. broker-scoring-run records the reason and logs a pipeline-failures row, and the submission
+  // still reaches Gabriel/Eric unscored.
   if (isolated.fallback) {
-    console.error('[broker-extraction] isolated parse unavailable; parsing in-process');
-    return parseDocument(buffer, ext);
-  } // child could not START (bundled runtime): previous in-process behaviour
+    console.error('[broker-extraction] isolated parse could not start; scoring unavailable (never parsed in-process)');
+    return { ok: false, reason: 'extraction_unavailable' };
+  }
   return isolated;
 }
 
 // The child is this same module, forked with OM_PARSE_CHILD=1; see the entry hook at the bottom.
-function runIsolated(buffer, ext, { parseTimeoutMs = PARSE_TIMEOUT_MS, heapMb = PARSE_HEAP_MB, workerPath } = {}) {
+// The child gets no secrets: PATH (to start node) and its mode flag, nothing else.
+function childEnv() {
+  const env = { OM_PARSE_CHILD: '1' };
+  if (process.env.PATH) env.PATH = process.env.PATH;
+  return env;
+}
+
+function runIsolated(buffer, ext, { parseTimeoutMs = PARSE_TIMEOUT_MS, heapMb = PARSE_HEAP_MB, workerPath, onSpawn } = {}) {
   return new Promise((resolve) => {
     let ready = false;
     let done = false;
@@ -116,8 +126,7 @@ function runIsolated(buffer, ext, { parseTimeoutMs = PARSE_TIMEOUT_MS, heapMb = 
     const lost = (reason) => finish(ready ? { ok: false, reason } : { fallback: true });
     try {
       child = fork(workerPath || fileURLToPath(import.meta.url), [], {
-        // Minimal environment: the parse needs no secrets.
-        env: { PATH: process.env.PATH, OM_PARSE_CHILD: '1' },
+        env: childEnv(),
         execArgv: ['--max-old-space-size=' + heapMb],
         serialization: 'advanced',
         stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
@@ -126,6 +135,7 @@ function runIsolated(buffer, ext, { parseTimeoutMs = PARSE_TIMEOUT_MS, heapMb = 
       resolve({ fallback: true });
       return;
     }
+    if (onSpawn) onSpawn(child);
     timer = setTimeout(() => lost('extraction_timeout'), parseTimeoutMs);
     child.on('message', (m) => {
       if (m && m.type === 'ready') {
@@ -220,4 +230,4 @@ if (process.env.OM_PARSE_CHILD === '1' && typeof process.send === 'function') {
   process.send({ type: 'ready' });
 }
 
-export { extractForScoring, MAX_SCORING_BYTES };
+export { extractForScoring, childEnv, MAX_SCORING_BYTES };

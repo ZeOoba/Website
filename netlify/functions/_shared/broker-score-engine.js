@@ -1,5 +1,7 @@
 'use strict';
 
+const { SCORECARD_VERSION, VALUES: SC } = require('./broker-score-constants');
+
 function vintageFloorPct(yearBuilt, cfg) {
   const yb = (yearBuilt == null || !Number.isFinite(yearBuilt)) ? cfg.earlyYear : yearBuilt;
   if (yb <= cfg.earlyYear) return cfg.earlyPct;
@@ -39,15 +41,15 @@ function fmtMoney(n) { return n.toLocaleString('en-US', { maximumFractionDigits:
 // SF >= 1, the $1/SF lower bound and the price and SF maximums still are). Other classes get the full bounds.
 // ACCEPTED RESIDUAL: a wrong FIELD or unit that still lands inside these bounds (for example NOI in the
 // price slot, SF in square metres, a large price quoted in $000s) is not detectable here and is scored.
-const PLAUSIBLE_ASKING_PRICE_MIN = 50_000;       // $; below this a price is almost certainly in $000s or a typo
-const PLAUSIBLE_ASKING_PRICE_MAX = 500_000_000;  // $
-const PLAUSIBLE_BUILDING_SF_MIN = 500;           // SF; below this is almost certainly SF in thousands
-const PLAUSIBLE_BUILDING_SF_MAX = 5_000_000;     // SF
-const PLAUSIBLE_CLEAR_HEIGHT_MIN_FT = 6;         // ft
-const PLAUSIBLE_CLEAR_HEIGHT_MAX_FT = 100;       // ft
-const PLAUSIBLE_IOS_BUILDING_SF_MIN = 1;         // SF; IOS only: just "positive", see above
-const PLAUSIBLE_PRICE_PER_SF_MIN = 1;            // $/SF, asking price / building SF; below $1 is a unit error, $1-$5 is distressed-but-real
-const PLAUSIBLE_PRICE_PER_SF_MAX = 2_000;        // $/SF
+const PLAUSIBLE_ASKING_PRICE_MIN = SC.plausibility.askingPriceMin;
+const PLAUSIBLE_ASKING_PRICE_MAX = SC.plausibility.askingPriceMax;
+const PLAUSIBLE_BUILDING_SF_MIN = SC.plausibility.buildingSfMin;
+const PLAUSIBLE_BUILDING_SF_MAX = SC.plausibility.buildingSfMax;
+const PLAUSIBLE_CLEAR_HEIGHT_MIN_FT = SC.plausibility.clearHeightMinFt;
+const PLAUSIBLE_CLEAR_HEIGHT_MAX_FT = SC.plausibility.clearHeightMaxFt;
+const PLAUSIBLE_IOS_BUILDING_SF_MIN = SC.plausibility.iosBuildingSfMin;
+const PLAUSIBLE_PRICE_PER_SF_MIN = SC.plausibility.pricePerSfMin;
+const PLAUSIBLE_PRICE_PER_SF_MAX = SC.plausibility.pricePerSfMax;
 
 // Returns null when `v` is usable (a finite number inside [min, max]), else a short reason. Strings are
 // rejected, not coerced: "5000000" or "$5M" from the model means the extraction did not follow the schema.
@@ -65,47 +67,47 @@ function invalidCategory(possible, label, reason) {
 }
 
 function scoreDealSize(askingPrice) {
-  const possible = 25;
+  const possible = SC.weights.dealSize;
   if (askingPrice == null) return { possible, excluded: true, note: 'Asking price not stated in OM — excluded from scoring.' };
   const bad = invalidNumberReason(askingPrice, PLAUSIBLE_ASKING_PRICE_MIN, PLAUSIBLE_ASKING_PRICE_MAX);
   if (bad) return invalidCategory(possible, 'Asking price', bad);
-  if (askingPrice >= 1_000_000 && askingPrice <= 10_000_000) {
+  if (askingPrice >= SC.dealSize.targetMin && askingPrice <= SC.dealSize.targetMax) {
     return { possible, earned: possible, note: `Asking price $${fmtMoney(askingPrice)} — within target $1M-$10M.` };
   }
-  if (askingPrice < 1_000_000) {
-    if (askingPrice <= 500_000) return { possible, earned: 0, note: `Asking price $${fmtMoney(askingPrice)} — below target range.` };
-    const t = (askingPrice - 500_000) / 500_000;
+  if (askingPrice < SC.dealSize.targetMin) {
+    if (askingPrice <= SC.dealSize.zeroBelow) return { possible, earned: 0, note: `Asking price $${fmtMoney(askingPrice)} — below target range.` };
+    const t = (askingPrice - SC.dealSize.zeroBelow) / (SC.dealSize.targetMin - SC.dealSize.zeroBelow);
     return { possible, earned: Math.round(t * possible), note: `Asking price $${fmtMoney(askingPrice)} — below target, tapering credit.` };
   }
-  if (askingPrice >= 15_000_000) return { possible, earned: 0, note: `Asking price $${fmtMoney(askingPrice)} — above target range.` };
-  const t = (15_000_000 - askingPrice) / 5_000_000;
+  if (askingPrice >= SC.dealSize.zeroAbove) return { possible, earned: 0, note: `Asking price $${fmtMoney(askingPrice)} — above target range.` };
+  const t = (SC.dealSize.zeroAbove - askingPrice) / (SC.dealSize.zeroAbove - SC.dealSize.targetMax);
   return { possible, earned: Math.round(t * possible), note: `Asking price $${fmtMoney(askingPrice)} — above target, tapering credit.` };
 }
 
 function scoreBuildingSize(buildingSizeSF, opts = {}) {
-  const possible = 20;
+  const possible = SC.weights.buildingSize;
   if (buildingSizeSF == null) return { possible, excluded: true, note: 'Building size not stated in OM — excluded from scoring.' };
   const bad = invalidNumberReason(buildingSizeSF, opts.ios ? PLAUSIBLE_IOS_BUILDING_SF_MIN : PLAUSIBLE_BUILDING_SF_MIN, PLAUSIBLE_BUILDING_SF_MAX);
   if (bad) return invalidCategory(possible, 'Building size', bad);
-  if (buildingSizeSF < 50_000) return { possible, earned: possible, note: `${fmtMoney(buildingSizeSF)} SF — within target (<50,000 SF).` };
+  if (buildingSizeSF < SC.buildingSize.fullBelowSF) return { possible, earned: possible, note: `${fmtMoney(buildingSizeSF)} SF — within target (<50,000 SF).` };
   // Exactly 50,000 SF is not under the ceiling (the buy-box is strictly sub-50K) but the taper below earns
   // full credit at that point, so the score is unchanged; only the label is made to match the comparison.
-  if (buildingSizeSF === 50_000) return { possible, earned: possible, note: `${fmtMoney(buildingSizeSF)} SF — at the 50,000 SF target ceiling (not under it); full credit.` };
-  if (buildingSizeSF >= 100_000) return { possible, earned: 0, note: `${fmtMoney(buildingSizeSF)} SF — well above target size.` };
-  const t = (100_000 - buildingSizeSF) / 50_000;
+  if (buildingSizeSF === SC.buildingSize.fullBelowSF) return { possible, earned: possible, note: `${fmtMoney(buildingSizeSF)} SF — at the 50,000 SF target ceiling (not under it); full credit.` };
+  if (buildingSizeSF >= SC.buildingSize.zeroAtSF) return { possible, earned: 0, note: `${fmtMoney(buildingSizeSF)} SF — well above target size.` };
+  const t = (SC.buildingSize.zeroAtSF - buildingSizeSF) / (SC.buildingSize.zeroAtSF - SC.buildingSize.fullBelowSF);
   return { possible, earned: Math.round(t * possible), note: `${fmtMoney(buildingSizeSF)} SF — above target, tapering credit.` };
 }
 
 function scoreClearHeight(clearHeightFt) {
-  const possible = 15;
+  const possible = SC.weights.clearHeight;
   if (clearHeightFt == null) return { possible, excluded: true, note: 'Clear height not stated in OM — excluded from scoring.' };
   const bad = invalidNumberReason(clearHeightFt, PLAUSIBLE_CLEAR_HEIGHT_MIN_FT, PLAUSIBLE_CLEAR_HEIGHT_MAX_FT);
   if (bad) return invalidCategory(possible, 'Clear height', bad);
-  if (clearHeightFt >= 18) return { possible, earned: possible, note: `${clearHeightFt}' clear height — meets 18'+ target.` };
-  if (clearHeightFt < 14) return { possible, earned: 0, note: `${clearHeightFt}' clear height — below target.` };
+  if (clearHeightFt >= SC.clearHeight.fullAtFt) return { possible, earned: possible, note: `${clearHeightFt}' clear height — meets 18'+ target.` };
+  if (clearHeightFt < SC.clearHeight.zeroBelowFt) return { possible, earned: 0, note: `${clearHeightFt}' clear height — below target.` };
   // Exactly 14' earns 0 (the taper starts at 0 here); label it as the floor, not as tapering credit.
-  if (clearHeightFt === 14) return { possible, earned: 0, note: `${clearHeightFt}' clear height — at the 14' floor, below target; no credit.` };
-  const t = (clearHeightFt - 14) / 4;
+  if (clearHeightFt === SC.clearHeight.zeroBelowFt) return { possible, earned: 0, note: `${clearHeightFt}' clear height — at the 14' floor, below target; no credit.` };
+  const t = (clearHeightFt - SC.clearHeight.zeroBelowFt) / (SC.clearHeight.fullAtFt - SC.clearHeight.zeroBelowFt);
   return { possible, earned: Math.round(t * possible), note: `${clearHeightFt}' clear height — below target, tapering credit.` };
 }
 
@@ -120,7 +122,7 @@ function vintageFloorConfigValid(cfg) {
 }
 
 function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rctBenchmark, opts = {}) {
-  const possible = 25;
+  const possible = SC.weights.basis;
   if (askingPrice == null || buildingSizeSF == null) {
     return { possible, excluded: true, note: 'Insufficient data to compute basis vs. replacement cost — excluded from scoring.' };
   }
@@ -158,7 +160,7 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
   const floorPct = vintageFloorPct(yearBuilt, rctBenchmark.vintageFloor);
   const floorPerSF = rctLow * (1 - floorPct);
   if (!Number.isFinite(floorPct) || !Number.isFinite(floorPerSF) || floorPerSF <= 0) return invalidCategory(possible, 'Replacement-cost floor', 'could not be computed');
-  const impliedPricePerSF = (askingPrice * 1.02) / buildingSizeSF;
+  const impliedPricePerSF = (askingPrice * SC.basis.closingCostMultiplier) / buildingSizeSF;
   // `note` is what the BROKER sees (broker-score-status returns it). It must never carry the floor or
   // the implied basis in dollars (2026-09-30 audit). `internalNote` keeps the figures for the
   // Gabriel/Eric email and the ledger only.
@@ -181,7 +183,7 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
         : `Implied basis $${impliedPricePerSF.toFixed(2)}/SF exceeds the RCT v03 floor of $${floorPerSF.toFixed(2)}/SF for ${matchedRctMarket} — does not clear ORA's replacement-cost discipline.${proxySuffix}`,
     };
   }
-  const comfortableFloor = floorPerSF * 0.85;
+  const comfortableFloor = floorPerSF * SC.basis.comfortableFloorFactor;
   if (impliedPricePerSF <= comfortableFloor) {
     return {
       possible, earned: possible,
@@ -201,7 +203,7 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
 const VALUE_ADD_SIGNALS = new Set(['vacancy', 'deferred_maintenance', 'environmental_issue', 'legal_issue', 'below_market_leases', 'none_stabilized']);
 
 function scoreComplexity(valueAddSignals) {
-  const possible = 15;
+  const possible = SC.weights.complexity;
   // Absent (null/undefined) or an empty array means "not stated". Any OTHER non-array shape (a bare string,
   // an array-like object, {}) is a schema violation: the original engine threw on it, which failed closed
   // to "unavailable"; hold it for review rather than silently excluding it and renormalising around it.
@@ -220,13 +222,13 @@ function scoreComplexity(valueAddSignals) {
     return invalidCategory(possible, 'Value-add signals', 'contain a value outside the allowed list');
   }
   const realSignals = [...new Set(signals)].filter((s) => s !== 'none_stabilized');
-  if (realSignals.length >= 2) return { possible, earned: possible, note: `Value-add signals present: ${realSignals.join(', ')}.` };
-  if (realSignals.length === 1) return { possible, earned: Math.round(possible * 0.5), note: `One value-add signal present: ${realSignals[0]}.` };
+  if (realSignals.length >= SC.complexity.fullAtSignals) return { possible, earned: possible, note: `Value-add signals present: ${realSignals.join(', ')}.` };
+  if (realSignals.length > 0) return { possible, earned: Math.round(possible * SC.complexity.singleSignalFraction), note: `One value-add signal present: ${realSignals[0]}.` };
   return { possible, earned: 0, note: 'Fully stabilized, turnkey asset — limited value-add angle for ORA\'s underwriting edge.' };
 }
 
 // Minimum share of the 100 scoring points that must have been extractable before a score is shown.
-const MIN_COVERAGE_PCT = 60;
+const MIN_COVERAGE_PCT = SC.minCoveragePct;
 
 function scoreDeal(extractedIn, rctBenchmark) {
   const extracted = (extractedIn && typeof extractedIn === 'object') ? { ...extractedIn } : {};
@@ -277,9 +279,10 @@ function scoreDeal(extractedIn, rctBenchmark) {
   // needsReview also sets insufficientData so every existing consumer (broker status endpoint, ledger
   // score-total) already treats the result as "no score" without a schema change.
   const insufficientData = needsReview || (!gateFailed && coveragePct < MIN_COVERAGE_PCT);
-  const finalScore = insufficientData ? null : (gateFailed ? Math.min(rawWeightedScore, 30) : rawWeightedScore);
+  const finalScore = insufficientData ? null : (gateFailed ? Math.min(rawWeightedScore, SC.gateFailScoreCap) : rawWeightedScore);
 
   return {
+    scorecardVersion: SCORECARD_VERSION,
     finalScore,
     coveragePct: Number.isFinite(coveragePct) ? coveragePct : 0,
     insufficientData,

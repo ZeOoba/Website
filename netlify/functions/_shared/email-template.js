@@ -83,16 +83,21 @@ function renderScoreFollowupEmail({ fields, score }) {
   const gateNote = score.gateFailed ? ' (capped — outside core criteria)' : '';
   const coverage = score.coveragePct == null ? null : `${score.coveragePct}%`;
   const withheld = !!score.insufficientData;
+  const needsReview = !!score.needsReview;
   const headerRows = renderRows({
     company,
-    'submission-score': withheld ? `Withheld — insufficient data (only ${coverage} of the scorecard could be read)` : `${score.finalScore}/100${gateNote}`,
+    'submission-score': needsReview
+      ? `Needs review — extracted figures failed validation (${(score.reviewReasons || []).join('; ')})`
+      : withheld ? `Withheld — insufficient data (only ${coverage} of the scorecard could be read)` : `${score.finalScore}/100${gateNote}`,
     ...(coverage ? { 'scorecard-coverage': coverage } : {}),
     'gate-property-type': score.gates.propertyType,
     'gate-market': score.gates.market,
   });
   const breakdownRows = (score.categories || []).map((c) => `<tr><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:13px;color:#596B7D;">${escapeHtml(c.label)}</td><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:13px;color:#2D2D2D;">${c.excluded ? 'N/A' : `${c.earned}/${c.possible}`}</td><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:12px;color:#596B7D;">${escapeHtml(c.internalNote || c.note)}</td></tr>`).join('');
   return {
-    subject: withheld
+    subject: needsReview
+      ? `Deal Score Needs Review — ${company}`
+      : withheld
       ? `Deal Score Withheld — ${company} · ${coverage} coverage`
       : `Deal Score Ready — ${company} · ${score.finalScore}/100`,
     html: renderShell({ heading: `Automated Score — ${company}`, rows: headerRows + breakdownRows, links: '' }),

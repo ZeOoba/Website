@@ -59,8 +59,14 @@ async function extractDealTerms(content, { fetchImpl = fetch, model } = {}) {
         { type: 'text', text: `Extract the deal terms from the following document content:\n\n${content.text}` },
       ];
 
-  // Deliberately no `thinking` field — forced tool_choice (below) is
-  // incompatible with extended thinking on current Claude models.
+  // `thinking` is pinned off. claude-sonnet-5 runs adaptive thinking when the field is omitted, and
+  // this is a mechanical extraction through a forced tool_choice (below): reasoning adds cost and
+  // latency and counts against max_tokens. Anthropic's Sonnet 5 migration notes say the Claude API
+  // does not require `disabled` alongside a forced tool call (Bedrock does), so omission worked;
+  // the pin is for deterministic spend, and `disabled` is accepted on claude-sonnet-5 everywhere.
+  // Same pin as netlify/edge-functions/chat.ts. A move to a model that 400s on `disabled` or on
+  // forced tool_choice (Sonnet 5.5, Opus 5.5, Fable 5.1) needs this call reworked anyway (auto +
+  // strict tool, or structured outputs).
   const res = await fetchImpl('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -71,6 +77,7 @@ async function extractDealTerms(content, { fetchImpl = fetch, model } = {}) {
     body: JSON.stringify({
       model: model || process.env.BROKER_SCORE_MODEL || MODEL_DEFAULT,
       max_tokens: 1024,
+      thinking: { type: 'disabled' },
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userContent }],
       tools: [EXTRACTION_TOOL],

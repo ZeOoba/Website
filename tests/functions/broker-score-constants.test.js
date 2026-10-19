@@ -347,13 +347,16 @@ test('scoreBasis and scoreDeal apply the same size/height bounds at the point of
   const rct = rctBenchmark;
   const basis = (price, sf, opts) => engine.scoreBasis(price, sf, 2000, 'Columbus', rct, opts);
   // IOS: only positive SF; the per-SF floor still applies.
-  assert.equal(basis(2_000_000, p.iosBuildingSfMin, { ios: true }).invalid, undefined);
+  assert.equal(basis(2_000_000, 2_000_000 / p.iosPricePerSfMax, { ios: true }).invalid, undefined);
+  assert.equal(basis(2_000_000, p.iosBuildingSfMin, { ios: true }).invalid, true); // 1 SF at $2M exceeds the IOS $/SF ceiling
   assert.equal(basis(2_000_000, p.iosBuildingSfMin - 0.5, { ios: true }).invalid, true);
   assert.equal(basis(p.pricePerSfMin * 1_000_000, 1_000_000, { ios: true }).invalid, undefined);
   assert.equal(basis(p.pricePerSfMin * 1_000_000 - 1, 1_000_000, { ios: true }).invalid, true);
   assert.equal(basis(p.pricePerSfMax * 1_000, 1_000, { ios: true }).invalid, undefined);
-  // IOS is exempt from the per-SF ceiling (land-heavy), but not from the floor above; non-IOS is not exempt.
+  // IOS uses the higher iosPricePerSfMax ceiling (land-heavy), and keeps the floor above; non-IOS keeps pricePerSfMax.
   assert.equal(basis(p.pricePerSfMax * 1_000 + 1, 1_000, { ios: true }).invalid, undefined);
+  assert.equal(basis(p.iosPricePerSfMax * 1_000, 1_000, { ios: true }).invalid, undefined);
+  assert.equal(basis(p.iosPricePerSfMax * 1_000 + 1, 1_000, { ios: true }).invalid, true);
   assert.equal(basis(p.pricePerSfMax * 1_000 + 1, 1_000, {}).invalid, true);
   // Non-IOS: buildingSfMin applies.
   assert.equal(basis(900_000, p.buildingSfMin, {}).invalid, undefined);
@@ -364,7 +367,10 @@ test('scoreBasis and scoreDeal apply the same size/height bounds at the point of
   assert.equal(basis(p.askingPriceMax + 1, 5_000_000, {}).invalid, true);
   // scoreDeal level: IOS passes at the IOS minimum SF, industrial does not; clear-height max edge fails closed.
   const deal = (assetClass, sf, h, price = 2_000_000) => engine.scoreDeal({ assetClass, matchedRctMarket: 'Columbus', city: 'Columbus', state: 'OH', yearBuilt: 2000, askingPrice: price, buildingSizeSF: sf, clearHeightFt: h, valueAddSignals: ['vacancy', 'legal_issue'] }, rct);
-  assert.equal(deal('ios', p.iosBuildingSfMin, 20).needsReview, false);
+  // The IOS SF minimum alone is no longer enough to score: the IOS $/SF ceiling also applies, so 1 SF at $2M is held.
+  assert.equal(engine.scoreBuildingSize(p.iosBuildingSfMin, { ios: true }).invalid, undefined);
+  assert.equal(deal('ios', p.iosBuildingSfMin, 20).needsReview, true);
+  assert.equal(deal('ios', 2_000_000 / p.iosPricePerSfMax, 20).needsReview, false);
   assert.equal(deal('industrial', p.iosBuildingSfMin, 20).needsReview, true);
   assert.equal(deal('industrial', p.buildingSfMin, 20, 900_000).needsReview, false);
   assert.equal(deal('industrial', p.buildingSfMin - 1, 20, 900_000).needsReview, true);
@@ -396,7 +402,7 @@ const hashValues = (o) => crypto.createHash('sha256').update(canon(o)).digest('h
 // entry in the fixture also needs a visible edit to this file. Append a new entry when a version ships.
 // NOT covered by the hash: vintageFloor (rct-benchmark.json, pinned separately above) and the per-market $/SF
 // figures in rct-benchmark.json, which have their own provenance and tests.
-const RELEASED = { 'site-1.1': 'd9d02e29964d745fae343e979839ff435ded7462c0e3db3e1ba2e30ad64c6753' };
+const RELEASED = { 'site-1.1': 'd9d02e29964d745fae343e979839ff435ded7462c0e3db3e1ba2e30ad64c6753', 'site-1.1.1': '931e47eee41b42477b4955e9a5eda3eb4b561e798ece94dd25db946076cde41b' };
 
 test('version history is append-only and tied to VALUES (a value change needs a visible version/hash edit)', () => {
   for (const [version, hash] of Object.entries(RELEASED)) {

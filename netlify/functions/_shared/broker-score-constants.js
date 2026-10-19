@@ -9,7 +9,7 @@
 // SCORECARD_VERSION (move SOURCE.revision only if a new Buy Box & Scorecard revision was ratified).
 // tests/functions/broker-score-constants.test.js fails on any drift between the two.
 
-const SCORECARD_VERSION = 'site-1.1'; // site scorecard, independent of Buy Box & Scorecard rev 1.1 (see SOURCE)
+const SCORECARD_VERSION = 'site-1.1.1'; // site scorecard, independent of Buy Box & Scorecard rev 1.1 (see SOURCE)
 
 const SOURCE = Object.freeze({
   document: 'ORA Buy Box & Scorecard (acquisition-underwriting skill)',
@@ -60,6 +60,8 @@ const VALUES = deepFreeze({
     iosBuildingSfMin: 1, // IOS (outside storage) assets only: just "positive"
     clearHeightMinFt: 6, clearHeightMaxFt: 100,
     pricePerSfMin: 1, pricePerSfMax: 2_000,
+    iosPricePerSfMax: 25_000, // IOS only: replaces pricePerSfMax (SF-in-thousands guard)
+    yearBuiltMin: 1800, yearBuiltFutureYears: 2, // valid yearBuilt is [yearBuiltMin, current year + yearBuiltFutureYears]
   },
 });
 

@@ -270,3 +270,28 @@ test('runScoring still logs the ledger row, with an empty score, when the score 
   assert.equal(posted[0]['score-total'], '');
   assert.equal(posted[0]['score-coverage'], 35);
 });
+
+// A needs-review row must be distinguishable from a low-coverage withhold at the ledger's top level: both
+// have an empty score-total. The flag is an additive field on the existing form (declared in
+// broker-ledger-form.html; the declared-fields test above guards that).
+test('the ledger row carries score-needs-review: true for a needs-review result, false for a low-coverage withhold and a scored deal', async () => {
+  const run = async (extracted) => {
+    const posted = [];
+    const deps = makeDeps({
+      extractDealTermsImpl: async () => extracted,
+      forwardToNetlifyFormImpl: async (siteUrl, formName, fields) => { if (formName === 'broker-network-ledger') posted.push(fields); },
+    });
+    await runScoring({ submissionId: 'sub-flag', itemPath: 'Broker Submissions/x/om.pdf', fields: { company: 'Flag' } }, deps);
+    return posted[0];
+  };
+  const base = { askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'industrial', buildingGrade: 'B', clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990, valueAddSignals: ['vacancy'], notes: null };
+  const review = await run({ ...base, yearBuilt: 3000 });
+  assert.equal(review['score-total'], '');
+  assert.equal(review['score-needs-review'], 'true');
+  const thin = await run({ ...base, askingPrice: null, assetClass: null, city: null, state: null, matchedRctMarket: null, clearHeightFt: null, valueAddSignals: [] });
+  assert.equal(thin['score-total'], '');
+  assert.equal(thin['score-needs-review'], 'false');
+  const scored = await run(base);
+  assert.equal(typeof scored['score-total'], 'number');
+  assert.equal(scored['score-needs-review'], 'false');
+});

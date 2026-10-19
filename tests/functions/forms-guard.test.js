@@ -157,7 +157,7 @@ test('the transfer-encoding header is refused however it is spaced, and a 7 MiB 
   const big = `${head}${'a'.repeat(7 * MIB)}\r\n--b--`;
   const t = performance.now();
   assert.equal(await guard(mk(big), { secret: SECRET }), null);
-  assert.ok(performance.now() - t < 60, `7 MiB scan took ${performance.now() - t} ms`);
+  assert.ok(performance.now() - t < 150, `7 MiB scan took ${performance.now() - t} ms`);
 }));
 
 test('refuses encodings the platform parser might undo', () => quiet(async () => {

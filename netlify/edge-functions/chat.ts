@@ -306,7 +306,7 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
         const dt = Date.now() - t0;
         console.log('[chat] ok', { sessionId, model, ms: dt, msgCount: valid.msgs.length, outputTokens, bytesIn });
       } catch (e) {
-        console.error('[chat] stream error', { sessionId, err: String(e) });
+        console.error('[chat] stream error', { sessionId, err: String(e).split(apiKey).join('[redacted]').slice(0, 200) });
         // Stop reading so the upstream generation (billed per output token) is not left running.
         try { await reader.cancel(); } catch { /* already closed */ }
         try { controller.enqueue(sseLine({ type: 'error', message: 'stream_error' })); } catch {}

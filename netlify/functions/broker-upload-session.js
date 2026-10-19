@@ -5,8 +5,7 @@ const { createUploadSession } = require('./_shared/graph-files.js');
 const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
 const { verifyRecaptcha } = require('./_shared/recaptcha.js');
 
-const ALLOWED_EXTS = ['pdf', 'xlsx', 'xls', 'doc', 'docx'];
-const MAX_BYTES = 60 * 1024 * 1024;
+const { OM_UPLOAD_EXTS: ALLOWED_EXTS, MAX_UPLOAD_BYTES: MAX_BYTES } = require('./_shared/broker-limits.js');
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 // Google siteverify error-codes that mean OUR config is broken, not that a
 // user failed/skipped the challenge — see the reCAPTCHA block below.

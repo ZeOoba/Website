@@ -59,8 +59,8 @@ test('extractForScoring converts an XLS (BIFF8/OLE2) workbook to CSV-per-sheet t
   assert.match(result.text, /Main St/);
 });
 
-test('extractForScoring returns unparseable_file for garbage bytes claiming to be xlsx', async () => {
-  const buf = Buffer.from('this is not a real spreadsheet');
+test('extractForScoring returns unparseable_file for zip-signature garbage claiming to be xlsx', async () => {
+  const buf = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from('this is not a real spreadsheet')]);
   const result = await extractForScoring(buf, 'xlsx');
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'unparseable_file');

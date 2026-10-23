@@ -1,5 +1,6 @@
 'use strict';
 const { getGraphToken } = require('./graph-auth.js');
+const { UPLOAD_PATH_RE } = require('./validate.js');
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
@@ -97,13 +98,87 @@ async function getItemByPath(itemPath, opts = {}) {
   return res.json();
 }
 
-async function getFileContent(itemPath, opts = {}) {
-  const driveId = requireEnv('GRAPH_DRIVE_ID');
-  const res = await graphFetch(`/drives/${driveId}/root:/${encodeGraphPath(itemPath)}:/content`, opts);
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`graph-files: getFileContent failed for "${itemPath}" (${res.status})`);
-  const arrayBuffer = await res.arrayBuffer();
-  return Buffer.from(arrayBuffer);
+// Reads at most `max` bytes of a fetch Response body. Streams when it can and cancels the rest, so a
+// server that ignores a Range header (or a file larger than the cap) is never fully buffered.
+async function readUpTo(res, max) {
+  if (res.body && typeof res.body.getReader === 'function') {
+    const reader = res.body.getReader();
+    const chunks = [];
+    let total = 0;
+    let exceeded = false;
+    while (total <= max) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(Buffer.from(value));
+      total += value.length;
+    }
+    if (total > max) { exceeded = true; await reader.cancel().catch(() => {}); }
+    return { buffer: Buffer.concat(chunks).subarray(0, max), exceeded };
+  }
+  const all = Buffer.from(await res.arrayBuffer());
+  return { buffer: all.subarray(0, max), exceeded: all.length > max };
 }
 
-module.exports = { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath, getFileContent, sanitizeSegment };
+// Only the first `bytes` bytes (for magic-number checks). Null when the item does not exist.
+async function getFileHead(itemPath, bytes, opts = {}) {
+  const driveId = requireEnv('GRAPH_DRIVE_ID');
+  const res = await graphFetch(`/drives/${driveId}/root:/${encodeGraphPath(itemPath)}:/content`, {
+    ...opts,
+    headers: { range: `bytes=0-${bytes - 1}` },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`graph-files: getFileHead failed for "${itemPath}" (${res.status})`);
+  return (await readUpTo(res, bytes)).buffer;
+}
+
+// `maxBytes` (optional) bounds what is buffered: a Content-Length over the cap, or a stream that runs past it,
+// throws an error with code 'too_large' instead of loading the whole file into memory.
+async function getFileContent(itemPath, opts = {}) {
+  const { maxBytes, ...rest } = opts;
+  const driveId = requireEnv('GRAPH_DRIVE_ID');
+  const res = await graphFetch(`/drives/${driveId}/root:/${encodeGraphPath(itemPath)}:/content`, rest);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`graph-files: getFileContent failed for "${itemPath}" (${res.status})`);
+  if (maxBytes === undefined) {
+    const arrayBuffer = await res.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+  const declared = Number(res.headers && typeof res.headers.get === 'function' ? res.headers.get('content-length') : NaN);
+  const tooLarge = () => Object.assign(new Error(`graph-files: "${itemPath}" exceeds ${maxBytes} bytes`), { code: 'too_large' });
+  if (Number.isFinite(declared) && declared > maxBytes) throw tooLarge();
+  const { buffer, exceeded } = await readUpTo(res, maxBytes);
+  if (exceeded) throw tooLarge();
+  return buffer;
+}
+
+const QUARANTINE_FOLDER = 'Broker Submissions/_Quarantine';
+
+// Moves one of THIS flow's own uploads (path must match UPLOAD_PATH_RE: Broker Submissions/<date>_<co>_<hex>/<file>)
+// into Broker Submissions/_Quarantine, renamed "<submission folder>__<file>" to keep provenance. A move, never a
+// delete: Gabriel can still open or purge it. Anything outside that shape is refused, so this cannot be pointed
+// at another folder, and an item already in quarantine does not match the shape either.
+async function quarantineUpload(itemPath, opts = {}) {
+  if (typeof itemPath !== 'string' || !UPLOAD_PATH_RE.test(itemPath) || itemPath.split('/').includes('..')) {
+    throw new Error('graph-files: quarantineUpload refused a path outside the broker upload shape');
+  }
+  const driveId = requireEnv('GRAPH_DRIVE_ID');
+  const [, folder, file] = itemPath.split('/');
+  await ensureFolder(QUARANTINE_FOLDER, opts);
+  // Address the destination by item id: Graph's documented move shape, and immune to path-format quirks.
+  const dest = await getItemByPath(QUARANTINE_FOLDER, opts);
+  if (!dest || !dest.id) throw new Error('graph-files: quarantineUpload could not resolve the quarantine folder');
+  const newName = sanitizeSegment(`${folder}__${file}`);
+  const res = await graphFetch(`/drives/${driveId}/root:/${encodeGraphPath(itemPath)}?@microsoft.graph.conflictBehavior=rename`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      name: newName,
+      parentReference: { id: dest.id },
+    }),
+    ...opts,
+  });
+  if (!res.ok) throw new Error(`graph-files: quarantineUpload failed for "${itemPath}" (${res.status})`);
+  return { path: `${QUARANTINE_FOLDER}/${newName}` };
+}
+
+module.exports = { ensureFolder, uploadSmallFile, createUploadSession, getItemByPath, getFileContent, getFileHead, quarantineUpload, QUARANTINE_FOLDER, sanitizeSegment };

@@ -37,8 +37,9 @@ function fmtMoney(n) { return n.toLocaleString('en-US', { maximumFractionDigits:
 // building at $180K / 45,000 SF passes by design), tight enough to catch zero, $-in-thousands and
 // SF-in-thousands for buy-box-size deals, and runaway figures.
 // IOS (outdoor storage) is land-like: its "building" SF can be tiny or absent relative to price, so for
-// assetClass 'ios' the UPPER price-per-SF bound and the 500 SF minimum are NOT applied (finite/positive,
-// SF >= 1, the $1/SF lower bound and the price and SF maximums still are). Other classes get the full bounds.
+// assetClass 'ios' the standard UPPER price-per-SF bound and the 500 SF minimum are NOT applied (finite/positive,
+// SF >= 1, the $1/SF lower bound and the price and SF maximums still are; the $/SF ceiling becomes
+// PLAUSIBLE_IOS_PRICE_PER_SF_MAX, see below). Other classes get the full bounds.
 // ACCEPTED RESIDUAL: a wrong FIELD or unit that still lands inside these bounds (for example NOI in the
 // price slot, SF in square metres, a large price quoted in $000s) is not detectable here and is scored.
 const PLAUSIBLE_ASKING_PRICE_MIN = SC.plausibility.askingPriceMin;
@@ -50,6 +51,18 @@ const PLAUSIBLE_CLEAR_HEIGHT_MAX_FT = SC.plausibility.clearHeightMaxFt;
 const PLAUSIBLE_IOS_BUILDING_SF_MIN = SC.plausibility.iosBuildingSfMin;
 const PLAUSIBLE_PRICE_PER_SF_MIN = SC.plausibility.pricePerSfMin;
 const PLAUSIBLE_PRICE_PER_SF_MAX = SC.plausibility.pricePerSfMax;
+// IOS keeps an upper $/SF ceiling, just a far higher one. With no ceiling at all, a building SF entered in
+// thousands (125 meaning 125,000, so $5M / 125 = $40,000/SF) scored as a tiny building with full size credit.
+// $25,000/SF is 12.5x the standard ceiling: a 400 SF office on a $5M yard ($12,500/SF) and a 200 SF booth on a
+// $5M yard (exactly $25,000/SF) still score. ACCEPTED RESIDUAL: no price-only rule separates every thousands
+// error from a real tiny-building yard, so an SF-in-thousands error priced at or below 25,000 x the entered SF
+// (125 entered for 125,000 SF is caught only above $3.125M) is still scored, and a legitimate sub-200 SF
+// guard shack on a >$25,000/SF yard is held for review. Both are fail-visible: review mail goes to Gabriel/Eric.
+const PLAUSIBLE_IOS_PRICE_PER_SF_MAX = SC.plausibility.iosPricePerSfMax;   // $/SF, IOS only
+// yearBuilt only selects the vintage floor. null/undefined = "not stated" (conservative default); any other
+// value must be a finite number in [1800, current year + 2] (allows under-construction / just-delivered).
+const PLAUSIBLE_YEAR_BUILT_MIN = SC.plausibility.yearBuiltMin;
+const PLAUSIBLE_YEAR_BUILT_FUTURE_YEARS = SC.plausibility.yearBuiltFutureYears;
 
 // Returns null when `v` is usable (a finite number inside [min, max]), else a short reason. Strings are
 // rejected, not coerced: "5000000" or "$5M" from the model means the extraction did not follow the schema.
@@ -121,8 +134,18 @@ function vintageFloorConfigValid(cfg) {
     && [earlyPct, latePct].every((p) => typeof p === 'number' && Number.isFinite(p) && p > 0 && p < 1);
 }
 
+// null/undefined = not stated (valid, defaults to the conservative vintage). Returns a reason or null.
+function invalidYearBuiltReason(yearBuilt) {
+  if (yearBuilt == null) return null;
+  return invalidNumberReason(yearBuilt, PLAUSIBLE_YEAR_BUILT_MIN, new Date().getFullYear() + PLAUSIBLE_YEAR_BUILT_FUTURE_YEARS);
+}
+
 function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rctBenchmark, opts = {}) {
   const possible = SC.weights.basis;
+  // Checked first so a bad year is held even when price/SF/market are missing (it would otherwise be
+  // silently ignored and the broker would see a score built on a corrupt extraction).
+  const badYear = invalidYearBuiltReason(yearBuilt);
+  if (badYear) return invalidCategory(possible, 'Year built', badYear);
   if (askingPrice == null || buildingSizeSF == null) {
     return { possible, excluded: true, note: 'Insufficient data to compute basis vs. replacement cost — excluded from scoring.' };
   }
@@ -133,9 +156,11 @@ function scoreBasis(askingPrice, buildingSizeSF, yearBuilt, matchedRctMarket, rc
   // Checked before the market match so an implausible price/SF pair is flagged (and shows up in the
   // category payload) even when no RCT market matched. IOS is land-like and exempt from the UPPER bound only.
   const rawPerSF = askingPrice / buildingSizeSF;
-  // IOS drops only the UPPER bound (small SF relative to price). The lower bound still applies: land SF
-  // dropped into the building slot would otherwise earn full basis credit against building replacement cost.
-  if (!(rawPerSF >= PLAUSIBLE_PRICE_PER_SF_MIN && (opts.ios || rawPerSF <= PLAUSIBLE_PRICE_PER_SF_MAX))) {
+  // IOS swaps the standard UPPER bound for the higher PLAUSIBLE_IOS_PRICE_PER_SF_MAX (small SF relative to
+  // price). The lower bound still applies: land SF dropped into the building slot would otherwise earn full
+  // basis credit against building replacement cost.
+  const maxPerSF = opts.ios ? PLAUSIBLE_IOS_PRICE_PER_SF_MAX : PLAUSIBLE_PRICE_PER_SF_MAX;
+  if (!(rawPerSF >= PLAUSIBLE_PRICE_PER_SF_MIN && rawPerSF <= maxPerSF)) {
     return invalidCategory(possible, 'Implied price per SF', 'is outside the plausible range');
   }
   if (!matchedRctMarket) {
@@ -300,7 +325,7 @@ function scoreDeal(extractedIn, rctBenchmark) {
 
 module.exports = {
   PLAUSIBLE_ASKING_PRICE_MIN, PLAUSIBLE_ASKING_PRICE_MAX, PLAUSIBLE_BUILDING_SF_MIN, PLAUSIBLE_BUILDING_SF_MAX,
-  PLAUSIBLE_IOS_BUILDING_SF_MIN, PLAUSIBLE_CLEAR_HEIGHT_MIN_FT, PLAUSIBLE_CLEAR_HEIGHT_MAX_FT, PLAUSIBLE_PRICE_PER_SF_MIN, PLAUSIBLE_PRICE_PER_SF_MAX,
+  PLAUSIBLE_IOS_BUILDING_SF_MIN, PLAUSIBLE_IOS_PRICE_PER_SF_MAX, PLAUSIBLE_YEAR_BUILT_MIN, PLAUSIBLE_YEAR_BUILT_FUTURE_YEARS, PLAUSIBLE_CLEAR_HEIGHT_MIN_FT, PLAUSIBLE_CLEAR_HEIGHT_MAX_FT, PLAUSIBLE_PRICE_PER_SF_MIN, PLAUSIBLE_PRICE_PER_SF_MAX,
   vintageFloorPct, evaluatePropertyTypeGate, evaluateMarketGate,
   scoreDealSize, scoreBuildingSize, scoreClearHeight, scoreBasis, scoreComplexity,
   scoreDeal,

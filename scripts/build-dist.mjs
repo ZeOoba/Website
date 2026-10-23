@@ -11,6 +11,7 @@
  */
 
 import { promises as fs } from 'node:fs';
+import { stampAssetVersions } from './stamp-asset-versions.mjs';
 import path from 'node:path';
 import url from 'node:url';
 import { cspLines, requiredHashes, scriptSrcTokens } from './csp-hashes.mjs';
@@ -145,6 +146,11 @@ async function main() {
   for (const banned of new Set([...BANNED, ...EXPECTED_EXCLUSIONS])) {
     if (await exists(path.join(DIST, banned))) failures.push(`internal path leaked into dist: ${banned}`);
   }
+
+  // /*.css and /*.js ship with a one-year immutable cache (_headers), so the only thing that
+  // gets a returning visitor new code is a new URL. Stamp every local asset reference with the
+  // hash of the bytes actually being published instead of trusting a hand-bumped ?v=.
+  failures.push(...(await stampAssetVersions(DIST)));
 
   // Fail closed on CSP drift: script-src allows inline scripts by hash, so a page whose inline
   // script changed without regenerating the hashes would ship and be silently blocked in the

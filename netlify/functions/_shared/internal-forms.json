@@ -1,0 +1,6 @@
+{
+  "forms": ["broker-network-ledger", "pipeline-failures"],
+  "header": "x-ora-internal-form",
+  "context": "ora-internal-forms-v1",
+  "secretEnv": ["FORMS_INTERNAL_SECRET", "INTAKE_TOKEN_SECRET"]
+}

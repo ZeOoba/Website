@@ -818,6 +818,40 @@ test('finalize: a valid PDF, DOCX and XLSX within limits still finalize (200) wi
   }
 }));
 
+// ---------- Office size drift (SharePoint rewrites Office files after upload) ----------
+test('uploadSizeAcceptable: exact match always; Office types tolerate bounded drift; PDFs and wild drift do not', () => {
+  const ok = limits.uploadSizeAcceptable;
+  assert.equal(ok('pdf', 5000, 5000), true);
+  assert.equal(ok('pdf', 5000, 5001), false, 'PDFs are stored verbatim');
+  for (const ext of ['docx', 'xlsx', 'xls', 'doc']) {
+    assert.equal(ok(ext, 8993, 8993), true);
+    assert.equal(ok(ext, 8993, 12000), true, ext + ' drift within tolerance');
+    assert.equal(ok(ext, 8993, 8993 + limits.OFFICE_SIZE_TOLERANCE_BYTES), true, 'exactly at the tolerance');
+    assert.equal(ok(ext, 8993, 8993 + limits.OFFICE_SIZE_TOLERANCE_BYTES + 1), false, 'one byte past the tolerance');
+    assert.equal(ok(ext, 8993, 0), false, 'empty stored file');
+  }
+  assert.equal(ok('xlsx', 20_000_000, 24_900_000), true, 'ratio tolerance scales with large files');
+  assert.equal(ok('xlsx', 20_000_000, 25_100_000), false);
+  assert.equal(ok('xlsx', 5000, undefined), true, 'missing size is judged by later checks, as before');
+});
+
+test('finalize: an xlsx whose stored size drifted (SharePoint rewrite) still finalizes, an out-of-tolerance one is 409', () => withEnv(ENV, async () => {
+  const zip = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
+  const x = 'Broker Submissions/2026-10-23_Acme_ab12cd34/rent-roll.xlsx';
+  const drifted = await finalize({ itemPath: x, claimedSize: 8993, itemSize: 9407, head: zip });
+  assert.equal(drifted.status, 200);
+  assert.deepEqual(drifted.quarantined, []);
+  const far = await finalize({ itemPath: x, claimedSize: 8993, itemSize: 8993 + 5 * 1024 * 1024, head: zip });
+  assert.equal(far.status, 409);
+  assert.equal(far.body.error, 'size_mismatch');
+}));
+
+test('finalize: a PDF whose stored size differs from the claim is still size_mismatch (exact match kept for non-Office)', () => withEnv(ENV, async () => {
+  const r = await finalize({ itemPath: P, claimedSize: 5000, itemSize: 5100, head: PDF });
+  assert.equal(r.status, 409);
+  assert.equal(r.body.error, 'size_mismatch');
+}));
+
 // ---------- scoring run ----------
 test('runScoring: a stored item over the scoring ceiling is marked unavailable without downloading it', async () => {
   const { runScoring } = await load('_shared/broker-scoring-run.mjs');

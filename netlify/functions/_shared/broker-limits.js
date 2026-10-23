@@ -11,6 +11,22 @@ const zlib = require('node:zlib');
 const OM_UPLOAD_EXTS = ['pdf', 'xlsx', 'xls', 'doc', 'docx'];
 const MAX_UPLOAD_BYTES = 60 * 1024 * 1024;
 
+// SharePoint rewrites Office files after the browser's upload (property promotion / metadata stamping), so the
+// stored size of a .docx/.xlsx/.xls/.doc legitimately differs from the bytes the broker sent; PDFs are stored
+// verbatim. broker-finalize therefore demands an exact size match only for non-Office types and allows this much
+// drift (the larger of the two) for Office types. The upload path is HMAC-bound and the real bytes are
+// type-checked afterwards, so exact size equality adds little for Office files.
+const OFFICE_EXTS = ['docx', 'xlsx', 'xls', 'doc'];
+const OFFICE_SIZE_TOLERANCE_BYTES = 1024 * 1024;
+const OFFICE_SIZE_TOLERANCE_RATIO = 0.25;
+
+function uploadSizeAcceptable(ext, claimedSize, storedSize) {
+  if (typeof storedSize !== 'number') return true; // unchanged behaviour: a missing size is judged by later checks
+  if (storedSize === claimedSize) return true;
+  if (!OFFICE_EXTS.includes(ext) || !(storedSize > 0)) return false;
+  return Math.abs(storedSize - claimedSize) <= Math.max(OFFICE_SIZE_TOLERANCE_BYTES, claimedSize * OFFICE_SIZE_TOLERANCE_RATIO);
+}
+
 // Anthropic caps a document-block request at 32MB/100 pages and base64 inflates a raw file ~33% - 20MB raw
 // stays safely under that after encoding. Anything larger skips scoring (the submission itself still lands).
 const MAX_SCORING_BYTES = 20 * 1024 * 1024;
@@ -301,7 +317,7 @@ function inspectZip(buffer, { requireContentTypes = false, maxXmlEntryBytes = In
 }
 
 module.exports = {
-  OM_UPLOAD_EXTS, MAX_UPLOAD_BYTES, MAX_SCORING_BYTES,
+  OM_UPLOAD_EXTS, MAX_UPLOAD_BYTES, MAX_SCORING_BYTES, OFFICE_EXTS, OFFICE_SIZE_TOLERANCE_BYTES, OFFICE_SIZE_TOLERANCE_RATIO, uploadSizeAcceptable,
   MAX_EXTRACTED_SHEETS, MAX_ROWS_PER_SHEET, MAX_COLS_PER_SHEET, MAX_DOCX_XML_BYTES, MAX_DOCX_XML_TOTAL_BYTES, MAX_HYPERLINK_AREA, PARSE_TIMEOUT_MS, PARSE_HEAP_MB, MAX_EXTRACTED_CHARS,
   MAX_ZIP_ENTRIES, MAX_ZIP_ENTRY_BYTES, MAX_ZIP_UNCOMPRESSED_BYTES,
   HEAD_BYTES, truncationMarker, capText, matchesDeclaredOmType, isPlausibleOmUpload, classifyHead, inspectZip,

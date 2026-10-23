@@ -8,7 +8,7 @@
 // Every other _shared module stays CommonJS and untouched.
 import { verifyIntakeToken, signIntakeToken, sanitizeField, generateSubmissionId } from './_shared/validate.js';
 import { getItemByPath, getFileHead, quarantineUpload } from './_shared/graph-files.js';
-import { OM_UPLOAD_EXTS, MAX_UPLOAD_BYTES, HEAD_BYTES, isPlausibleOmUpload } from './_shared/broker-limits.js';
+import { OM_UPLOAD_EXTS, MAX_UPLOAD_BYTES, HEAD_BYTES, isPlausibleOmUpload, uploadSizeAcceptable } from './_shared/broker-limits.js';
 import { sendMail } from './_shared/graph-mail.js';
 import { renderBrokerEmail } from './_shared/email-template.js';
 import { forwardToNetlifyForm } from './_shared/netlify-forms.js';
@@ -121,9 +121,14 @@ export async function handleBrokerFinalize(req, {
     console.error('[broker-finalize] upload not found', claims.path);
     return fail(409, 'upload_not_found');
   }
-  if (typeof item.size === 'number' && item.size !== claims.size) {
+  const pathExt = (/\.([a-z0-9]+)$/i.exec(claims.path) || [, ''])[1].toLowerCase();
+  if (!uploadSizeAcceptable(pathExt, claims.size, item.size)) {
     console.error('[broker-finalize] size mismatch', `${claims.path} expected=${claims.size} actual=${item.size}`);
     return fail(409, 'size_mismatch');
+  }
+  if (typeof item.size === 'number' && item.size !== claims.size) {
+    // Office file whose stored size drifted from what the browser sent (SharePoint rewrite): accepted, but logged.
+    console.error('[broker-finalize] office size drift accepted', `${claims.path} expected=${claims.size} actual=${item.size}`);
   }
 
   // Server-side content checks. The browser uploads straight to SharePoint, so until here nothing has looked at

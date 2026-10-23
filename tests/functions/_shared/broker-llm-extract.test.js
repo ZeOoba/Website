@@ -29,7 +29,10 @@ test('extractDealTerms sends the PDF as a native document block and forces the e
   assert.deepEqual(result, FAKE_EXTRACTION);
   assert.equal(capturedBody.tool_choice.type, 'tool');
   assert.equal(capturedBody.tool_choice.name, 'record_deal_terms');
-  assert.equal(capturedBody.thinking, undefined); // forced tool_choice is incompatible with extended thinking
+  // Pinned off: Sonnet 5 would otherwise run adaptive thinking alongside a forced tool call.
+  assert.deepEqual(capturedBody.thinking, { type: 'disabled' });
+  assert.equal(capturedBody.max_tokens, 1024);
+  for (const k of ['temperature', 'top_p', 'top_k']) assert.equal(k in capturedBody, false, k);
   const docBlock = capturedBody.messages[0].content.find((b) => b.type === 'document');
   assert.equal(docBlock.source.type, 'base64');
   assert.equal(docBlock.source.media_type, 'application/pdf');

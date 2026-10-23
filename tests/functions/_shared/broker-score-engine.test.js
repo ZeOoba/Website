@@ -756,3 +756,65 @@ test('email: a needs-review result renders a distinct subject and reasons, not a
   assert.match(html, /Asking price is zero or negative/);
   assert.doesNotMatch(html, /NaN|undefined/);
 });
+
+// yearBuilt is LLM-extracted and feeds the vintage floor. null/undefined means "not stated" (conservative
+// default vintage); anything else must be a finite number inside the plausible window or the score is held.
+test('yearBuilt bounds are exported named constants', () => {
+  assert.equal(engine.PLAUSIBLE_YEAR_BUILT_MIN, 1800);
+  assert.equal(engine.PLAUSIBLE_YEAR_BUILT_FUTURE_YEARS, 2);
+});
+
+test('an implausible yearBuilt needs review instead of scoring (3000 and 1e9 used to score 87 vs 75)', () => {
+  const nextYear = new Date().getFullYear() + 1;
+  assert.equal(engine.scoreDeal({ ...goodDeal, yearBuilt: nextYear }, rctBenchmark).needsReview, false, 'under construction / just delivered');
+  const bad = [3000, 1e9, 1799, 0, -1990, NaN, Infinity, -Infinity, '1990', true, {}, [], new Date().getFullYear() + 3];
+  for (const yb of bad) {
+    const r = engine.scoreDeal({ ...goodDeal, yearBuilt: yb }, rctBenchmark);
+    assert.equal(r.needsReview, true, `yearBuilt ${String(yb)}`);
+    assert.equal(r.insufficientData, true);
+    assert.equal(r.finalScore, null);
+    assert.match(r.reviewReasons.join(';'), /Year built/);
+    assertNoNaN(r);
+  }
+});
+
+test('a bad yearBuilt is held even when price/market are missing, and a gate FAIL does not exempt it', () => {
+  assert.equal(engine.scoreDeal({ ...goodDeal, yearBuilt: 3000, askingPrice: null }, rctBenchmark).needsReview, true);
+  assert.equal(engine.scoreDeal({ ...goodDeal, yearBuilt: 3000, matchedRctMarket: null, city: null, state: null }, rctBenchmark).needsReview, true);
+  assert.equal(engine.scoreDeal({ ...goodDeal, yearBuilt: 3000, assetClass: 'multifamily' }, rctBenchmark).needsReview, true);
+});
+
+test('valid and absent yearBuilt scores are unchanged (1800 through current year + 2, null, undefined)', () => {
+  const thisYear = new Date().getFullYear();
+  for (const yb of [1800, 1900, 1950, 1995, 2000, 2005, thisYear, thisYear + 2, null, undefined]) {
+    const r = engine.scoreDeal({ ...goodDeal, yearBuilt: yb }, rctBenchmark);
+    assert.equal(r.needsReview, false, String(yb));
+    assert.equal(typeof r.finalScore, 'number', String(yb));
+  }
+  assert.equal(engine.scoreDeal({ ...goodDeal, yearBuilt: 1990 }, rctBenchmark).finalScore, engine.scoreDeal({ ...goodDeal, yearBuilt: null }, rctBenchmark).finalScore);
+});
+
+// IOS exempts the 500 SF floor and the standard $2,000/SF ceiling (land-like asset). A building SF entered in
+// thousands (125 meaning 125,000) then used to score as a tiny building with full size credit. IOS gets its own
+// much higher ceiling instead of none.
+test('IOS has an implied price-per-SF ceiling: SF-in-thousands ($5M / 125 = $40,000/SF) is reviewed', () => {
+  assert.equal(engine.PLAUSIBLE_IOS_PRICE_PER_SF_MAX, 25_000);
+  const ios = { ...goodDeal, assetClass: 'ios', askingPrice: 5_000_000 };
+  const r = engine.scoreDeal({ ...ios, buildingSizeSF: 125 }, rctBenchmark);
+  assert.equal(r.needsReview, true);
+  assert.equal(r.finalScore, null);
+  assert.match(r.reviewReasons.join(';'), /Implied price per SF/);
+  assertNoNaN(r);
+  // legitimate small IOS buildings stay scored, up to the ceiling
+  assert.equal(engine.scoreDeal({ ...ios, buildingSizeSF: 400 }, rctBenchmark).needsReview, false); // $12,500/SF
+  assert.equal(engine.scoreDeal({ ...ios, buildingSizeSF: 2_000 }, rctBenchmark).needsReview, false);
+  assert.equal(engine.scoreDeal({ ...ios, buildingSizeSF: 200 }, rctBenchmark).needsReview, false); // exactly $25,000/SF
+  assert.equal(engine.scoreDeal({ ...ios, buildingSizeSF: 199 }, rctBenchmark).needsReview, true);
+  // non-IOS classes keep the standard $2,000/SF ceiling
+  assert.equal(engine.scoreDeal({ ...goodDeal, askingPrice: 5_000_000, buildingSizeSF: 2_000 }, rctBenchmark).needsReview, true);
+});
+
+test('IOS ceiling applies without an RCT market match too', () => {
+  const r = engine.scoreDeal({ ...goodDeal, assetClass: 'ios', askingPrice: 5_000_000, buildingSizeSF: 125, matchedRctMarket: null, city: null, state: null }, rctBenchmark);
+  assert.equal(r.needsReview, true);
+});

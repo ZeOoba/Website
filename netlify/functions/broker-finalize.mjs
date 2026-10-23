@@ -7,7 +7,8 @@
 // left an unresolvable runtime require -- verified broken on deploy-preview-72.
 // Every other _shared module stays CommonJS and untouched.
 import { verifyIntakeToken, signIntakeToken, sanitizeField, generateSubmissionId } from './_shared/validate.js';
-import { getItemByPath } from './_shared/graph-files.js';
+import { getItemByPath, getFileHead, quarantineUpload } from './_shared/graph-files.js';
+import { OM_UPLOAD_EXTS, MAX_UPLOAD_BYTES, HEAD_BYTES, isPlausibleOmUpload } from './_shared/broker-limits.js';
 import { sendMail } from './_shared/graph-mail.js';
 import { renderBrokerEmail } from './_shared/email-template.js';
 import { forwardToNetlifyForm } from './_shared/netlify-forms.js';
@@ -65,6 +66,9 @@ export const CONSUME_TIMEOUT_MS = 6500;
 const BACKSTOP_TIMEOUT_MS = 2500;
 const RELEASE_TIMEOUT_MS = 2500;
 const REQUEST_BUDGET_MS = 9000;
+// The type check reads ~8 bytes; the quarantine move is a best-effort tidy-up on an already-failing request.
+const HEAD_TIMEOUT_MS = 2500;
+const QUARANTINE_TIMEOUT_MS = 5000;
 function withTimeout(promise, ms, what) {
   let timer;
   const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms); });
@@ -77,6 +81,8 @@ export async function handleBrokerFinalize(req, {
   checkAndRecordDailyCapImpl = checkAndRecordDailyCap,
   consumeIntakeTokenImpl = consumeIntakeToken,
   releaseIntakeTokenImpl = releaseIntakeToken,
+  getFileHeadImpl = getFileHead,
+  quarantineUploadImpl = quarantineUpload,
   consumeTimeoutMs = CONSUME_TIMEOUT_MS,
   requestBudgetMs = REQUEST_BUDGET_MS,
 } = {}) {
@@ -119,6 +125,38 @@ export async function handleBrokerFinalize(req, {
     console.error('[broker-finalize] size mismatch', `${claims.path} expected=${claims.size} actual=${item.size}`);
     return fail(409, 'size_mismatch');
   }
+
+  // Server-side content checks. The browser uploads straight to SharePoint, so until here nothing has looked at
+  // the bytes: the token binds a CLAIMED size and a declared extension. Re-check both against what is stored.
+  // These run before the replay guard, like the checks above, and a rejected file is MOVED to quarantine
+  // (never deleted), so a replay of the same token lands on upload_not_found and nothing is written to Forms.
+  const ext = (/\.([a-z0-9]+)$/i.exec(claims.path) || [, ''])[1].toLowerCase();
+  const reject = async (status, code, detail) => {
+    console.error('[broker-finalize] upload rejected', `${code} ${claims.path} ${detail}`);
+    try {
+      const moved = await withTimeout(quarantineUploadImpl(claims.path, { fetchImpl }), QUARANTINE_TIMEOUT_MS, 'quarantineUpload');
+      console.error('[broker-finalize] rejected upload quarantined', moved && moved.path);
+    } catch (qErr) {
+      // The file stays where it is (still inside Broker Submissions/). Deploy log only: a Forms row per replay
+      // would burn the quota, and the rejection itself is already reported to the broker.
+      console.error('[broker-finalize] quarantine failed; rejected upload left in place', claims.path, String(qErr));
+    }
+    return fail(status, code);
+  };
+  if (typeof item.size !== 'number') return reject(422, 'file_type_rejected', 'item has no size (not a file)');
+  if (item.size > MAX_UPLOAD_BYTES) return reject(413, 'file_too_large', `size=${item.size}`);
+  if (!OM_UPLOAD_EXTS.includes(ext)) return reject(422, 'file_type_rejected', `ext=${ext}`);
+  let head;
+  try {
+    head = await withTimeout(getFileHeadImpl(claims.path, HEAD_BYTES, { fetchImpl }), HEAD_TIMEOUT_MS, 'getFileHead');
+  } catch (err) {
+    // Fail CLOSED: nothing is consumed or quarantined (the token stays valid for its TTL). The shipped client opens
+    // a fresh upload session per submit, so the broker resubmits; there is no automatic client retry.
+    console.error('[broker-finalize] getFileHead failed', String(err));
+    return fail(502, 'type_check_unavailable');
+  }
+  if (!head) return fail(409, 'upload_not_found');
+  if (!isPlausibleOmUpload(ext, head)) return reject(422, 'file_content_mismatch', `declared=${ext}`);
 
   // Replay guard: the token is valid, the upload exists and matches — burn it
   // now, before anything with a side effect (ledger row, two emails, scoring).

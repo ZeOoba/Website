@@ -489,7 +489,9 @@ test('scanFiles: symlinks are findings, missing files are skipped, required targ
     assert.equal(clean.scanned, 1, 'a tracked-but-deleted file is skipped');
     const dirty = scanFiles(dir, ['a.txt'], canaryIdx);
     assert.equal(dirty.findings.length, 1);
-    assert.ok(!dirty.findings[0].includes('a.txt'), 'the finding does not name the path');
+    // The label is `file#<8 hex of an HMAC><ext>`: a fingerprint that happens to end in "a" makes
+    // the bare label contain "a.txt", so check the label shape, not a substring.
+    assert.match(dirty.findings[0], /^file#[0-9a-f]{8}\.txt /, 'the finding is labelled by fingerprint, not path');
     assert.deepEqual(missingRequired(dir, ['a.txt', 'b.txt', 'c.txt'], ['a.txt', 'c.txt', 'd.txt']), ['c.txt', 'd.txt']);
     let link = null;
     try {

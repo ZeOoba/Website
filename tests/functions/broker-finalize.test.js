@@ -21,6 +21,14 @@ function loadFinalize() {
   return finalizeModulePromise;
 }
 
+// Real leading bytes for the declared extension of an upload path.
+function headFor(p) {
+  const ext = (/\.([a-z0-9]+)$/i.exec(p) || [, ''])[1].toLowerCase();
+  if (ext === 'pdf') return Buffer.from('%PDF-1.7\n');
+  if (ext === 'docx' || ext === 'xlsx') return Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
+  return Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+}
+
 async function callFinalize(event, deps) {
   const { handleBrokerFinalize } = await loadFinalize();
   const req = new Request('https://oxfordra.net/api/broker-finalize', {
@@ -28,7 +36,9 @@ async function callFinalize(event, deps) {
     headers: event.headers || {},
     ...(event.body === undefined ? {} : { body: event.body }),
   });
-  const res = await handleBrokerFinalize(req, deps);
+  // Default the new content checks (head bytes + quarantine) to a well-formed upload of the declared type, so the
+  // pre-existing tests keep pinning only what they were written to pin. Tests of the content checks override them.
+  const res = await handleBrokerFinalize(req, { getFileHeadImpl: async (p) => headFor(p), quarantineUploadImpl: async () => ({ path: 'q' }), ...deps });
   return { statusCode: res.status, body: await res.text() };
 }
 

@@ -5,6 +5,7 @@
 // bundles @netlify/blobs into the function rather than leaving an unresolvable
 // runtime require. The logic below is unchanged from the V1 original.
 import { getItemByPath, getFileContent } from './graph-files.js';
+import limits from './broker-limits.js';
 import { extractForScoring } from './broker-extraction.mjs';
 import { extractDealTerms } from './broker-llm-extract.js';
 import { scoreDeal } from './broker-score-engine.js';
@@ -62,10 +63,24 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
       return { ok: false, reason: 'item_not_found' };
     }
 
+    // Refuse to download what extraction would refuse anyway. A file this big used to be pulled fully into
+    // memory first (the upload cap is 60 MB, scoring's is 20 MB) and only then rejected.
+    if (typeof item.size === 'number' && item.size > limits.MAX_SCORING_BYTES) {
+      await writeScoreResultImpl(submissionId, { status: 'unavailable', reason: 'file_too_large_for_scoring' });
+      await logFailure(forwardToNetlifyFormImpl, fetchImpl, { submissionId, errorCode: 'file_too_large_for_scoring', detail: itemPath });
+      return { ok: false, reason: 'file_too_large_for_scoring' };
+    }
+
     let buffer;
     try {
-      buffer = await getFileContentImpl(itemPath, { fetchImpl });
+      // maxBytes also bounds the stream itself: item.size is what Graph said a moment ago, not a promise.
+      buffer = await getFileContentImpl(itemPath, { fetchImpl, maxBytes: limits.MAX_SCORING_BYTES });
     } catch (err) {
+      if (err && err.code === 'too_large') {
+        await writeScoreResultImpl(submissionId, { status: 'unavailable', reason: 'file_too_large_for_scoring' });
+        await logFailure(forwardToNetlifyFormImpl, fetchImpl, { submissionId, errorCode: 'file_too_large_for_scoring', detail: itemPath });
+        return { ok: false, reason: 'file_too_large_for_scoring' };
+      }
       await writeScoreResultImpl(submissionId, { status: 'unavailable', reason: 'download_failed' });
       await logFailure(forwardToNetlifyFormImpl, fetchImpl, { submissionId, errorCode: 'download_failed', detail: String(err) });
       return { ok: false, reason: 'download_failed' };

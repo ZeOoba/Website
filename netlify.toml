@@ -11,9 +11,10 @@
 # `npm run verify` runs first, including the listings/portfolio `--check` drift
 # gates, so a stale generated page fails the production build instead of
 # shipping. Keep the chain in ONE place (package.json) so the two cannot
-# diverge again.
+# diverge again. The leak-gate test (Hard Invariant 3, docs/leak-gate.md) runs
+# last, after dist/ exists: a hit fails the build, previews included.
 [build]
-  command = "npm run build"
+  command = "npm run build && node --test tests/site/leak-gate.test.mjs"
   publish = "dist"
 
 [build.environment]

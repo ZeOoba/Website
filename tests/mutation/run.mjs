@@ -78,6 +78,9 @@ const CMDS = {
   listings: test('listings-ui.test.mjs'),
   csp: test('csp-hashes.test.mjs'),
   cspPages: test('csp-all-pages.test.mjs'),
+  leak: test('leak-gate.test.mjs'),
+  // leakFast skips the slow real-tree scan: for cases the unit-level leak-gate tests catch (keeps this job inside its time limit).
+  leakFast: ['--test', '--test-reporter=spec', 'tests/site/leak-gate.test.mjs'], // run with LEAK_GATE_FAST=1 (see run() below)
   verify: ['scripts/verify-jsonld.mjs'],
   build: ['scripts/build-dist.mjs'],
   // probe: the build must fail AND leave no dist/ behind
@@ -86,7 +89,7 @@ const CMDS = {
   buildNoDotfile: ['-e', "require('child_process').execFileSync(process.execPath,['scripts/build-dist.mjs'],{stdio:'ignore'});if(require('fs').existsSync('dist/resources/.draft-notes')){console.error('dot-file shipped');process.exit(1)}"],
 };
 const run = (cmd) => {
-  const r = spawnSync(process.execPath, CMDS[cmd], { cwd: COPY, encoding: 'utf8', timeout: 600_000 });
+  const r = spawnSync(process.execPath, CMDS[cmd], { cwd: COPY, encoding: 'utf8', timeout: 600_000, env: cmd === 'leakFast' ? { ...process.env, LEAK_GATE_FAST: '1' } : process.env });
   const out = (r.stdout || '') + (r.stderr || '') + (r.error ? `\n${r.error.message}` : '');
   const failed = [...new Set([...out.matchAll(/^\s*✖ (.+?) \(\d/gm)].map((m) => m[1]))];
   return { status: r.status, failed, out };
@@ -103,7 +106,7 @@ for (const step of [['scripts/build-listings.mjs', '--check'], ['scripts/build-k
 }
 let baselineBad = 0;
 console.log('== baseline (unmodified copy)');
-for (const cmd of ['forms', 'integ', 'seo', 'csp', 'verify', ...(HAVE_BROWSER ? ['nav', 'budget', 'listings', 'cspPages'] : [])]) {
+for (const cmd of ['forms', 'integ', 'seo', 'csp', 'leak', 'verify', ...(HAVE_BROWSER ? ['nav', 'budget', 'listings', 'cspPages'] : [])]) {
   const r = run(cmd);
   console.log(`  ${cmd}: exit ${r.status}`);
   if (r.status !== 0) { baselineBad++; console.log(r.out.slice(-2500)); }

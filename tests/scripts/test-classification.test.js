@@ -21,7 +21,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SITE_DIR = path.join(ROOT, 'tests', 'site');
-const SCRIPT_NAMES = ['test:site', 'test:functions', 'test:shim'];
+const SCRIPT_NAMES = ['test:site', 'test:functions', 'test:shim', 'test:leak-gate'];
 const EXCLUDED = {};
 
 const scripts = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts;

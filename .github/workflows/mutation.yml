@@ -18,6 +18,9 @@ on:
       - 'scripts/validate-jsonld.js'
       - 'scripts/verify-jsonld.mjs'
       - 'scripts/build-dist.mjs'
+      - 'scripts/leak-gate-hashes.*'
+      - 'scripts/lib/**'
+      - 'netlify.toml'
       - '.github/workflows/mutation.yml'
   workflow_dispatch:
 
@@ -56,4 +59,7 @@ jobs:
         run: npx playwright install chromium
 
       - name: Run mutation tests
+        # Needed once scripts/leak-gate-hashes.json is keyed (docs/leak-gate.md); empty is correct while it is unkeyed.
+        env:
+          LEAK_GATE_KEY: ${{ secrets.LEAK_GATE_KEY }}
         run: npm run test:mutation -- --require-rendered

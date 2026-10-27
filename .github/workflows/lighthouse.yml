@@ -36,7 +36,15 @@ concurrency:
 jobs:
   lighthouse:
     name: Lighthouse budget (informational)
-    runs-on: ubuntu-latest
+    # Runner is chosen by the CI_RUNNER repo variable, exactly as in ci.yml and
+    # mutation.yml (a JSON label array; unset = GitHub-hosted ubuntu-latest). This job
+    # alone hardcoded ubuntu-latest, so when hosted minutes were billing-blocked it
+    # failed in 2 seconds with zero steps ("job was not started because recent account
+    # payments have failed") while the other workflows ran on the self-hosted runner,
+    # leaving a permanently red check that said nothing about the site. Same-repo PRs
+    # only: a fork PR must never run its code on a self-hosted machine.
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-latest"') }}
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     continue-on-error: true
     steps:
@@ -45,40 +53,33 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (resolved 2026-09-25)
         with:
           node-version: '20'
-          cache: npm
+          # npm cache only helps GitHub-hosted runners; on the self-hosted runner the
+          # post-step save hung (see ci.yml). Empty string = no cache.
+          cache: ${{ runner.environment == 'github-hosted' && 'npm' || '' }}
 
       - name: Install dependencies
         run: npm ci
 
       # Reuse the Chromium Playwright installs rather than depending on whatever
       # Chrome the runner image happens to carry.
-      - name: Install Chromium
+      # --with-deps installs Linux OS packages; meaningless on a Windows runner.
+      - name: Install Chromium (Linux)
+        if: runner.os == 'Linux'
         run: npx playwright install --with-deps chromium
+
+      - name: Install Chromium
+        if: runner.os != 'Linux'
+        run: npx playwright install chromium
 
       - name: Build
         run: npm run build
 
-      - name: Serve dist/ with the real headers
-        run: |
-          node scripts/serve-dist.mjs --port=8788 --root=dist &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8788/ > /dev/null && exit 0; sleep 1; done
-          echo "server did not start" >&2
-          exit 1
-
-      # Lighthouse is pinned and fetched on demand, so it is not a dependency of the
-      # site and never ships anywhere.
+      # Serves dist/ with the real headers and runs Lighthouse on four pages, in one Node
+      # process so it behaves the same on every runner (a Windows self-hosted runner has no
+      # bash on PATH). Lighthouse is pinned and fetched on demand, so it is not a dependency
+      # of the site and never ships anywhere.
       - name: Run Lighthouse
-        run: |
-          CHROME_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")"
-          export CHROME_PATH
-          mkdir -p lhr
-          for page in "" for-brokers available-space sell-your-building; do
-            npx --yes lighthouse@12.6.1 "http://127.0.0.1:8788/${page}" \
-              --quiet \
-              --only-categories=performance,accessibility,best-practices,seo \
-              --output=json --output-path="lhr/${page:-home}.json" \
-              --chrome-flags="--headless=new --no-sandbox"
-          done
+        run: node scripts/lighthouse-run.mjs
 
       - name: Summarise against the budget
         run: node scripts/lighthouse-summary.mjs lhr

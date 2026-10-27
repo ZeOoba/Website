@@ -8,6 +8,7 @@ Static multi-page site for Oxford Realty Advisors, deployed to Netlify. Architec
 - Build: `npm run build` (assembles `dist/`; also runs the listings and portfolio `--check` drift gates). Run once in a fresh checkout before `netlify dev` — `chat.ts` imports the gitignored `knowledge-base.json`.
 - Regenerate listings: `npm run build:listings`. Regenerate portfolio pages: `node scripts/build-portfolio.mjs`. Output is committed.
 - Local preview: `npm run serve` (port 8788, serves `dist/`).
+- Diagnosing red CI: job logs return 403 from cloud sessions, so read the check-run annotations first (`gh api repos/ZeOoba/website/check-runs/<id>/annotations`) and the job's step list (`.../actions/runs/<id>/jobs`). Two known signatures: "job was not started because recent account payments have failed" with zero steps is a hosted-runner billing block, not a code failure; "self-hosted runner lost communication with the server" is the laptop runner dropping off the network. Workflows pick their runner from the `CI_RUNNER` repo variable, and that runner has no `bash` on PATH, so keep workflow steps to single commands or Node scripts.
 
 ## Hard invariants
 

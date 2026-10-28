@@ -30,6 +30,8 @@ const bundled = esbuild.buildSync({
   platform: 'node',
   target: 'es2022',
   external: ['@netlify/edge-functions'],
+  // The durable limiter's Blobs client is replaced by a stub the tests control (see the fixture).
+  alias: { '@netlify/blobs': path.join(__dirname, '_fixtures', 'netlify-blobs-stub.js') },
   logLevel: 'silent',
 }).outputFiles[0].text;
 
@@ -486,4 +488,87 @@ test('sessionId is bounded and sanitised before it reaches the logs', async () =
   const { handler: h2, logs: l2 } = load({ upstream: () => sseResponse([delta('x')]) });
   await readAll(await h2(post({ ...ask(), sessionId: { a: 1 } }), ctx));
   assert.equal(l2.find((l) => l[0] === '[chat] ok')[1].sessionId, 'unknown');
+});
+
+
+// ---------- durable (cross-isolate) rate limit + upstream timeout ----------
+
+function memoryBlobs() {
+  const data = new Map();
+  return { data, get: async (k) => (data.has(k) ? JSON.parse(data.get(k)) : null), setJSON: async (k, v) => { data.set(k, JSON.stringify(v)); } };
+}
+async function withStore(store, fn) {
+  globalThis.__chatRateStore = store;
+  try { return await fn(); } finally { delete globalThis.__chatRateStore; }
+}
+
+test('durable limit holds across fresh module instances (cold start / other isolate), upstream never called when blocked', async () => {
+  await withStore(memoryBlobs(), async () => {
+    const ip = { 'x-nf-client-connection-ip': '203.0.113.50' };
+    const a = load({ env: { CHAT_RATE_LIMIT_PER_10MIN: '2' } });
+    assert.equal((await a.handler(post(ask(), { headers: ip }), ctx)).status, 200);
+    assert.equal((await a.handler(post(ask(), { headers: ip }), ctx)).status, 200);
+    const b = load({ env: { CHAT_RATE_LIMIT_PER_10MIN: '2' } }); // fresh in-memory buckets
+    const blocked = await b.handler(post(ask(), { headers: ip }), ctx);
+    assert.equal(blocked.status, 429);
+    assert.deepEqual(await blocked.json(), { error: 'rate_limited' });
+    const retry = Number(blocked.headers.get('retry-after'));
+    assert.ok(Number.isInteger(retry) && retry >= 1 && retry <= 600, `retry-after ${retry}`);
+    assert.equal(b.calls.length, 0);
+    const other = await b.handler(post(ask(), { headers: { 'x-nf-client-connection-ip': '203.0.113.51' } }), ctx);
+    assert.equal(other.status, 200, 'a different client is unaffected');
+  });
+});
+
+test('durable limit resets in the next window', async () => {
+  await withStore(memoryBlobs(), async () => {
+    const ip = { 'x-nf-client-connection-ip': '203.0.113.60' };
+    const a = load({ env: { CHAT_RATE_LIMIT_PER_10MIN: '1' } });
+    assert.equal((await a.handler(post(ask(), { headers: ip }), ctx)).status, 200);
+    const b = load({ env: { CHAT_RATE_LIMIT_PER_10MIN: '1' }, clock: { t: a.clock.t } });
+    assert.equal((await b.handler(post(ask(), { headers: ip }), ctx)).status, 429);
+    const c = load({ env: { CHAT_RATE_LIMIT_PER_10MIN: '1' }, clock: { t: a.clock.t + 10 * 60 * 1000 } });
+    assert.equal((await c.handler(post(ask(), { headers: ip }), ctx)).status, 200);
+  });
+});
+
+test('durable store keys are hashed: the raw client IP is never written to Blobs', async () => {
+  const store = memoryBlobs();
+  await withStore(store, async () => {
+    const { handler } = load();
+    await handler(post(ask(), { headers: { 'x-nf-client-connection-ip': '203.0.113.77' } }), ctx);
+    assert.equal(store.data.size, 1);
+    for (const [k, v] of store.data) assert.ok(!k.includes('203.0.113.77') && !v.includes('203.0.113.77'), `${k} ${v}`);
+  });
+});
+
+test('durable limiter fails open when Blobs errors, and logs without the raw IP', async () => {
+  await withStore({ get: async () => { throw new Error('blobs 500'); }, setJSON: async () => {} }, async () => {
+    const { handler, logs } = load();
+    const res = await handler(post(ask(), { headers: { 'x-nf-client-connection-ip': '203.0.113.88' } }), ctx);
+    assert.equal(res.status, 200);
+    assert.ok(logs.some((l) => String(l[0]).includes('durable limiter unavailable')));
+    assert.ok(!JSON.stringify(logs).includes('203.0.113.88'));
+  });
+});
+
+test('durable limiter fails open (bounded) when Blobs never responds', async () => {
+  await withStore({ get: () => new Promise(() => {}), setJSON: async () => {} }, async () => {
+    const { handler } = load();
+    const t0 = process.hrtime.bigint();
+    const res = await handler(post(ask(), { headers: { 'x-nf-client-connection-ip': '203.0.113.99' } }), ctx);
+    const ms = Number((process.hrtime.bigint() - t0) / 1_000_000n);
+    assert.equal(res.status, 200);
+    assert.ok(ms < 3000, `blocked chat for ${ms} ms`);
+  });
+});
+
+test('upstream request carries an abort signal that is cleared once headers arrive (streamed answers are not cut off)', async () => {
+  const { handler, calls } = load();
+  const res = await handler(post(ask(), { headers: { 'x-nf-client-connection-ip': '203.0.113.110' } }), ctx);
+  assert.equal(res.status, 200);
+  await readAll(res);
+  const signal = calls[0].init.signal;
+  assert.ok(signal instanceof AbortSignal, 'upstream fetch must be bounded by a signal');
+  assert.equal(signal.aborted, false, 'the headers timer must not fire after a response arrived');
 });

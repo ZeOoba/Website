@@ -14,7 +14,7 @@ flowchart LR
     LJ["data/listings.json (vacancies)"]
     PJ["data/portfolio.json (portfolio assets)"]
     META["scripts/meta.md (firm facts)"]
-    FN["netlify/functions/ + netlify/edge-functions/chat.ts"]
+    FN["netlify/functions/ + netlify/edge-functions/chat.ts, forms-guard.mjs"]
     TOML["netlify.toml (build command, publish = dist, NODE_VERSION 20, edge route /api/chat)"]
   end
 
@@ -57,7 +57,7 @@ flowchart LR
   GUARD["scripts/netlify-guard.js (postinstall shim patch)\nblocks obfuscated production CLI deploys"] -.-> NET
   GATE["Hard Invariant 2: explicit per-deploy permission required; merge to main = deploy"] -.-> PR
 ```
-<!-- diagram-verified: 2026-10-17 -->
+<!-- diagram-verified: 2026-10-28 -->
 
 Note that `netlify.toml` runs `npm run build` followed by the leak-gate test (`node --test tests/site/leak-gate.test.mjs`, the Hard Invariant 3 gate, see `docs/leak-gate.md`; a hit fails the build, previews included), so the two `--check` drift gates (listings, portfolio) run in the Netlify build as well as in CI via `npm run verify`; a stale generated artifact fails the deploy build.
 
@@ -78,7 +78,7 @@ flowchart TD
   Res --> R1["1031 guide"] & R2["valuation guide"] & R3["sale-document checklist (checklist-download form + PDF)"] & R4["selling without a broker"]
   Footer["site-wide footer"] --> Priv["privacy"] & Terms["terms"]
   HiddenForms["Hidden Netlify Forms declarations (published, unlinked):\nbroker-intake-form, broker-ledger-form, chat-lead-form, pipeline-failures-form"]
-  Redirect["_redirects: legacy Squarespace/Wix 301s; /X.html -> /X canonical 301! (43 rules); /api/broker-* -> functions (200); /* -> 404.html (404)"]
+  Redirect["_redirects: legacy Squarespace/Wix 301s; /X.html -> /X canonical 301! (42 rules); /api/broker-* -> functions (200); /* -> 404.html (404)"]
   Home -.-> Redirect
   Redirect -.-> NF["404.html"]
 ```
@@ -113,6 +113,9 @@ flowchart TD
   WH -->|"owner-submission-intake"| OL["owner-lead-notify.js"]
   WH -->|"checklist-download"| CK["checklist-notify.js"]
   CN & TA & OL & CK --> GRAPH["Microsoft Graph (mail + SharePoint files)"]
+  CN & TA & OL & CK -. "signature rejected" .-> SA["signature-alert.mjs\nthrottled alert (1 per UTC hour, Blobs create-only)"]
+  SA --> BLOB
+  SA --> GRAPH
 
   V -->|"1 POST /api/broker-upload-session (broker-upload.js)"| BS["broker-upload-session.js\nhoneypot + reCAPTCHA siteverify (403 on fail)\nin-memory limiter; mints Graph upload session + intake token"]
   BS --> GRAPH
@@ -129,7 +132,7 @@ flowchart TD
   GRAPH --> SP
 
   BF & BG & BS & TA & OL & CN & CK -. "failure log rows (same platform as the thing that failed)" .-> PF["Netlify Forms: pipeline-failures / broker-network-ledger"]
-  PF --> NF
+  PF --> FG["edge forms-guard.mjs\n403 on unsigned POSTs to the internal forms"] --> NF
 ```
 
 **Reading the diagram:** most of what the visitor touches is same-origin, but the browser itself makes two direct cross-origin calls in these flows: it loads Google's reCAPTCHA widget during the broker-upload honeypot step, and it `PUT`s a broker's offering memorandum straight to SharePoint in 5 MiB chunks — both `www.google.com` and `oxfordraeg.sharepoint.com` sit in the `connect-src` allowlist in `_headers` for exactly these reasons (a third entry, `*.tile.openstreetmap.org`, backs the markets-page maps and is unrelated to this flow). Server-side, the only outbound calls are Microsoft Graph (auth, SharePoint file writes, and all outbound mail), the Anthropic API (the `/api/chat` assistant and the broker deal-term extraction), and Google's reCAPTCHA siteverify endpoint — enforced, 403 on failure (`broker-upload-session.js`; disabled 2026-07-19 to 2026-09-07 after a client-side site-key typo, re-enabled once fixed and verified); there is no database — durable state is Netlify Blobs (broker score results, the `broker-finalize` per-IP rate limit and daily cap, dedupe markers) plus Netlify Forms, which doubles as the failure log every function writes to via the `pipeline-failures` form. Four functions are never linked from a page or called by client JS: `tenant-application-processor.js`, `owner-lead-notify.js`, `contact-notify.js` and `checklist-notify.js` are wired as Netlify `submission-created` outgoing webhooks — Netlify itself POSTs to each function's URL on every form submitted anywhere on the site, and each gates on `form_name` — that gate is load-bearing, not defensive. The `/api/chat` and `broker-upload-session` per-IP limiters are in-memory per instance (not shared across instances or durable). Analytics runs through Google Consent Mode v2: the inline gtag script on each page defaults analytics storage to denied, `script.js` grants it only on a cookie-banner Accept, and Decline leaves the default in place. The map pages (`available-space.html`, and `portfolio.js` on the portfolio page) load Leaflet from `unpkg.com`. The broker pipeline is the only multi-step flow: session, direct upload, finalize, then an out-of-band background scoring job the page polls for.
@@ -149,7 +152,7 @@ flowchart TD
 ├── netlify/
 │   ├── functions/             Netlify Functions (forms, broker OM intake, lead notify)
 │   │   └── _shared/           Shared helpers (Graph API auth/mail/files, validation, scoring)
-│   └── edge-functions/        Edge function for the /api/chat assistant + its knowledge base
+│   └── edge-functions/        chat.ts (the /api/chat assistant + its knowledge base) and forms-guard.mjs (403s unsigned POSTs to the internal forms)
 ├── .github/workflows/
 │   ├── ci.yml                 PR gate — runs `npm run verify` (plus a manual chat-eval job)
 │   ├── lighthouse.yml         Informational Lighthouse budget on 4 built pages; never fails a PR (see scripts/lighthouse-summary.mjs)
@@ -164,6 +167,10 @@ flowchart TD
 │   ├── csp-hashes.mjs         Computes/checks/writes the inline-script hashes in _headers
 │   ├── verify-live-csp.mjs    Post-deploy check of the CSP actually served (live site or a deploy preview)
 │   ├── lighthouse-summary.mjs Summarises Lighthouse reports against the budget (informational)
+│   ├── lighthouse-run.mjs     Runs Lighthouse against the built pages
+│   ├── stamp-asset-versions.mjs Stamps asset version query strings into built pages
+│   ├── leak-gate-hashes.mjs / leak-gate-hashes.json  Salted-hash denylist builder and its data (see docs/leak-gate.md)
+│   ├── lib/                   Shared script helpers
 │   ├── overview-pdf/, checklist-pdf/  Render the two root PDFs with headless Chromium (manual)
 │   ├── serve-dist.mjs         Static server for dist/ that APPLIES _headers (CSP); `npm run serve`
 │   ├── verify-jsonld.mjs      Runs validate-jsonld.js over every built page + required-page floor
@@ -185,7 +192,7 @@ flowchart TD
 ├── _redirects                  Netlify redirects (legacy Squarespace/Wix paths, non-www enforcement)
 ├── netlify.toml                Netlify build/publish/functions/edge-function config
 ├── sitemap.xml, robots.txt, llms.txt   Search + LLM-crawler discovery files
-└── docs/superpowers/            Session-local planning artifacts — git-ignored, not site content (no tracked docs/ directory)
+└── docs/superpowers/            Session-local planning artifacts — git-ignored, not site content (the only tracked docs/ file is `docs/leak-gate.md`)
 ```
 
 ## Local development
@@ -224,7 +231,7 @@ Its seven stages, each also runnable alone:
 | `npm run test:leak-gate` | Hard Invariant 3: no active confidential-deal term (salted-hash denylist, see `docs/leak-gate.md`) in `dist/`, tracked files, data, edge functions or PDFs; also run by the Netlify build | — |
 | `npm run verify:jsonld` | every page's JSON-LD parses, **and** the key pages still have a block at all | — |
 | `npm run test:unit` | function/module logic (`node:test`, no framework dependency; `scripts/run-unit-tests.mjs` enumerates every `*.test.js` under `tests/` except `tests/site/`, plus `application-script.file-size.test.js` and `assets/chat.test.js`) | — |
-| `npm run test:site` | the explicit list of 24 `tests/site/*.test.mjs` files in `package.json`: CSP smoke (four pages load with zero CSP violations in headless Chromium, served with `_headers` applied), CSP hashes and all-pages CSP, SEO and entity markup, analytics, Netlify Forms declarations, form validator, site integrity and plumbing, mobile nav, client robustness, upload budget, listings, map and portfolio-map UI, cookie banner, announcement-bar contrast, contact copy and form hint, Consent Mode v2 ordering and Accept/Decline state through Partytown (real browser), logo a11y, reCAPTCHA site key, `serve-dist` args | CSP is a property of a served response plus a real renderer; `require()` cannot see it |
+| `npm run test:site` | the explicit list of 25 `tests/site/*.test.mjs` files in `package.json`: CSP smoke (four pages load with zero CSP violations in headless Chromium, served with `_headers` applied), CSP hashes and all-pages CSP, SEO and entity markup, analytics, Netlify Forms declarations, form validator, site integrity and plumbing, mobile nav, client robustness, upload budget, listings, map and portfolio-map UI, cookie banner, announcement-bar contrast, contact copy and form hint, Consent Mode v2 ordering and Accept/Decline state through Partytown (real browser), logo a11y, reCAPTCHA site key, `serve-dist` args | CSP is a property of a served response plus a real renderer; `require()` cannot see it |
 | `npm run test:shim` | `scripts/patch-netlify-shim.js` replaces netlify-cli's bin entry instead of writing through a POSIX symlink (regression test against a disposable fixture) | the failure only exists on the POSIX bin-link layout |
 | `npm run test:functions` | `chat-lead` behaves correctly when driven over HTTP through `netlify functions:serve` | a `require()`d handler cannot reveal a runtime-shape mismatch (CJS vs. V2 function runtime) |
 
@@ -248,10 +255,10 @@ CI picks its runner from the `CI_RUNNER` repository variable (a JSON label array
 flowchart LR
   PRN["pull_request (same-repo only for verify) / push main"] --> VER["ci.yml: Build & verify"]
   PRN --> LHW["lighthouse.yml (continue-on-error; 4 pages; budget LCP<=2.5s CLS<=0.1 TBT<=200ms categories>=90)"]
-  PRN -->|"paths: tests/site, tests/mutation, validate-jsonld, verify-jsonld, build-dist, scripts/lib, leak-gate-hashes, netlify.toml, mutation.yml"| MUT["mutation.yml (40 min timeout; not required)"]
+  PRN -->|"paths: tests/site, tests/mutation, validate-jsonld, verify-jsonld, build-dist, scripts/lib, leak-gate-hashes, netlify.toml, .github/workflows/mutation.yml"| MUT["mutation.yml (40 min timeout; not required)"]
   MAN["workflow_dispatch + eval_base"] --> EVAL["ci.yml eval-chat (real model tokens)"]
   VER --> S1["npm ci (postinstall patches netlify shim)"] --> S2["playwright chromium"] --> S3["npm run verify"]
-  S3 --> B["build: listings --check, portfolio --check, build-kb, build-dist (+CSP hash check)"] --> LG["test:leak-gate (Invariant 3)"] --> J["verify:jsonld"] --> U["test:unit (*.test.js enumerated)"] --> T["test:site (24 explicit files, headless Chromium with _headers)"] --> SH["test:shim"] --> F["test:functions (netlify functions:serve smoke)"]
+  S3 --> B["build: listings --check, portfolio --check, build-kb, build-dist (+CSP hash check)"] --> LG["test:leak-gate (Invariant 3)"] --> J["verify:jsonld"] --> U["test:unit (*.test.js enumerated)"] --> T["test:site (25 explicit files, headless Chromium with _headers)"] --> SH["test:shim"] --> F["test:functions (netlify functions:serve smoke)"]
   GAP1["Not covered: dependency audit / Dependabot, lint/format, Node EOL check, Blobs credential injection, real reCAPTCHA verdicts, post-deploy live CSP (manual)"]
 ```
 
@@ -295,6 +302,7 @@ All live in `netlify/functions/` unless noted. The four `submission-created` web
 | `tenant-application-processor.js` | `submission-created` webhook: processes tenant lease applications (`commercial-lease-application`) |
 | `contact-notify.js` | `submission-created` webhook: emails on `contact` form submissions |
 | `checklist-notify.js` | `submission-created` webhook: notifies on `checklist-download` form submissions from the sale-document checklist guide |
+| `signature-alert.mjs` | V2 function called by the four webhook targets when a webhook signature is rejected; sends a throttled alert (1 per UTC hour, Netlify Blobs create-only) to ggoldberg@oxfordra.net via Graph |
 | `edge-functions/chat.ts` | Edge function powering the `/api/chat` assistant (Anthropic Messages API; model overridable via `CHAT_MODEL`), backed by `edge-functions/knowledge-base.json` (built by `scripts/build-kb.mjs` from `scripts/meta.md` + 9 site pages) |
 
 Shared helpers in `netlify/functions/_shared/`: Microsoft Graph auth, mail and file access (`graph-auth.js`, `graph-mail.js`, `graph-files.js`), reCAPTCHA verification (`recaptcha.js`), Netlify Forms posting (`netlify-forms.js`), form validation and signed tokens (`validate.js`), the email template, and the broker pipeline modules (text extraction, LLM term extraction, score engine, score store, scoring run, RCT benchmark data). Functions that go through Blobs are ESM (`.mjs`) and must not export `handler`; `tests/functions/broker-v2-runtime-contract.test.js` and `esm-cjs-bundling-contract.test.js` pin that contract.

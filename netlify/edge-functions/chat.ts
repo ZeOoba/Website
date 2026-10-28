@@ -11,6 +11,7 @@
  */
 
 import type { Config, Context } from '@netlify/edge-functions';
+import { getStore } from '@netlify/blobs';
 import knowledgeBase from './knowledge-base.json' with { type: 'json' };
 // Single source of the Anthropic model id, shared with the broker extractor (OI-256).
 import models from '../functions/_shared/models.json' with { type: 'json' };
@@ -22,6 +23,12 @@ const MAX_MESSAGES = 20;
 const MAX_CHARS_PER_MESSAGE = 4000;
 const RATE_WINDOW_MS = 10 * 60 * 1000;   // 10 minutes
 const RATE_DEFAULT = 30;
+// Upstream wait bound: covers connect + time to response headers only. It is cleared once headers arrive so
+// a long streamed answer is never cut off; a hung upstream used to hold the edge request open indefinitely.
+const UPSTREAM_HEADERS_TIMEOUT_MS = 25_000;
+// Durable (cross-isolate) rate limit store. Each Blob op is bounded so a slow Blobs call cannot stall chat.
+const DURABLE_RATE_STORE = 'chat-rate';
+const DURABLE_RATE_TIMEOUT_MS = 800;
 
 // ---------- System prompt ----------
 const SYSTEM_PROMPT_BASE = `You are a professional assistant for Oxford Realty Advisors (ORA), a private family office that owns and operates 513,000+ square feet of shallow-bay Class B/C industrial and flex real estate in two core markets, Maryland and Columbus OH, plus a Kansas City MO holding. ORA is led by Eric Goldberg (Founder) and Gabriel Goldberg (VP Acquisitions).
@@ -130,6 +137,43 @@ function rateLimit(ip: string, max: number): { ok: boolean; retryAfter?: number 
   return { ok: true };
 }
 
+// ---------- Durable rate limiter (Netlify Blobs; shared across isolates and regions) ----------
+// The in-memory limiter above resets on every cold start and is per region, so on its own it does not bound
+// spend on this billed endpoint. This second layer keeps ONE small record per client (key = SHA-256 of the IP,
+// value {slot, count} for the current fixed window), so storage is bounded by distinct clients, not requests.
+// It is a SOFT limit: read-then-write is not atomic, so a burst of truly simultaneous requests can overshoot
+// by roughly the burst size; the in-memory limiter still caps a burst inside one isolate. If Blobs is
+// unavailable or slow the request is allowed (fail open to the in-memory limit) rather than breaking chat.
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`timed out after ${ms} ms`)), ms); });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
+}
+
+async function clientKey(ip: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip));
+  return Array.from(new Uint8Array(digest)).slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function durableRateLimit(ip: string, max: number): Promise<{ ok: boolean; retryAfter?: number }> {
+  try {
+    const now = Date.now();
+    const slot = Math.floor(now / RATE_WINDOW_MS);
+    const store = getStore(DURABLE_RATE_STORE);
+    const key = await clientKey(ip);
+    const cur = (await withTimeout(store.get(key, { type: 'json' }), DURABLE_RATE_TIMEOUT_MS)) as { slot?: number; count?: number } | null;
+    const count = cur && cur.slot === slot && Number.isFinite(cur.count) ? (cur.count as number) : 0;
+    if (count >= max) {
+      return { ok: false, retryAfter: Math.max(1, Math.ceil(((slot + 1) * RATE_WINDOW_MS - now) / 1000)) };
+    }
+    await withTimeout(store.setJSON(key, { slot, count: count + 1 }), DURABLE_RATE_TIMEOUT_MS);
+    return { ok: true };
+  } catch (e) {
+    console.error('[chat] durable limiter unavailable, using in-memory limit only', { err: String(e).slice(0, 120) });
+    return { ok: true };
+  }
+}
+
 // ---------- Validation ----------
 type Msg = { role: 'user' | 'assistant'; content: string };
 function validateMessages(input: unknown): { ok: true; msgs: Msg[] } | { ok: false; error: string } {
@@ -204,6 +248,13 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
       headers: { 'content-type': 'application/json', 'retry-after': String(rl.retryAfter ?? 60) },
     });
   }
+  const drl = await durableRateLimit(ip, max);
+  if (!drl.ok) {
+    return new Response(JSON.stringify({ error: 'rate_limited' }), {
+      status: 429,
+      headers: { 'content-type': 'application/json', 'retry-after': String(drl.retryAfter ?? 60) },
+    });
+  }
 
   let body: unknown;
   try { body = await req.json(); } catch { return new Response('bad json', { status: 400 }); }
@@ -224,9 +275,12 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
     : 'unknown';
 
   let upstream: Response;
+  const upstreamCtl = new AbortController();
+  const upstreamTimer = setTimeout(() => upstreamCtl.abort(), UPSTREAM_HEADERS_TIMEOUT_MS);
   try {
     upstream = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: upstreamCtl.signal,
     headers: {
       'content-type': 'application/json',
       'x-api-key': apiKey,
@@ -255,6 +309,9 @@ export default async (req: Request, _ctx: Context): Promise<Response> => {
     return new Response(JSON.stringify({ error: 'upstream_error', status: 0 }), {
       status: 502, headers: { 'content-type': 'application/json' },
     });
+  } finally {
+    // Headers (or a failure) arrived: from here the streamed body is not time-bounded by this timer.
+    clearTimeout(upstreamTimer);
   }
 
   if (!upstream.ok || !upstream.body) {

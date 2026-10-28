@@ -1,0 +1,58 @@
+# Post-deploy CSP check for oxfordra.net: does the CSP the LIVE site serves allow every inline script the
+# live site serves? (scripts/verify-live-csp.mjs; read-only GETs, nothing here deploys.)
+#
+# Why it exists: the repo tests prove the hashes in _headers match the SOURCE pages. They cannot see a
+# platform rewrite of the HTML after deploy (Netlify asset optimisation, a dashboard-injected snippet, an
+# edge function), which silently blocks the rewritten inline script. Until now this check was a manual step
+# after a deploy that touched a page or _headers, so a break was found only by whoever remembered to run it.
+#
+# Triggers:
+#   - schedule: daily, so a break introduced by a dashboard change or a deploy nobody checked is caught
+#     within a day. A failed scheduled run is the alert (GitHub notifies the workflow's owner).
+#   - deployment_status: runs after a successful production deployment IF the Netlify GitHub integration
+#     reports deployments to GitHub. [Unverified at the time this was written; if it never fires the daily
+#     schedule still covers the gap.] Only the production environment is checked.
+#   - workflow_dispatch: run by hand, optionally against a deploy-preview URL.
+#
+# It is a separate file from ci.yml on purpose: the required "Build & verify" check is untouched, and
+# deleting this file removes the feature completely. Runner is chosen by the CI_RUNNER repo variable, as in
+# the other workflows. Steps are single commands (the self-hosted runner has no bash on PATH).
+
+name: Live CSP
+
+on:
+  schedule:
+    - cron: '17 13 * * *'
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Site URL to check (default https://oxfordra.net; a deploy-preview URL also works)'
+        required: false
+        default: 'https://oxfordra.net'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-csp
+  cancel-in-progress: false
+
+jobs:
+  live-csp:
+    name: Live CSP matches served inline scripts
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-latest"') }}
+    # deployment_status fires for every deployment (previews included): only a successful production one counts.
+    if: github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'production')
+    timeout-minutes: 10
+    env:
+      SITE_URL: ${{ github.event.inputs.url || 'https://oxfordra.net' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (resolved 2026-09-25)
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (resolved 2026-09-25)
+        with:
+          node-version: '20'
+
+      - name: Verify the live CSP
+        run: node scripts/verify-live-csp.mjs

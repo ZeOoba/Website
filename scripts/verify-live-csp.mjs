@@ -16,7 +16,12 @@ import { fileURLToPath } from 'node:url';
 import { hashOf, inlineScriptTexts } from './csp-hashes.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const base = (process.argv[2] || 'https://oxfordra.net').replace(/\/$/, '');
+// URL: argv[2], else SITE_URL (the live-csp workflow passes it this way so no input is ever interpolated into a shell), else production.
+const base = (process.argv[2] || process.env.SITE_URL || 'https://oxfordra.net').replace(/\/$/, '');
+if (!/^https:\/\/[A-Za-z0-9.-]+(:\d+)?$/.test(base)) {
+  console.error(`refusing to check ${JSON.stringify(base)}: expected an https origin such as https://oxfordra.net`);
+  process.exit(2);
+}
 
 const sitemap = readFileSync(path.join(ROOT, 'sitemap.xml'), 'utf8');
 const paths = [...sitemap.matchAll(/<loc>https:\/\/oxfordra\.net([^<]*)<\/loc>/g)].map((m) => m[1] || '/');

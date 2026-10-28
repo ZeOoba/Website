@@ -53,7 +53,7 @@ flowchart LR
   DIST --> NET["Netlify: apply _headers / _redirects, publish dist/, bundle functions, deploy edge function"]
   FN --> NET
   NET --> CDN["Netlify CDN"] --> LIVE["oxfordra.net"]
-  LIVE -. "post-deploy, manual: node scripts/verify-live-csp.mjs" .-> LIVE
+  LIVE -. "post-deploy: live-csp.yml (daily + after production deploys); also manual: node scripts/verify-live-csp.mjs" .-> LIVE
   GUARD["scripts/netlify-guard.js (postinstall shim patch)\nblocks obfuscated production CLI deploys"] -.-> NET
   GATE["Hard Invariant 2: explicit per-deploy permission required; merge to main = deploy"] -.-> PR
 ```
@@ -152,6 +152,7 @@ flowchart TD
 │   └── edge-functions/        Edge function for the /api/chat assistant + its knowledge base
 ├── .github/workflows/
 │   ├── ci.yml                 PR gate — runs `npm run verify` (plus a manual chat-eval job)
+│   ├── live-csp.yml           Daily/post-deploy check that the served CSP allows every served inline script (read-only; see scripts/verify-live-csp.mjs)
 │   ├── lighthouse.yml         Informational Lighthouse budget on 4 built pages; never fails a PR (see scripts/lighthouse-summary.mjs)
 │   └── mutation.yml           Mutation tests of the site checks; runs on PRs touching the checks, or on demand
 ├── scripts/
@@ -357,7 +358,7 @@ node scripts/csp-hashes.mjs --check   # exit 1 if _headers is out of date
 
 `npm run build` (and therefore the Netlify build) also fails, and publishes nothing, when the hashes and the pages disagree, so a stale hash list cannot deploy.
 
-**After any deploy that touches a page or `_headers`, run** `node scripts/verify-live-csp.mjs` (or pass a deploy-preview URL). The repo tests and the build prove the hashes match the source; this proves it about the bytes the platform actually serves. Anything that rewrites or injects an inline script after the build (a snippet added in the Netlify dashboard, a post-processing setting, an edge function) is invisible to the repo and would be blocked; this check fails on every affected page.
+The `Live CSP` workflow (`.github/workflows/live-csp.yml`) runs this daily against `https://oxfordra.net`, and after a successful production deployment if the Netlify GitHub integration reports deployments (unverified; the daily run covers the gap). A failed run is the alert. **After any deploy that touches a page or `_headers`, you can also run it by hand:** `node scripts/verify-live-csp.mjs` (or pass a deploy-preview URL, or dispatch the workflow with a `url`). The repo tests and the build prove the hashes match the source; this proves it about the bytes the platform actually serves. Anything that rewrites or injects an inline script after the build (a snippet added in the Netlify dashboard, a post-processing setting, an edge function) is invisible to the repo and would be blocked; this check fails on every affected page.
 
 ## Content notes
 

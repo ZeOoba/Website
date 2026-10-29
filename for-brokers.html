@@ -421,7 +421,7 @@ body{padding-top:36px}.nav{top:36px!important}
     var card = document.getElementById('scoreCard');
     card.className = 'score-card ' + band.cls;
     card.innerHTML =
-      '<div class="score-card__value">' + json.score + '<small>/100</small></div>' +
+      '<div class="score-card__value">' + Number(json.score) + '<small>/100</small></div>' +
       '<div class="score-card__status">' + band.label + '</div>' +
       gateLine +
       '<div class="score-card__grid">' + rows + '</div>' +

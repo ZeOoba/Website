@@ -34,8 +34,8 @@ concurrency:
 jobs:
   mutation:
     name: Mutation tests
-    # See ci.yml: CI_RUNNER selects the runner; unset = ubuntu-latest.
-    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-latest"') }}
+    # See ci.yml: CI_RUNNER selects the runner; unset = ubuntu-24.04 (pinned, see ci.yml).
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-24.04"') }}
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 40
     steps:

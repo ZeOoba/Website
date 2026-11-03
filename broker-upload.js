@@ -116,7 +116,11 @@
       fetch('/api/broker-score-status?submissionId=' + encodeURIComponent(submissionId) + '&statusToken=' + encodeURIComponent(statusToken))
         .then(function (res) { return readJson(res); })
         .then(function (json) {
-          if (json.status === 'ready') { onReady(json); }
+          // A render exception is not a network error: retrying it would re-fetch and re-throw
+          // every 3 s until MAX_WAIT_MS while the broker watches the pending message.
+          if (json.status === 'ready') {
+            try { onReady(json); } catch (err) { console.error('[broker-upload] score render failed', err); onUnavailable(); }
+          }
           else if (json.status === 'unavailable') { onUnavailable(); }
           else { setTimeout(poll, POLL_INTERVAL_MS); }
         })

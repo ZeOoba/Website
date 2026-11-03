@@ -37,13 +37,13 @@ jobs:
   lighthouse:
     name: Lighthouse budget (informational)
     # Runner is chosen by the CI_RUNNER repo variable, exactly as in ci.yml and
-    # mutation.yml (a JSON label array; unset = GitHub-hosted ubuntu-latest). This job
+    # mutation.yml (a JSON label array; unset = GitHub-hosted ubuntu-24.04, pinned, see ci.yml). This job
     # alone hardcoded ubuntu-latest, so when hosted minutes were billing-blocked it
     # failed in 2 seconds with zero steps ("job was not started because recent account
     # payments have failed") while the other workflows ran on the self-hosted runner,
     # leaving a permanently red check that said nothing about the site. Same-repo PRs
     # only: a fork PR must never run its code on a self-hosted machine.
-    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-latest"') }}
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-24.04"') }}
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     continue-on-error: true

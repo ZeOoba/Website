@@ -402,30 +402,36 @@ body{padding-top:36px}.nav{top:36px!important}
     return {cls:'score-card--outside', label:'Outside Core Box'};
   }
 
-  function escapeHtml(s){
-    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Built with textContent, never innerHTML: every field below comes from the server.
+  function el(tag, cls, text){
+    var node = document.createElement(tag);
+    if(cls) node.className = cls;
+    if(text != null) node.textContent = String(text);
+    return node;
   }
 
   function renderScoreCard(json){
+    // A withheld or malformed score must never render as 0/100 or NaN/100.
+    if(typeof json.score !== 'number' || !isFinite(json.score)){ showUnavailable(); return; }
     var band = bandFor(json.score, json.gateFailed);
-    var gateLine = '';
-    if(json.gateFailed){
-      var failedGate = json.gates.propertyType === 'FAIL' ? 'property type' : 'market';
-      gateLine = '<p class="score-card__gate">Outside core criteria &mdash; ' + escapeHtml(failedGate) + ' does not match Oxford\'s buy box.</p>';
-    }
-    var rows = json.categories.map(function(c){
-      var excludedCls = c.excluded ? ' score-row--excluded' : '';
-      var pts = c.excluded ? 'N/A' : (c.earned + '/' + c.possible);
-      return '<div class="score-row' + excludedCls + '"><span class="score-row__cat">' + escapeHtml(c.label) + '</span><span class="score-row__pts">' + escapeHtml(pts) + '</span><span class="score-row__note">' + escapeHtml(c.note) + '</span></div>';
-    }).join('');
     var card = document.getElementById('scoreCard');
+    card.textContent = '';
     card.className = 'score-card ' + band.cls;
-    card.innerHTML =
-      '<div class="score-card__value">' + Number(json.score) + '<small>/100</small></div>' +
-      '<div class="score-card__status">' + band.label + '</div>' +
-      gateLine +
-      '<div class="score-card__grid">' + rows + '</div>' +
-      '<div class="score-card__disclaimer">Automated preliminary estimate &mdash; not a commitment or offer.</div>';
+    var value = card.appendChild(el('div', 'score-card__value', json.score));
+    value.appendChild(el('small', null, '/100'));
+    card.appendChild(el('div', 'score-card__status', band.label));
+    if(json.gateFailed){
+      var failedGate = json.gates && json.gates.propertyType === 'FAIL' ? 'property type' : 'market';
+      card.appendChild(el('p', 'score-card__gate', 'Outside core criteria — ' + failedGate + ' does not match Oxford\'s buy box.'));
+    }
+    var grid = card.appendChild(el('div', 'score-card__grid'));
+    (Array.isArray(json.categories) ? json.categories : []).forEach(function(c){
+      var row = grid.appendChild(el('div', 'score-row' + (c.excluded ? ' score-row--excluded' : '')));
+      row.appendChild(el('span', 'score-row__cat', c.label));
+      row.appendChild(el('span', 'score-row__pts', c.excluded ? 'N/A' : (c.earned + '/' + c.possible)));
+      row.appendChild(el('span', 'score-row__note', c.note));
+    });
+    card.appendChild(el('div', 'score-card__disclaimer', 'Automated preliminary estimate — not a commitment or offer.'));
     document.getElementById('brokerPendingMessage').style.display = 'none';
     card.style.display = '';
   }

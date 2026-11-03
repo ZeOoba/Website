@@ -42,11 +42,14 @@ jobs:
   verify:
     name: Build & verify
     # Runner is chosen by the CI_RUNNER repo variable (a JSON label array, e.g.
-    # ["self-hosted","Windows","X64"]). Unset = GitHub-hosted ubuntu-latest, so
+    # ["self-hosted","Windows","X64"]). Unset = GitHub-hosted ubuntu-24.04, so
     # merging this changes nothing until the variable is set; deleting the
     # variable switches back. Same-repo PRs only: a fork PR must never run its
     # code on a self-hosted machine.
-    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-latest"') }}
+    # Pinned, not ubuntu-latest: that label moved to Ubuntu 26.04 and Playwright
+    # 1.56.1 cannot install Chromium there ("Playwright does not support chromium
+    # on ubuntu26.04-x64", 2026-11-03, PR #194). Unpin once Playwright supports it.
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-24.04"') }}
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 25
     steps:
@@ -96,7 +99,7 @@ jobs:
   #   Actions -> CI -> Run workflow -> eval_base = https://<preview>.netlify.app
   eval-chat:
     name: Chat regression eval (manual)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     if: github.event_name == 'workflow_dispatch' && inputs.eval_base != ''
     steps:

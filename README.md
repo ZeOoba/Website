@@ -248,7 +248,7 @@ Unit tests live in `tests/functions/` (plus `tests/functions/_shared/`), `tests/
 
 The chat assistant has a separate eval harness (`scripts/eval-chat.mjs` against fixtures in `evals/fixtures.json`, dated snapshots retained in `evals/`). It is **not** in `npm run verify`: it needs a live `/api/chat` origin and spends real model tokens per case. Run it against a deploy preview instead — `npm run eval:chat -- --base=https://<preview>.netlify.app`, or via the CI workflow's manual `eval-chat` job (Actions -> CI -> Run workflow, `eval_base` input).
 
-CI picks its runner from the `CI_RUNNER` repository variable (a JSON label array); unset means GitHub-hosted `ubuntu-latest`. Fork PRs never run on a self-hosted runner. No workflow deploys.
+CI picks its runner from the `CI_RUNNER` repository variable (a JSON label array); unset means GitHub-hosted `ubuntu-24.04` (pinned: `ubuntu-latest` is Ubuntu 26.04, where Playwright 1.56.1 cannot install Chromium). Fork PRs never run on a self-hosted runner. No workflow deploys.
 
 ### CI gates at a glance
 

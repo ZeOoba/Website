@@ -41,7 +41,7 @@ concurrency:
 jobs:
   live-csp:
     name: Live CSP matches served inline scripts
-    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-latest"') }}
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-24.04"') }}
     # deployment_status fires for every deployment (previews included): only a successful production one counts.
     if: github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'production')
     timeout-minutes: 10

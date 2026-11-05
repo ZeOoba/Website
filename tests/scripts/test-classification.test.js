@@ -23,20 +23,31 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const SITE_DIR = path.join(ROOT, 'tests', 'site');
 const SCRIPT_NAMES = ['test:site', 'test:functions', 'test:shim', 'test:leak-gate'];
 const EXCLUDED = {};
+const RUNNER_SCRIPT = 'test:site'; // enumerated by scripts/run-site-tests.mjs, not named in package.json
 
 const scripts = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts;
 
 // Every `tests/...test.mjs` path named in a script, normalized to forward slashes.
-function pathsIn(script) {
+// test:site no longer names files: it delegates to run-site-tests.mjs, whose listSiteTests()
+// is the source of truth (resolved once, below, before the tests register).
+let runnerPaths = [];
+function pathsIn(script, name) {
+  if (name === RUNNER_SCRIPT) return runnerPaths;
   return (script.match(/tests\/[^\s"']+\.test\.mjs/g) || []).map((p) => p.replace(/\\/g, '/'));
 }
 
 const siteFiles = fs.readdirSync(SITE_DIR).filter((f) => f.endsWith('.test.mjs')).sort();
 
+test('test:site delegates to run-site-tests.mjs', async () => {
+  assert.match(scripts[RUNNER_SCRIPT], /scripts\/run-site-tests\.mjs/);
+  const { listSiteTests } = await import(require('node:url').pathToFileURL(path.join(ROOT, 'scripts', 'run-site-tests.mjs')).href);
+  runnerPaths = await listSiteTests(ROOT);
+});
+
 test('the npm scripts under guard exist', () => {
   for (const name of SCRIPT_NAMES) {
     assert.equal(typeof scripts[name], 'string', `package.json is missing scripts["${name}"]`);
-    assert.ok(pathsIn(scripts[name]).length > 0, `scripts["${name}"] names no tests/**/*.test.mjs file`);
+    assert.ok(pathsIn(scripts[name], name).length > 0, `scripts["${name}"] names no tests/**/*.test.mjs file`);
   }
 });
 
@@ -47,7 +58,7 @@ test('tests/site contains test files to classify (non-vacuous)', () => {
 test('every tests/site/*.test.mjs is run by exactly one script, or is EXCLUDED', () => {
   const owners = new Map(siteFiles.map((f) => [f, []]));
   for (const name of SCRIPT_NAMES) {
-    for (const p of pathsIn(scripts[name])) {
+    for (const p of pathsIn(scripts[name], name)) {
       const file = p.replace(/^tests\/site\//, '');
       if (owners.has(file)) owners.get(file).push(name);
     }
@@ -65,7 +76,7 @@ test('every tests/site/*.test.mjs is run by exactly one script, or is EXCLUDED',
 test('every path named in the scripts exists (no stale entries)', () => {
   const missing = [];
   for (const name of SCRIPT_NAMES) {
-    for (const p of pathsIn(scripts[name])) {
+    for (const p of pathsIn(scripts[name], name)) {
       if (!fs.existsSync(path.join(ROOT, p))) missing.push(`${name}: ${p}`);
     }
   }

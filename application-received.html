@@ -50,14 +50,14 @@ h1,h2{font-family:var(--font-display);font-weight:400;color:var(--navy);line-hei
 .nav__inner{max-width:1280px;margin:0 auto;padding:0 40px;height:72px;display:flex;align-items:center;justify-content:space-between}
 .nav__logo img,.nav__logo svg{height:auto;width:auto;max-height:28px;display:block}
 .nav__links{display:flex;align-items:center}
-.nav__link{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.8);padding:6px 9px;transition:color .3s,background .3s;white-space:nowrap}
+.nav__link{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.8);padding:6px 8px;transition:color .3s,background .3s;white-space:nowrap}
 .nav__link:hover{color:var(--gold);text-decoration:none}
 @media(max-width:960px){.nav__links{display:none}}
 .nav__mobile-btn{display:none;background:none;border:0;cursor:pointer;padding:8px}
 .nav__mobile-btn span{display:block;width:22px;height:2px;background:var(--white);margin-bottom:5px;transition:transform .3s}
 .nav__mobile-btn span:last-child{width:16px;background:var(--gold);margin-bottom:0}
 .nav__mobile{display:none;background:var(--navy);padding:16px 40px 24px}
-.nav__mobile.is-open{display:block}
+.nav__mobile.is-open{display:block;max-height:calc(100vh - 108px);max-height:calc(100dvh - 108px);overflow-y:auto;overscroll-behavior:contain}
 .nav__mobile a{display:block;padding:12px 0;font-family:var(--font-body);font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:var(--white);border-bottom:1px solid rgba(255,255,255,.06);transition:color .3s}
 .nav__mobile a:hover{color:var(--gold);text-decoration:none}
 @media(max-width:960px){.nav__mobile-btn{display:block}.nav__inner{padding:0 24px}}

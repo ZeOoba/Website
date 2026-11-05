@@ -46,17 +46,19 @@
   @media(min-width:768px){.site-nav{padding:0 40px}}
   .site-nav__logo{display:flex;align-items:center}
   .site-nav__logo svg{display:block;width:auto;height:auto;max-height:28px}
-  .site-nav__links{display:flex;align-items:center;gap:4px;list-style:none}
-  .site-nav__links a{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.8);padding:6px 14px;transition:color var(--transition)}
+  .site-nav__links{display:flex;align-items:center;gap:0;list-style:none}
+  .site-nav__links a{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.8);padding:6px 8px;transition:color var(--transition);white-space:nowrap}
   .site-nav__links a:hover{color:var(--gold);text-decoration:none}
   .site-nav__links .site-nav__cta{color:var(--navy);background:var(--gold);border-radius:var(--radius-btn);margin-left:8px}
   .site-nav__links .site-nav__cta:hover{color:var(--navy);background:var(--gold-light)}
-  /* Under 960px the 9-item nav becomes a horizontally-scrollable strip inside
-     the fixed 72px header (logo stays pinned left) -- no JS toggle, no height
-     change. The links <ul> is a flex child, so it needs min-width:0 to shrink
-     below its content and let overflow-x create an internal scroll region;
-     the logo gets flex-shrink:0 so it can't be squeezed out. */
-  @media(max-width:960px){
+  /* Below 1280px (where the main site's header switches to its hamburger) the
+     10-item nav becomes a horizontally-scrollable strip inside the fixed 72px
+     header (logo stays pinned left) -- no JS toggle, no height change, never a
+     second row. Spacing above matches the main header (.nav__link) so the strip
+     fits in one row from 1280px. The links <ul> is a flex child, so it needs
+     min-width:0 to shrink below its content and let overflow-x create an
+     internal scroll region; the logo gets flex-shrink:0 so it can't be squeezed out. */
+  @media(max-width:1279px){
     .site-nav__logo{flex-shrink:0}
     .site-nav__links{display:flex;min-width:0;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;padding-right:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
     .site-nav__links::-webkit-scrollbar{display:none}
@@ -105,7 +107,7 @@
       <li><a href="/for-brokers">Brokers</a></li>
       <li><a href="/sell-your-building">Sellers</a></li>
       <li><a href="/available-space">Available Space</a></li>
-      <li><a href="/tenant-resources">Tenant Resources</a></li>
+      <li><a href="/tenant-resources">Tenants</a></li>
       <li><a href="/contact">Contact</a></li>
       <li><a href="/tenant-application" class="site-nav__cta">Apply Now</a></li>
     </ul>

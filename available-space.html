@@ -94,7 +94,7 @@
       background-color: #1B2A4A;
     }
     .nav__links{display:flex;gap:0;align-items:center}
-    .nav__link{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.8);padding:6px 9px;transition:color .3s,background .3s;text-decoration:none;white-space:nowrap}
+    .nav__link{font-family:var(--font-body);font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.8);padding:6px 8px;transition:color .3s,background .3s;text-decoration:none;white-space:nowrap}
     .nav__link:hover,.nav__link:focus{color:#C9A96E;text-decoration:none}
     .nav__link--active{color:#C9A96E}
     .nav__link--cta{background:#C9A96E;color:#1B2A4A;border-radius:6px;padding:8px 18px;font-size:.75rem;letter-spacing:.14em;font-weight:500;text-transform:uppercase;margin-left:8px}
@@ -103,7 +103,7 @@
     .nav__mobile-btn span{display:block;width:22px;height:2px;background:#fff;margin-bottom:5px;transition:transform .3s}
     .nav__mobile-btn span:last-child{width:16px;background:#C9A96E;margin-bottom:0}
     .nav__mobile{display:none;background:#1B2A4A;padding:16px 40px 24px}
-    .nav__mobile.is-open{display:block}
+    .nav__mobile.is-open{display:block;max-height:calc(100vh - 108px);max-height:calc(100dvh - 108px);overflow-y:auto;overscroll-behavior:contain}
     .nav__mobile a{display:block;padding:12px 0;font-family:var(--font-body);font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:#fff;border-bottom:1px solid rgba(255,255,255,.06);transition:color .3s;text-decoration:none}
     .nav__mobile a:hover{color:#C9A96E;text-decoration:none}
     .nav__logo img,.nav__logo svg{height:auto;width:auto;max-height:28px;display:block}
@@ -149,7 +149,7 @@ body{padding-top:36px}.nav{top:36px!important}
     "@type": "FAQPage",
     "mainEntity": [
       {"@type": "Question", "name": "What lease structures does Oxford offer?", "acceptedAnswer": {"@type": "Answer", "text": "Lease terms vary by property — modified gross, triple net (NNN), and plus-utilities structures are all in use across our current availabilities, as noted on each listing."}},
-      {"@type": "Question", "name": "How do I inquire about an available space?", "acceptedAnswer": {"@type": "Answer", "text": "Click Inquire on any listing to email us directly, or call 301.512.6125. We respond directly — no leasing broker intermediary required."}},
+      {"@type": "Question", "name": "How do I inquire about an available space?", "acceptedAnswer": {"@type": "Answer", "text": "Click Inquire on any listing to send us a short note about that space, or call 301.512.6125. We respond directly — no leasing broker intermediary required."}},
       {"@type": "Question", "name": "What size spaces are typically available?", "acceptedAnswer": {"@type": "Answer", "text": "Current availabilities range from roughly 1,200 SF suites up to 6,200+ SF units, spanning industrial, flex, and retail use types across our Mid-Atlantic and Midwest markets."}},
       {"@type": "Question", "name": "Which markets have available space right now?", "acceptedAnswer": {"@type": "Answer", "text": "Availability is concentrated in Columbus OH, Raytown MO (Kansas City), and Maryland — check the listings above for current inventory, which changes as space leases up."}},
       {"@type": "Question", "name": "Does Oxford require a broker to lease space?", "acceptedAnswer": {"@type": "Answer", "text": "No. Prospective tenants can inquire and lease directly with Oxford — no broker is required, though we work with tenant-rep brokers when one is involved."}}
@@ -710,7 +710,7 @@ body{padding-top:36px}.nav{top:36px!important}
     </button>
     <div class="faq-item__body" id="faq-2" role="region" aria-labelledby="faq-2-trigger">
     <div class="faq-item__answer">
-    <p>Click Inquire on any listing to email us directly, or call 301.512.6125. We respond directly &mdash; no leasing broker intermediary required.</p>
+    <p>Click Inquire on any listing to send us a short note about that space, or call 301.512.6125. We respond directly &mdash; no leasing broker intermediary required.</p>
     </div>
     </div>
     </div>

@@ -1469,6 +1469,14 @@
   margin-bottom: 16px;
 }
 
+/* Match the page's input sizing (styles.css's 15px select sat beside 14px inputs). */
+.as-inquiry__form .form-group select {
+  font-family: var(--as-font-body);
+  font-size: 14px;
+  padding: 10px 40px 10px 12px;
+  border-radius: 6px;
+}
+
 .as-inquiry__error {
   font-size: 14px;
   margin-top: 12px;

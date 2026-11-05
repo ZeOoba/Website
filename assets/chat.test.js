@@ -88,3 +88,95 @@ for (const [name, input, expected] of CHARACTERIZATION) {
     assert.equal(renderMarkdown(input), expected);
   });
 }
+
+// ---- [text](mailto:...) must produce exactly one anchor --------------------
+// The bare-email autolinker ran over the markup the [label](url) pass had
+// already produced, re-matching the address inside href="mailto:..." (and in
+// the label) and corrupting it into a nested <a>.
+const anchorCount = (html) => (html.match(/<a\b/g) || []).length;
+
+// Structural sanitizer invariant: after removing the exact markup renderMarkdown
+// is allowed to emit, no '<' and no raw '"' may remain, and no anchor may open
+// inside another anchor.
+const ALLOWED_MARKUP = /<a href="(?:https?:\/\/|mailto:)[^"<>]*"(?: target="_blank" rel="noopener noreferrer")?>|<\/a>|<\/?(?:p|strong|em|ul|li)>|<br>/g;
+function assertSafeMarkup(html) {
+  const residue = html.replace(ALLOWED_MARKUP, '');
+  assert.doesNotMatch(residue, /[<"]/, 'unexpected raw markup in: ' + html);
+  let depth = 0;
+  for (const tag of html.match(/<a\b|<\/a>/g) || []) {
+    depth += tag === '</a>' ? -1 : 1;
+    assert.ok(depth === 0 || depth === 1, 'nested or unbalanced <a> in: ' + html);
+  }
+  assert.equal(depth, 0, 'unbalanced <a> in: ' + html);
+}
+
+test('[Email us](mailto:...) renders exactly one anchor with the mailto href', () => {
+  const html = renderMarkdown('[Email us](mailto:ggoldberg@oxfordra.net)');
+  assert.equal(anchorCount(html), 1, html);
+  assert.equal(html, '<p><a href="mailto:ggoldberg@oxfordra.net" target="_blank" rel="noopener noreferrer">Email us</a></p>');
+});
+
+test('[address](mailto:address) renders exactly one anchor', () => {
+  const html = renderMarkdown('[ggoldberg@oxfordra.net](mailto:ggoldberg@oxfordra.net)');
+  assert.equal(anchorCount(html), 1, html);
+  assert.equal(html, '<p><a href="mailto:ggoldberg@oxfordra.net" target="_blank" rel="noopener noreferrer">ggoldberg@oxfordra.net</a></p>');
+});
+
+test('bare email still autolinks to one mailto anchor with the trailing period outside', () => {
+  const html = renderMarkdown('email ggoldberg@oxfordra.net.');
+  assert.equal(anchorCount(html), 1, html);
+  assert.match(html, /<a href="mailto:ggoldberg@oxfordra\.net">ggoldberg@oxfordra\.net<\/a>\.<\/p>$/);
+});
+
+test('an email inside a bare URL query string does not become a nested anchor', () => {
+  const html = renderMarkdown('https://oxfordra.net/x?e=a@b.com');
+  assert.equal(anchorCount(html), 1, html);
+  assert.equal(html, '<p><a href="https://oxfordra.net/x?e=a@b.com" target="_blank" rel="noopener noreferrer">https://oxfordra.net/x?e=a@b.com</a></p>');
+});
+
+test('javascript:/data: text in a label is inert text inside a single anchor', () => {
+  const js = renderMarkdown('[javascript:a@b.com](mailto:a@b.com)');
+  assert.equal(js, '<p><a href="mailto:a@b.com" target="_blank" rel="noopener noreferrer">javascript:a@b.com</a></p>');
+  const data = renderMarkdown('[data:x@y.com](https://e.com)');
+  assert.equal(data, '<p><a href="https://e.com" target="_blank" rel="noopener noreferrer">data:x@y.com</a></p>');
+});
+
+test('bare emails around a mailto link each get one anchor; the mailto link is not re-linked', () => {
+  const html = renderMarkdown('a@b.com and [c](mailto:c@d.com) and e@f.com');
+  assert.equal(html, '<p><a href="mailto:a@b.com">a@b.com</a> and ' +
+    '<a href="mailto:c@d.com" target="_blank" rel="noopener noreferrer">c</a> and <a href="mailto:e@f.com">e@f.com</a></p>');
+});
+
+const HOSTILE_INPUTS = [
+  '[Email us](mailto:ggoldberg@oxfordra.net)',
+  '[ggoldberg@oxfordra.net](mailto:ggoldberg@oxfordra.net)',
+  '[x](mailto:a@b.com" onclick="x)',
+  '[x](mailto:a@b.com"onclick="x)',
+  '[a" onmouseover="x@y.com](mailto:x@y.com)',
+  '[javascript:a@b.com](mailto:a@b.com)',
+  '[data:text/html,x@y.com](mailto:x@y.com)',
+  '[x](javascript:alert(1)) a@b.com',
+  '[x](data:text/html;base64,PHNjcmlwdD4=) a@b.com',
+  '&lt;a href=&quot;x&quot;&gt;a@b.com&lt;/a&gt;',
+  '<a href="mailto:a@b.com">a@b.com</a>',
+  '</a><a href=x>a@b.com',
+  'x@y.com"><img src=x onerror=1>',
+  '**[Mail](mailto:a@b.com)** and - item',
+  '- [Mail](mailto:a@b.com)\n- b@c.com',
+  '[A](mailto:a@b.com)[B](mailto:b@c.com)',
+  'https://oxfordra.net/x?e=a@b.com and [m](mailto:m@n.com)',
+];
+
+for (const input of HOSTILE_INPUTS) {
+  test(`sanitizer invariant holds for ${JSON.stringify(input)}`, () => {
+    assertSafeMarkup(renderMarkdown(input));
+  });
+}
+
+// Known PRE-EXISTING defect, out of TA-1 scope (logged for P2-7): the bare
+// oxfordra.net autolinker (not the email pass) still re-links an oxfordra.net/
+// path inside a [label](url) label. Kept as a todo so it is visible, not a
+// TA-1 pass criterion.
+test('KNOWN (P2-7): oxfordra.net/ path inside a link label is not re-linked', { todo: 'P2-7: oxfordra.net pass, not the email pass' }, () => {
+  assertSafeMarkup(renderMarkdown('[see oxfordra.net/x](https://oxfordra.net/x)'));
+});

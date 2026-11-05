@@ -380,3 +380,25 @@ test('P2-7: oxfordra.net/ path inside a link label is not re-linked', () => {
   assertAllowedAttributes(html);
   assert.equal(html, '<p><a href="https://oxfordra.net/x" target="_blank" rel="noopener noreferrer">see oxfordra.net/x</a></p>');
 });
+
+// ---- Lookbehind context outside anchors is preserved (matches main) ---------
+// The shared helper skips existing anchors but still runs each pass pattern on
+// the full string, so a pass's lookbehind sees the real preceding character
+// (e.g. the '>' that ends an anchor). Plain segment splitting would lose that
+// context and change these outputs. Pinned to main's exact output.
+const CONTEXT_CASES = [
+  ['URL glued to the end of a link stays text', '[x](https://a.com)https://b.com',
+    '<p><a href="https://a.com" target="_blank" rel="noopener noreferrer">x</a>https://b.com</p>'],
+  ['oxfordra.net path glued to the end of a link stays text', '[x](https://a.com)oxfordra.net/y',
+    '<p><a href="https://a.com" target="_blank" rel="noopener noreferrer">x</a>oxfordra.net/y</p>'],
+  ['oxfordra.net path after "/" stays text', 'ftp://oxfordra.net/x', '<p>ftp://oxfordra.net/x</p>'],
+  ['URL after "/" stays text', 'see/https://e.com', '<p>see/https://e.com</p>'],
+  ['email glued to the end of a link still autolinks', '[x](https://a.com)a@b.com',
+    '<p><a href="https://a.com" target="_blank" rel="noopener noreferrer">x</a><a href="mailto:a@b.com">a@b.com</a></p>'],
+];
+
+for (const [name, input, expected] of CONTEXT_CASES) {
+  test(`context preserved: ${name}`, () => {
+    assert.equal(renderMarkdown(input), expected);
+  });
+}

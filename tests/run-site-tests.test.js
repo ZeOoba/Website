@@ -3,19 +3,21 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const load = () => import(require('node:url').pathToFileURL(path.join(__dirname, '..', 'scripts', 'run-site-tests.mjs')).href);
 
-function fixture(names) {
+function fixture(t, names) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'site-tests-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'tests', 'site'), { recursive: true });
   for (const n of names) fs.writeFileSync(path.join(root, 'tests', 'site', n), '');
   return root;
 }
 
-test('lists every tests/site/*.test.mjs except the separately-run four, sorted', async () => {
+test('lists every tests/site/*.test.mjs except the separately-run four, sorted', async (t) => {
   const { listSiteTests } = await load();
-  const root = fixture(['b.test.mjs', 'a.test.mjs', 'leak-gate.test.mjs', 'functions-smoke.test.mjs',
+  const root = fixture(t, ['b.test.mjs', 'a.test.mjs', 'leak-gate.test.mjs', 'functions-smoke.test.mjs',
     'netlify-guard.test.mjs', 'netlify-shim-patch.test.mjs', 'helper.mjs', 'x.test.js']);
   assert.deepStrictEqual(await listSiteTests(root), ['tests/site/a.test.mjs', 'tests/site/b.test.mjs']);
 });
@@ -25,4 +27,36 @@ test('real repo: discovers the browser suite and none of the separate four', asy
   const files = await listSiteTests(path.join(__dirname, '..'));
   assert.ok(files.includes('tests/site/csp-smoke.test.mjs'));
   for (const s of SEPARATE) assert.ok(!files.includes(`tests/site/${s}`), s);
+});
+
+const REPO = path.join(__dirname, '..');
+const SCRIPT = path.join('scripts', 'run-site-tests.mjs');
+const NEWLINE = /\r?\n/;
+
+function listVia(scriptPath) {
+  return spawnSync(process.execPath, [scriptPath, '--list'], { cwd: REPO, encoding: 'utf8' });
+}
+
+test('--list prints 26 site test files when the script is reached through a junction/symlink', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'site-tests-link-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const link = path.join(tmp, 'repo-link');
+  try {
+    fs.symlinkSync(REPO, link, process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (e) {
+    return t.skip(`cannot create junction/symlink here: ${e.code || e.message}`);
+  }
+  const r = listVia(path.join(link, SCRIPT));
+  assert.strictEqual(r.status, 0, r.stderr);
+  const lines = r.stdout.trim().split(NEWLINE).filter(Boolean);
+  assert.strictEqual(lines.length, 26, `expected 26 site test files, got ${lines.length}: ${r.stdout}`);
+});
+
+test('--list prints 26 site test files with a differently-cased drive letter (Windows)', (t) => {
+  if (process.platform !== 'win32') return t.skip('drive-letter casing only applies on Windows');
+  const abs = path.resolve(REPO, SCRIPT);
+  const flipped = abs[0] === abs[0].toLowerCase() ? abs[0].toUpperCase() + abs.slice(1) : abs[0].toLowerCase() + abs.slice(1);
+  const r = listVia(flipped);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual(r.stdout.trim().split(NEWLINE).filter(Boolean).length, 26, r.stdout);
 });

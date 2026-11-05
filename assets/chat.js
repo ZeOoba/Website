@@ -25,35 +25,47 @@
     if (!m) return { url: url, trailing: '' };
     return { url: url.slice(0, -m[0].length), trailing: m[0] };
   }
+  // The autolink passes (bare URL, bare oxfordra.net path, email) must never
+  // run inside an anchor an earlier pass produced. A URL or email nested in an
+  // href ("...?u=https://...", "mailto:x@y.com?body=https://...") or in a
+  // [label](url) label used to be re-matched there: [^\s<]+ swallowed the
+  // href's closing quote, so user text landed in attribute-name position
+  // (onmouseover=..., style=...) or the markup corrupted into a nested <a>.
+  // User text is escaped before any pass runs, so every '<' at this point is
+  // our own markup and ANCHOR_RE matches exactly the anchors we emitted. Each
+  // pass is compiled as "existing anchor | pass pattern": an existing anchor is
+  // consumed whole and returned unchanged, and the pass pattern is tried only
+  // outside anchors, where its lookbehind still sees the real preceding char.
+  var ANCHOR_RE = /<a\b[^>]*>[\s\S]*?<\/a>/;
+  function outsideAnchors(pass) {
+    return new RegExp('(' + ANCHOR_RE.source + ')|(?:' + pass.source + ')', 'g');
+  }
+  var BARE_URL_RE = outsideAnchors(/(?<![">/])https?:\/\/[^\s<]+/);
+  var BARE_OXFORDRA_RE = outsideAnchors(/(?<![">/])\boxfordra\.net\/[^\s<]+/);
+  var BARE_EMAIL_RE = outsideAnchors(/\b[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/);
+  function autolinkOutsideAnchors(html, re, toAnchor) {
+    return html.replace(re, function (match, existingAnchor) {
+      return existingAnchor ? existingAnchor : toAnchor(match);
+    });
+  }
   function renderMarkdown(text) {
     var safe = escapeHtml(text);
     // links: [label](url) — only http(s) and mailto
     safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)/g, function (_, label, url) {
       return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
     });
-    // bare oxfordra.net URLs and emails
-    safe = safe.replace(/(?<![">/])(https?:\/\/[^\s<]+)/g, function (u) {
+    // bare URLs, then bare oxfordra.net paths, then emails: each outside anchors only
+    safe = autolinkOutsideAnchors(safe, BARE_URL_RE, function (u) {
       var split = splitTrailingPunctuation(u);
       return '<a href="' + split.url + '" target="_blank" rel="noopener noreferrer">' + split.url + '</a>' + split.trailing;
     });
-    // Same not-already-inside-a-tag guard as the https? regex above — without
-    // it this re-matches "oxfordra.net/..." inside the href/label the two
-    // regexes above just produced, corrupting the markup into a nested <a>.
-    safe = safe.replace(/(?<![">/])\b(oxfordra\.net\/[^\s<]+)/g, function (u) {
+    safe = autolinkOutsideAnchors(safe, BARE_OXFORDRA_RE, function (u) {
       var split = splitTrailingPunctuation(u);
       return '<a href="https://' + split.url + '" target="_blank" rel="noopener noreferrer">' + split.url + '</a>' + split.trailing;
     });
-    // Emails: autolink only OUTSIDE the anchors produced above. Without this the
-    // address inside href="mailto:..." (and in a link label or a bare URL's query
-    // string) is re-matched and the markup corrupts into a nested <a>. Every '<'
-    // in `safe` here comes from our own markup (user text was escaped first), so
-    // splitting on the anchor pattern cleanly separates our anchors from text.
-    safe = safe.split(/(<a\b[^>]*>[\s\S]*?<\/a>)/).map(function (seg, i) {
-      if (i % 2 === 1) return seg; // odd indexes are the captured anchors
-      return seg.replace(/\b([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function (e) {
-        return '<a href="mailto:' + e + '">' + e + '</a>';
-      });
-    }).join('');
+    safe = autolinkOutsideAnchors(safe, BARE_EMAIL_RE, function (e) {
+      return '<a href="mailto:' + e + '">' + e + '</a>';
+    });
     // bold + italic
     safe = safe.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
     safe = safe.replace(/(^|\W)\*([^*\n]+)\*(\W|$)/g, '$1<em>$2</em>$3');

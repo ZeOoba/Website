@@ -23,7 +23,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const SITE_DIR = path.join(ROOT, 'tests', 'site');
 const SCRIPT_NAMES = ['test:site', 'test:functions', 'test:shim', 'test:leak-gate'];
 const EXCLUDED = {};
-const RUNNER_SCRIPT = 'test:site'; // enumerated by scripts/run-site-tests.mjs, not named in package.json
+const RUNNER_SCRIPT = 'test:site'; // test:site's test FILES are not listed in package.json (the runner enumerates them)
 
 const scripts = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts;
 

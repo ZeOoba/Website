@@ -5,10 +5,11 @@
  * listed in EXCLUDED with a written reason.
  *
  * WHY: scripts/run-unit-tests.mjs auto-discovers *.test.js but deliberately
- * skips tests/site, whose .mjs browser/runtime tests are enumerated BY HAND in
- * package.json. A new tests/site file that nobody appends to a script is
- * silently never run (consent-mode.test.mjs sat orphaned this way). This guard
- * turns that omission into a red build.
+ * skips tests/site. Its .mjs browser/runtime tests run under test:site (which
+ * scripts/run-site-tests.mjs enumerates automatically since 2026-11-05) or
+ * under the three scripts that still name their files in package.json. A
+ * tests/site file run by no script, or by more than one, fails this guard
+ * (consent-mode.test.mjs once sat orphaned under the old hand-kept list).
  *
  * EXCLUDED maps a tests/site file name to the reason it is intentionally not
  * run by any script. It starts empty; a file listed here must NOT also appear

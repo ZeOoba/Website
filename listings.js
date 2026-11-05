@@ -856,6 +856,15 @@
     e.preventDefault();
     if (!inquiryState) return;
     var form = el('inquiryForm');
+    var errorBox = el('inquiryError');
+    // `required` accepts a value of only spaces; the post trims, so check the trimmed values first.
+    var missing = !form.elements.name.value.trim() ? form.elements.name : !form.elements.email.value.trim() ? form.elements.email : null;
+    if (missing) {
+      errorBox.textContent = 'Please enter your name and email so we can reply.';
+      errorBox.hidden = false;
+      missing.focus();
+      return;
+    }
     var p = inquiryState.p;
     var suite = el('inq-space').value;
     var u = p.units.find(function (x) { return x.suite === suite; });
@@ -868,7 +877,6 @@
     params.append('lead-landing', source.landing || '');
     params.append('lead-referrer', source.referrer || '');
     var btn = el('inquirySubmit');
-    var errorBox = el('inquiryError');
     errorBox.hidden = true;
     btn.disabled = true;
     btn.textContent = 'Sending…';
@@ -881,7 +889,10 @@
         done.textContent = 'Thank you. We received your inquiry about ' + (u ? 'Suite ' + u.suite + ' at ' : '') + p.name +
           ' and respond within one business day. Prefer to talk? Call 301.512.6125.';
         done.hidden = false;
-        done.focus();
+        // role=status announces the message; focus moves to the close button, which the Tab trap includes
+        // (focusing the message itself let the next Tab leave the dialog).
+        var closeBtn = el('inquiryOverlay').querySelector('.as-overlay__close');
+        if (closeBtn) closeBtn.focus();
         if (window.gtag) window.gtag('event', 'listing_inquiry_submit', { event_category: 'lead', event_label: p.slug || String(p.id) });
       })
       .catch(function () {

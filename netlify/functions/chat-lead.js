@@ -42,15 +42,21 @@ function renderFallbackEmail(fields) {
 <div style="max-width:640px;margin:0 auto;font-family:Georgia,'Times New Roman',serif;">
   <div style="background:#1B2A4A;padding:24px 32px;"><h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:400;">Chat Lead</h1></div>
   <div style="background:#ffffff;padding:24px 32px;"><table style="width:100%;border-collapse:collapse;">${rows}</table></div>
-  <div style="padding:16px 32px;font-family:Arial,sans-serif;font-size:11px;color:#596B7D;">Oxford Realty Advisors — sent directly because the Netlify Forms row could not be written, so the usual form notification will not arrive for this lead.</div>
+  <div style="padding:16px 32px;font-family:Arial,sans-serif;font-size:11px;color:#596B7D;">Oxford Realty Advisors — sent directly because the Netlify Forms row failed or did not confirm in time. If Netlify's usual notice for this lead also arrives, the row was stored after all; this is the same lead.</div>
 </div></body></html>`,
   };
 }
 
+// The failure row goes to the same Netlify Forms endpoint that may just have failed, so it is bounded: it must
+// never hold the visitor's response past the function's ~10 s limit (a lead already emailed would then be told
+// it failed). A row that does not land in time is lost; the console.error above it stays in the function log.
 function logFailure(fetchImpl, siteUrl, errorCode, detail) {
-  return forwardToNetlifyForm(siteUrl, 'pipeline-failures', {
+  const write = forwardToNetlifyForm(siteUrl, 'pipeline-failures', {
     'source-function': 'chat-lead', 'error-code': errorCode, 'submission-id': '', detail: detail || '', 'occurred-at': new Date().toISOString(),
   }, { fetchImpl });
+  let timer;
+  const cap = new Promise((resolve) => { timer = setTimeout(() => resolve(false), Number(process.env.CHAT_LEAD_LOG_TIMEOUT_MS) || 1500); });
+  return Promise.race([write, cap]).finally(() => clearTimeout(timer));
 }
 
 // ---------- CORS ----------

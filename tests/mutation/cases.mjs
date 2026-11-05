@@ -176,7 +176,7 @@ export const CASES = [
   { id: 'LS1', what: 'size filter goes back to summing all units against the minimum (the shipped bug)', edits: [['dist/listings.js', sub('return hi >= min && lo <= max;', 'return p.units.reduce(function (s, x) { return s + x.sf; }, 0) >= min && lo <= max;')]], run: 'listings', expect: 'shipped bug pinned' },
   { id: 'LS2', what: 'stats bar totals use each unit\'s minimum instead of its maximum', edits: [['dist/listings.js', sub('return us + (u.sfMax || u.sf);', 'return us + u.sf;')]], run: 'listings', expect: 'stats bar' },
   { id: 'LS3', what: 'size ascending sorts descending', edits: [['dist/listings.js', sub('return totalSF(a) - totalSF(b);', 'return totalSF(b) - totalSF(a);')]], run: 'listings', expect: 'sorting' },
-  { id: 'LS4', what: 'Escape no longer closes the detail overlay', edits: [['dist/listings.js', sub("if (e.key === 'Escape') closeDetail();", '')]], run: 'listings', expect: 'detail overlay' },
+  { id: 'LS4', what: 'Escape no longer closes the detail overlay', edits: [['dist/listings.js', sub('      else closeDetail();', '      else {}')]], run: 'listings', expect: 'detail overlay' },
   { id: 'LS5', what: 'the detail overlay stops trapping Tab focus', edits: [['dist/listings.js', sub("document.addEventListener('keydown', detailKeydownTrap);", '')]], run: 'listings', expect: 'detail overlay' },
   { id: 'LS6', what: 'Clear all forgets to empty the search box', edits: [['dist/listings.js', sub("el('searchInput').value = '';", '')]], run: 'listings', expect: 'search matches' },
 
@@ -229,6 +229,10 @@ export const CASES = [
   { id: 'ON3', what: 'dist: nav link padding 9px, which fits headless but not under a Windows scrollbar', edits: [['dist/index.html', sub('padding:6px 8px', 'padding:6px 9px')]], run: 'ownerNav', expect: 'with a 17px scrollbar' },
   { id: 'ON4', what: 'dist: the open mobile menu stops scrolling (last items unreachable on short phones)', edits: [['dist/index.html', sub(';overflow-y:auto;overscroll-behavior:contain}', '}')]], run: 'ownerNav', expect: 'mobile menu scrolls' },
   { id: 'ON2', what: 'dist: the owner page drops its own Sellers nav item', edits: [['dist/sell-your-building.html', dropLine(/<a href="\/sell-your-building" class="nav__link nav__link--active" aria-current="page">Sellers<\/a>\r?\n/)]], run: 'ownerNav', expect: 'links Sellers on desktop' },
+  // --- chat-lead fallback bounds and the hook checker (2026-11-05 adversarial review) ----------------------------
+  { id: 'CL1', what: 'the chat-lead Forms POST loses its abort signal (a hung write eats the function budget)', edits: [['netlify/functions/chat-lead.js', dropLine(/^ *signal: AbortSignal\.timeout\(timeoutMs\),\r?\n/m)]], run: 'chatLead', expect: 'hung Forms endpoint' },
+  { id: 'CL2', what: 'the chat-lead failure-log write is no longer bounded', edits: [['netlify/functions/chat-lead.js', sub('return Promise.race([write, cap]).finally(() => clearTimeout(timer));', 'return write;')]], run: 'chatLead', expect: 'hung Forms endpoint' },
+  { id: 'FH1', what: 'the hook checker matches a notify function by URL path on any host again', edits: [['scripts/lib/form-hooks.mjs', sub('if (!SITE_HOSTS.has(u.hostname) || u.protocol !== \'https:\') return null;', '')]], run: 'formHooks', expect: 'another host' },
   // --- listing inquiry form (2026-11-05) ------------------------------------------------------------------------
   { id: 'INQ1', what: 'dist: the listing-inquiry declaration drops lead-landing (Netlify would discard it)', edits: [['dist/available-space.html', dropLine(/ *<input type="hidden" name="lead-landing" data-lead-source="landing">\r?\n/)]], run: 'listings', expect: 'posts listing-inquiry' },
   { id: 'INQ2', what: 'dist: a click on Inquire no longer opens the form', edits: [['dist/listings.js', sub("openInquiry(p, link.getAttribute('data-suite') || '', link);", 'return;')]], run: 'listings', expect: 'Inquire opens a prefilled form' },

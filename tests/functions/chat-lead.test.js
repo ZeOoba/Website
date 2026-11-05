@@ -118,28 +118,44 @@ test('a thrown Forms forward is treated like a failed one', () => withGraphEnv(a
   assert.ok(calls.some((c) => c.url.includes('/sendMail')));
 }));
 
-test('a hung Forms forward is abandoned in time for the email fallback (bounded wait)', () => withGraphEnv(async () => {
-  const prev = process.env.CHAT_LEAD_FORMS_TIMEOUT_MS;
+test('a hung Forms endpoint (row AND failure log) still answers the visitor ok once the lead is emailed', () => withGraphEnv(async () => {
+  const prev = { f: process.env.CHAT_LEAD_FORMS_TIMEOUT_MS, l: process.env.CHAT_LEAD_LOG_TIMEOUT_MS };
   process.env.CHAT_LEAD_FORMS_TIMEOUT_MS = '50';
+  process.env.CHAT_LEAD_LOG_TIMEOUT_MS = '50';
+  const never = () => new Promise(() => {});
   try {
     const calls = [];
+    let rowSignal = null;
     const fetchImpl = (url, opts = {}) => {
       const u = String(url); const body = String(opts.body || '');
       calls.push({ url: u, body });
       if (body.includes('form-name=chat-lead')) {
-        // Never answers; only the abort signal ends it.
-        return new Promise((resolve, reject) => { opts.signal.addEventListener('abort', () => reject(opts.signal.reason)); });
+        // Never answers on its own. Without an abort signal it stays pending forever, so a removed bound hangs
+        // this test instead of passing it (2026-11-05 review: a throwing stub used to make it pass vacuously).
+        rowSignal = opts.signal || null;
+        if (!rowSignal) return never();
+        return new Promise((resolve, reject) => { rowSignal.addEventListener('abort', () => reject(rowSignal.reason)); });
       }
+      if (body.includes('form-name=pipeline-failures')) return never(); // the failure log hangs too
       if (u.includes('login.microsoftonline.com')) return Promise.resolve({ ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) });
       return Promise.resolve({ ok: true, status: 202 });
     };
     const t0 = Date.now();
-    const r = await handler(leadFrom(14), { fetchImpl });
-    assert.equal(r.statusCode, 200);
-    assert.ok(Date.now() - t0 < 2000, 'the hung forward must be abandoned, not awaited');
+    // A ref'd timer keeps the event loop alive: on Node 20 the handler's AbortSignal.timeout timer is unref'd, and a
+    // stub that never settles holds no socket, so without it the test runner exits before the bound can fire
+    // (CI, 2026-11-05: "Promise resolution is still pending but the event loop has already resolved").
+    let guard;
+    const hung = new Promise((resolve) => { guard = setTimeout(() => resolve('HUNG'), 2000); });
+    const outcome = await Promise.race([handler(leadFrom(14), { fetchImpl }), hung]);
+    clearTimeout(guard);
+    assert.notEqual(outcome, 'HUNG', 'the handler must not wait on a hung Forms endpoint');
+    assert.ok(rowSignal instanceof AbortSignal, 'the Forms row POST must carry an abort signal');
+    assert.equal(outcome.statusCode, 200);
+    assert.deepEqual(JSON.parse(outcome.body), { ok: true });
+    assert.ok(Date.now() - t0 < 2000);
     assert.ok(calls.some((c) => c.url.includes('/sendMail')), 'the lead must still be emailed');
   } finally {
-    if (prev === undefined) delete process.env.CHAT_LEAD_FORMS_TIMEOUT_MS; else process.env.CHAT_LEAD_FORMS_TIMEOUT_MS = prev;
+    for (const [k, v] of [['CHAT_LEAD_FORMS_TIMEOUT_MS', prev.f], ['CHAT_LEAD_LOG_TIMEOUT_MS', prev.l]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
   }
 }));
 

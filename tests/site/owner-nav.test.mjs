@@ -74,9 +74,12 @@ for (const { width, scrollbar } of [{ width: 1280, scrollbar: 0 }, { width: 1280
     await ctx.route('**/*', (route) => (new URL(route.request().url()).origin === server.url ? route.continue() : route.abort()));
     const page = await ctx.newPage();
     try {
-      for (const p of ['/', '/sell-your-building', '/for-brokers']) {
+      // privacy and terms carry their own (minified) header CSS, so they are checked too.
+      for (const p of ['/', '/sell-your-building', '/for-brokers', '/privacy', '/terms']) {
         await page.goto(server.url + p, { waitUntil: 'load' });
-        await page.evaluate(() => document.fonts && document.fonts.ready);
+        // Measure the settled layout: privacy/terms define the DM Sans face only in the async styles.css, so
+        // document.fonts.ready can resolve before the face exists. The fallback-font state has its own test below.
+        await page.waitForFunction(() => [...document.fonts].some((f) => /DM Sans/.test(f.family) && f.status === 'loaded'), null, { timeout: 15_000 });
         if (scrollbar) await page.addStyleTag({ content: `.nav{right:${scrollbar}px!important}` });
         const m = await page.evaluate(() => {
           const links = document.querySelector('.nav__links');
@@ -103,6 +106,28 @@ for (const { width, scrollbar } of [{ width: 1280, scrollbar: 0 }, { width: 1280
     }
   });
 }
+
+test('before the webfonts load (fallback faces), no header item runs past the 1280px viewport', { timeout: 120_000 }, async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  // Same-origin only, and the woff2 files never arrive: the header renders in its fallback faces throughout.
+  await ctx.route('**/*', (route) => {
+    const u = new URL(route.request().url());
+    return u.origin === server.url && !u.pathname.endsWith('.woff2') ? route.continue() : route.abort();
+  });
+  const page = await ctx.newPage();
+  try {
+    for (const p of ['/', '/sell-your-building', '/available-space', '/privacy', '/terms']) {
+      await page.goto(server.url + p, { waitUntil: 'load' });
+      const m = await page.evaluate(() => ({
+        right: Math.max(...[...document.querySelectorAll('.nav__links a')].map((a) => a.getBoundingClientRect().right)),
+        vw: document.documentElement.clientWidth,
+      }));
+      assert.ok(m.right <= m.vw, `${p}: with fallback fonts a nav item ends at ${Math.round(m.right)}px, past the ${m.vw}px viewport (clipped)`);
+    }
+  } finally {
+    await ctx.close();
+  }
+});
 
 test('the 404 header keeps every label on one line: fits from 1280px, scrolls sideways below that', { timeout: 120_000 }, async () => {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });

@@ -63,6 +63,32 @@ test('a hook scoped to the wrong form, or disabled, does not count', async () =>
   assert.deepEqual(off.problems.map((p) => p.fn), ['owner-lead-notify']);
 });
 
+test('a hook aimed at another host or over plain http does not count as wiring the function', async () => {
+  const { auditFormHooks } = await load();
+  const elsewhere = (url) => ({ ...fnHook('owner-lead-notify', 'owner-submission-intake'), data: { url, signature_secret: SECRET } });
+  for (const url of [
+    'https://deploy-preview-12--snazzy-frangipane-de3841.netlify.app/.netlify/functions/owner-lead-notify',
+    'https://oxfordra.example/.netlify/functions/owner-lead-notify',
+    'http://oxfordra.net/.netlify/functions/owner-lead-notify',
+  ]) {
+    const { problems } = auditFormHooks({ hooks: [...LIVE, elsewhere(url)], targets: TARGETS, forms: FORMS });
+    assert.deepEqual(problems.map((p) => p.fn), ['owner-lead-notify'], url);
+    assert.match(problems[0].detail, /not this site over https/, url);
+  }
+  // The site's own hosts do count.
+  for (const host of ['oxfordra.net', 'www.oxfordra.net', 'snazzy-frangipane-de3841.netlify.app']) {
+    const { problems } = auditFormHooks({ hooks: [...LIVE, elsewhere(`https://${host}/.netlify/functions/owner-lead-notify`)], targets: TARGETS, forms: FORMS });
+    assert.deepEqual(problems, [], host);
+  }
+});
+
+test('every address in a notification list is masked', async () => {
+  const { maskEmail } = await load();
+  assert.equal(maskEmail('ggoldberg@oxfordra.net, egoldberg@oxfordra.net'), 'g***@oxfordra.net, e***@oxfordra.net');
+  assert.equal(maskEmail('ggoldberg@oxfordra.net'), 'g***@oxfordra.net');
+  assert.equal(maskEmail(''), '***');
+});
+
 test('without the all-forms email, forms that only it covered are reported as notifying no one', async () => {
   const { auditFormHooks } = await load();
   const hooks = LIVE.filter((h) => !(h.type === 'email' && h.form_name == null));

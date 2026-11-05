@@ -45,7 +45,9 @@ test('--list matches listSiteTests() when the script is reached through a juncti
   const link = path.join(tmp, 'repo-link');
   t.after(() => {
     // Remove the junction/symlink itself first so recursive removal can never follow it into the live checkout.
-    try { fs.unlinkSync(link); } catch {}
+    // Only "not found" (link never created) may fall through; any other unlink failure stops the cleanup
+    // rather than letting rmSync meet a live junction (Windows' EPERM fallback can follow it).
+    try { fs.unlinkSync(link); } catch (e) { if (e.code !== 'ENOENT') throw e; }
     fs.rmSync(tmp, { recursive: true, force: true });
   });
   try {

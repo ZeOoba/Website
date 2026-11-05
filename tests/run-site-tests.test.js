@@ -30,6 +30,7 @@ test('real repo: discovers the browser suite and none of the separate four', asy
 });
 
 const REPO = path.join(__dirname, '..');
+const REPO_ROOT = REPO;
 const SCRIPT = path.join('scripts', 'run-site-tests.mjs');
 const NEWLINE = /\r?\n/;
 
@@ -37,10 +38,16 @@ function listVia(scriptPath) {
   return spawnSync(process.execPath, [scriptPath, '--list'], { cwd: REPO, encoding: 'utf8' });
 }
 
-test('--list prints 26 site test files when the script is reached through a junction/symlink', (t) => {
+test('--list matches listSiteTests() when the script is reached through a junction/symlink', async (t) => {
+  const { listSiteTests } = await load();
+  const expected = await listSiteTests(REPO_ROOT);
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'site-tests-link-'));
-  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const link = path.join(tmp, 'repo-link');
+  t.after(() => {
+    // Remove the junction/symlink itself first so recursive removal can never follow it into the live checkout.
+    try { fs.unlinkSync(link); } catch {}
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
   try {
     fs.symlinkSync(REPO, link, process.platform === 'win32' ? 'junction' : 'dir');
   } catch (e) {
@@ -49,14 +56,19 @@ test('--list prints 26 site test files when the script is reached through a junc
   const r = listVia(path.join(link, SCRIPT));
   assert.strictEqual(r.status, 0, r.stderr);
   const lines = r.stdout.trim().split(NEWLINE).filter(Boolean);
-  assert.strictEqual(lines.length, 26, `expected 26 site test files, got ${lines.length}: ${r.stdout}`);
+  assert.ok(lines.length >= 20, `expected at least 20 site test files, got ${lines.length}: ${r.stdout}`);
+  assert.deepStrictEqual(lines, expected);
 });
 
-test('--list prints 26 site test files with a differently-cased drive letter (Windows)', (t) => {
+test('--list matches listSiteTests() with a differently-cased drive letter (Windows)', async (t) => {
   if (process.platform !== 'win32') return t.skip('drive-letter casing only applies on Windows');
+  const { listSiteTests } = await load();
+  const expected = await listSiteTests(REPO_ROOT);
   const abs = path.resolve(REPO, SCRIPT);
   const flipped = abs[0] === abs[0].toLowerCase() ? abs[0].toUpperCase() + abs.slice(1) : abs[0].toLowerCase() + abs.slice(1);
   const r = listVia(flipped);
   assert.strictEqual(r.status, 0, r.stderr);
-  assert.strictEqual(r.stdout.trim().split(NEWLINE).filter(Boolean).length, 26, r.stdout);
+  const lines = r.stdout.trim().split(NEWLINE).filter(Boolean);
+  assert.ok(lines.length >= 20, `expected at least 20 site test files, got ${lines.length}: ${r.stdout}`);
+  assert.deepStrictEqual(lines, expected);
 });

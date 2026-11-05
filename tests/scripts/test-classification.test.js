@@ -5,10 +5,11 @@
  * listed in EXCLUDED with a written reason.
  *
  * WHY: scripts/run-unit-tests.mjs auto-discovers *.test.js but deliberately
- * skips tests/site, whose .mjs browser/runtime tests are enumerated BY HAND in
- * package.json. A new tests/site file that nobody appends to a script is
- * silently never run (consent-mode.test.mjs sat orphaned this way). This guard
- * turns that omission into a red build.
+ * skips tests/site. Its .mjs browser/runtime tests run under test:site (which
+ * scripts/run-site-tests.mjs enumerates automatically since 2026-11-05) or
+ * under the three scripts that still name their files in package.json. A
+ * tests/site file run by no script, or by more than one, fails this guard
+ * (consent-mode.test.mjs once sat orphaned under the old hand-kept list).
  *
  * EXCLUDED maps a tests/site file name to the reason it is intentionally not
  * run by any script. It starts empty; a file listed here must NOT also appear
@@ -23,20 +24,31 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const SITE_DIR = path.join(ROOT, 'tests', 'site');
 const SCRIPT_NAMES = ['test:site', 'test:functions', 'test:shim', 'test:leak-gate'];
 const EXCLUDED = {};
+const RUNNER_SCRIPT = 'test:site'; // test:site's test FILES are not listed in package.json (the runner enumerates them)
 
 const scripts = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts;
 
 // Every `tests/...test.mjs` path named in a script, normalized to forward slashes.
-function pathsIn(script) {
+// test:site no longer names files: it delegates to run-site-tests.mjs, whose listSiteTests()
+// is the source of truth (resolved once, below, before the tests register).
+let runnerPaths = [];
+function pathsIn(script, name) {
+  if (name === RUNNER_SCRIPT) return runnerPaths;
   return (script.match(/tests\/[^\s"']+\.test\.mjs/g) || []).map((p) => p.replace(/\\/g, '/'));
 }
 
 const siteFiles = fs.readdirSync(SITE_DIR).filter((f) => f.endsWith('.test.mjs')).sort();
 
+test('test:site delegates to run-site-tests.mjs', async () => {
+  assert.match(scripts[RUNNER_SCRIPT], /scripts\/run-site-tests\.mjs/);
+  const { listSiteTests } = await import(require('node:url').pathToFileURL(path.join(ROOT, 'scripts', 'run-site-tests.mjs')).href);
+  runnerPaths = await listSiteTests(ROOT);
+});
+
 test('the npm scripts under guard exist', () => {
   for (const name of SCRIPT_NAMES) {
     assert.equal(typeof scripts[name], 'string', `package.json is missing scripts["${name}"]`);
-    assert.ok(pathsIn(scripts[name]).length > 0, `scripts["${name}"] names no tests/**/*.test.mjs file`);
+    assert.ok(pathsIn(scripts[name], name).length > 0, `scripts["${name}"] names no tests/**/*.test.mjs file`);
   }
 });
 
@@ -47,7 +59,7 @@ test('tests/site contains test files to classify (non-vacuous)', () => {
 test('every tests/site/*.test.mjs is run by exactly one script, or is EXCLUDED', () => {
   const owners = new Map(siteFiles.map((f) => [f, []]));
   for (const name of SCRIPT_NAMES) {
-    for (const p of pathsIn(scripts[name])) {
+    for (const p of pathsIn(scripts[name], name)) {
       const file = p.replace(/^tests\/site\//, '');
       if (owners.has(file)) owners.get(file).push(name);
     }
@@ -65,7 +77,7 @@ test('every tests/site/*.test.mjs is run by exactly one script, or is EXCLUDED',
 test('every path named in the scripts exists (no stale entries)', () => {
   const missing = [];
   for (const name of SCRIPT_NAMES) {
-    for (const p of pathsIn(scripts[name])) {
+    for (const p of pathsIn(scripts[name], name)) {
       if (!fs.existsSync(path.join(ROOT, p))) missing.push(`${name}: ${p}`);
     }
   }

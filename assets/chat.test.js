@@ -371,10 +371,12 @@ test('C2b: a URL inside a mailto href gives one anchor and no anchor inside the 
   }
 });
 
-// Known PRE-EXISTING defect, out of TA-1 scope (logged for P2-7): the bare
-// oxfordra.net autolinker (not the email pass) still re-links an oxfordra.net/
-// path inside a [label](url) label. Kept as a todo so it is visible, not a
-// TA-1 pass criterion.
-test('KNOWN (P2-7): oxfordra.net/ path inside a link label is not re-linked', { todo: 'P2-7: oxfordra.net pass, not the email pass' }, () => {
-  assertSafeMarkup(renderMarkdown('[see oxfordra.net/x](https://oxfordra.net/x)'));
+// Formerly a todo (P2-7): the oxfordra.net pass re-linked an oxfordra.net/ path
+// inside a [label](url) label. Fixed by running every autolink pass outside
+// existing anchors only.
+test('P2-7: oxfordra.net/ path inside a link label is not re-linked', () => {
+  const html = renderMarkdown('[see oxfordra.net/x](https://oxfordra.net/x)');
+  assertSafeMarkup(html);
+  assertAllowedAttributes(html);
+  assert.equal(html, '<p><a href="https://oxfordra.net/x" target="_blank" rel="noopener noreferrer">see oxfordra.net/x</a></p>');
 });

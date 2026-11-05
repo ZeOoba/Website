@@ -23,4 +23,6 @@ Static multi-page site for Oxford Realty Advisors, deployed to Netlify. Architec
 - `scripts/build-dist.mjs` classifies every root entry as site file or exclusion. A new root file must be added to `SITE_FILES`/`SITE_DIRS` or `EXPECTED_EXCLUSIONS`.
 - `tests/site/*.test.mjs` is enumerated by hand in `package.json`. Append any new file to the right script or the coverage guard fails.
 - Firm facts come from `scripts/meta.md`; the chat assistant's knowledge base is built from it. Do not invent tenant, deal or financial detail.
+- A notify function runs only if a Netlify form-notification hook points at it, and the hooks live in the Netlify UI, not here (`owner-lead-notify` had none for months). After adding or changing a notify function or a form, run `node scripts/check-form-hooks.mjs` (netlify CLI login, read-only).
+- Every lead form carries hidden `lead-landing` and `lead-referrer` inputs that `script.js` fills; a new lead form needs both, declared in its Netlify form (`tests/site/lead-source.test.mjs`).
 - PDFs must keep an extractable text layer (headless Chromium builders in `scripts/*-pdf/`). Never use Microsoft Print to PDF.

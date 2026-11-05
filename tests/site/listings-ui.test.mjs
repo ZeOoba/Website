@@ -262,6 +262,104 @@ test('detail overlay: opens from a card, shows the property, traps Tab focus, cl
   await context.close();
 });
 
+// ---- Inquire form (2026-11-05): mailto stays the fallback, a plain click opens a prefilled form ----------------
+// Captures the urlencoded POST the form makes to / (serve-dist has no Netlify Forms) and answers it.
+async function capturePosts(page, status = 200) {
+  const posts = [];
+  await page.route((u) => new URL(u).pathname === '/', (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    posts.push(new URLSearchParams(route.request().postData() || ''));
+    return route.fulfill({ status, body: status < 300 ? 'ok' : 'error' });
+  });
+  return posts;
+}
+
+test('every Inquire link keeps a mailto: fallback and names its listing (and suite, where there is one)', async () => {
+  const { page, context } = await open();
+  const links = await page.$$eval('#listingsPanel a[data-inquire]', (els) => els.map((a) => ({ href: a.getAttribute('href'), id: a.dataset.inquire, suite: a.dataset.suite || '' })));
+  assert.ok(links.length >= LISTINGS.length, 'every card needs an Inquire link');
+  for (const l of links) {
+    assert.match(l.href, /^mailto:info@oxfordra\.net\?subject=/);
+    const p = LISTINGS.find((x) => String(x.id) === l.id);
+    assert.ok(p, `data-inquire="${l.id}" names no listing`);
+    if (l.suite) assert.ok(p.units.some((u) => u.suite === l.suite), `${p.name}: unknown suite ${l.suite}`);
+  }
+  for (const p of LISTINGS.filter((x) => x.units.length === 1)) {
+    const cta = links.find((l) => l.id === String(p.id) && l.suite === p.units[0].suite);
+    assert.ok(cta, `${p.name}: the single-suite card's Inquire must preselect Suite ${p.units[0].suite}`);
+    assert.ok(decodeURIComponent(cta.href).includes(`Suite ${p.units[0].suite}`), `${p.name}: mailto subject must name the suite`);
+  }
+  await context.close();
+});
+
+test('Inquire opens a prefilled form that posts listing-inquiry with the suite and lead source, then confirms', async () => {
+  const { page, context } = await open();
+  const posts = await capturePosts(page);
+  const p = LISTINGS.find((x) => x.units.length === 1) || LISTINGS[0];
+  const u = p.units[0];
+  const link = page.locator(`#listingsPanel .as-card[data-id="${p.id}"] .as-card__cta`);
+  await link.click();
+  const dialog = page.locator('#inquiryOverlay');
+  assert.ok(await dialog.isVisible(), 'the inquiry form did not open');
+  assert.equal(await page.evaluate(() => document.getElementById('detailOverlay').classList.contains('open')), false, 'Inquire must not also open the detail panel');
+  assert.match(await page.locator('#inquiryTitle').innerText(), new RegExp(p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(await page.locator('#inq-space').inputValue(), u.suite, 'the clicked suite is preselected');
+  assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.id), 'inq-name', 'focus starts on the first field');
+  // Required fields are enforced by the browser: an empty submit posts nothing.
+  await page.click('#inquirySubmit');
+  assert.equal(posts.length, 0, 'an empty form must not post');
+  await page.fill('#inq-name', 'Pat Tenant');
+  await page.fill('#inq-email', 'pat@example.com');
+  await page.fill('#inq-message', 'Need 1,500 SF with a drive-in door.');
+  await page.click('#inquirySubmit');
+  await page.waitForSelector('#inquirySuccess:not([hidden])');
+  assert.equal(posts.length, 1);
+  const body = posts[0];
+  assert.equal(body.get('form-name'), 'listing-inquiry');
+  assert.ok(body.get('listing').includes(p.name) && body.get('listing').includes(`Suite ${u.suite}`), `listing field was "${body.get('listing')}"`);
+  assert.equal(body.get('name'), 'Pat Tenant');
+  assert.equal(body.get('email'), 'pat@example.com');
+  assert.equal(body.get('bot-field'), '');
+  assert.equal(body.get('lead-landing'), '/available-space.html');
+  assert.equal(body.get('lead-referrer'), '(none)');
+  // Every field the form posts is declared in the Netlify form, or Netlify drops it.
+  const declared = await page.evaluate(() => [...document.querySelector('form[name="listing-inquiry"]').elements].map((e) => e.name));
+  for (const key of body.keys()) assert.ok(declared.includes(key), `posted field "${key}" is not declared in the listing-inquiry form`);
+  assert.match(await page.locator('#inquirySuccess').innerText(), /one business day/);
+  await page.keyboard.press('Escape');
+  assert.ok(!(await dialog.isVisible()), 'Escape did not close the inquiry form');
+  assert.equal(await page.evaluate(() => document.body.style.overflow), '', 'scrolling was not restored');
+  assert.equal(await page.evaluate((id) => document.activeElement && document.activeElement.closest('.as-card') && document.activeElement.closest('.as-card').dataset.id, String(p.id)), String(p.id), 'focus returns to the card that opened the form');
+  await context.close();
+});
+
+test('a failed send keeps the form and its contents and offers email and phone instead', async () => {
+  const { page, context } = await open();
+  const posts = await capturePosts(page, 500);
+  await page.locator('#listingsPanel a[data-inquire]').first().click();
+  await page.fill('#inq-name', 'Pat Tenant');
+  await page.fill('#inq-email', 'pat@example.com');
+  await page.click('#inquirySubmit');
+  await page.waitForSelector('#inquiryError:not([hidden])');
+  assert.equal(posts.length, 1);
+  assert.match(await page.locator('#inquiryError').innerText(), /info@oxfordra\.net/);
+  assert.equal(await page.locator('#inq-name').inputValue(), 'Pat Tenant', 'a failure must not lose what the visitor typed');
+  assert.ok(await page.locator('#inquiryForm').isVisible());
+  assert.equal(await page.locator('#inquirySubmit').isDisabled(), false, 'the visitor can retry');
+  await context.close();
+});
+
+test('Inquire inside the detail panel swaps the panel for the form', async () => {
+  const { page, context } = await open();
+  const p = LISTINGS.find((x) => x.units.length > 1) || LISTINGS[0];
+  await page.click(`.as-card[data-id="${p.id}"] .as-card__title`);
+  await page.locator('#detailBody a[data-inquire]').click();
+  assert.ok(await page.locator('#inquiryOverlay').isVisible());
+  assert.ok(!(await page.locator('#detailOverlay').isVisible()), 'the detail panel should close behind the form');
+  assert.equal(await page.locator('#inq-space option').count(), p.units.length + 1, 'every suite plus "not sure yet"');
+  await context.close();
+});
+
 test('deep link: /available-space#<slug> opens that property\'s detail on load', async () => {
   const p = LISTINGS.find((x) => x.slug) || LISTINGS[0];
   const { page, context } = await open(`#${p.slug}`);

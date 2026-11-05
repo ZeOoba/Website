@@ -393,9 +393,11 @@
       '<div class="as-unit__sf"><span class="as-unit__label">Size</span>' + u.sfLabel + '</div>' +
       '<div class="as-unit__use"><span class="as-unit__label">Use</span>' + u.use + '</div>' +
       '<div class="as-unit__rate"><span class="as-unit__label">Asking</span>' + u.rate + ' <span class="as-unit__rate-type">' + u.rateType + '</span></div>' +
-      '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(subject) + '" class="as-unit__inquire" aria-label="' + label + '">Inquire</a>' +
+      '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(subject) + '" class="as-unit__inquire" data-inquire="' + pId + '" data-suite="' + escAttr(u.suite) + '" aria-label="' + label + '">Inquire</a>' +
       '</div>';
   }
+
+  function escAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
   // ── Card image HTML ──────────────────────────────────────────────────────────
   // Mirrors the <picture> markup of the static fallback cards in available-space.html
@@ -478,9 +480,11 @@
         '</div>';
     }
 
+    // A single-suite card's Inquire names that suite (mailto subject and the inquiry form's preselection).
+    var only = p.units.length === 1 ? p.units[0] : null;
     html += '<div class="as-card__footer">' +
-      '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(p.name) + '" class="as-card__cta" aria-label="Inquire about ' + p.name + '">Inquire</a>' +
-      '<a href="tel:+13015126125" class="as-card__phone" title="Call 301.512.6125">' +
+      '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(only ? p.name + ' Suite ' + only.suite : p.name) + '" class="as-card__cta" data-inquire="' + p.id + '"' + (only ? ' data-suite="' + escAttr(only.suite) + '"' : '') + ' aria-label="Inquire about ' + p.name + '">Inquire</a>' +
+      '<a href="tel:+13015126125" class="as-card__phone" title="Call 301.512.6125" aria-label="Call 301.512.6125">' +
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>' +
       '</a>' +
       '</div>';
@@ -504,7 +508,7 @@
           '<td class="as-table__sf">' + u.sfLabel + '</td>' +
           '<td>' + u.use + '</td>' +
           '<td class="as-table__rate">' + u.rate + ' ' + u.rateType + '</td>' +
-          '<td><a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(p.name + ' Suite ' + u.suite) + '" class="as-table__action" aria-label="Inquire about ' + p.name + ' Suite ' + u.suite + '">Inquire</a></td>' +
+          '<td><a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(p.name + ' Suite ' + u.suite) + '" class="as-table__action" data-inquire="' + p.id + '" data-suite="' + escAttr(u.suite) + '" aria-label="Inquire about ' + p.name + ' Suite ' + u.suite + '">Inquire</a></td>' +
           '</tr>';
       });
     });
@@ -684,7 +688,8 @@
       '<p style="font-family:var(--as-font-heading);font-size:18px;color:#333;line-height:1.6;margin-bottom:24px">' + p.desc + '</p>' +
       unitsHTML +
       '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px">' +
-      '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(p.name) + '" ' +
+      '<a href="mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(p.units.length === 1 ? p.name + ' Suite ' + p.units[0].suite : p.name) + '" ' +
+      'data-inquire="' + p.id + '"' + (p.units.length === 1 ? ' data-suite="' + escAttr(p.units[0].suite) + '"' : '') + ' ' +
       'aria-label="Inquire about ' + p.name + '" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:var(--as-navy);color:#fff;font-family:var(--as-font-body);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;border-radius:4px">Inquire About This Space</a>' +
       '<a href="tel:+13015126125" ' +
@@ -732,6 +737,161 @@
       try { detailLastFocused.focus(); } catch (e) {}
     }
     detailLastFocused = null;
+  }
+
+  // ── Inquiry form (2026-11-05) ──────────────────────────────────────────────────
+  // Every Inquire link keeps its mailto: href: that is the no-JS path and the "prefer email" option. With JS a
+  // plain click opens this short form instead, prefilled with the property and suite, and posts it to the Netlify
+  // form `listing-inquiry` (declared in available-space.html; the site's all-forms notification emails each row).
+  // Before this, a visitor with no mail app configured hit a dead end and nothing was captured.
+  var inquiryState = null;        // { p: listing, trigger: element to refocus on close }
+  var inquiryKeydownTrap = null;
+
+  function unitLabel(u) { return 'Suite ' + u.suite + ' (' + u.sfLabel + ', ' + u.rate + ' ' + u.rateType + ')'; }
+
+  function inquiryOverlay() {
+    var existing = el('inquiryOverlay');
+    if (existing) return existing;
+    var overlay = document.createElement('div');
+    overlay.className = 'as-overlay as-overlay--inquiry';
+    overlay.id = 'inquiryOverlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'inquiryTitle');
+    overlay.style.display = 'none';
+    overlay.innerHTML =
+      '<div class="as-overlay__backdrop" data-inquiry-close></div>' +
+      '<div class="as-overlay__panel as-inquiry">' +
+        '<button type="button" class="as-overlay__close" data-inquiry-close aria-label="Close inquiry form">&times;</button>' +
+        '<div class="as-overlay__body">' +
+          '<h2 class="as-overlay__title" id="inquiryTitle"></h2>' +
+          '<p class="as-overlay__address" id="inquiryWhere"></p>' +
+          '<form id="inquiryForm" class="as-inquiry__form">' +
+            '<p class="hidden" aria-hidden="true"><label>Leave this empty <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>' +
+            '<div class="form-group"><label for="inq-space">Space</label><select id="inq-space"></select></div>' +
+            '<div class="form-group"><label for="inq-name">Name <span class="required" aria-hidden="true">*</span></label><input type="text" id="inq-name" name="name" required maxlength="150" autocomplete="name"></div>' +
+            '<div class="form-group"><label for="inq-email">Email <span class="required" aria-hidden="true">*</span></label><input type="email" id="inq-email" name="email" required maxlength="200" autocomplete="email"></div>' +
+            '<div class="form-group"><label for="inq-phone">Phone</label><input type="tel" id="inq-phone" name="phone" maxlength="40" autocomplete="tel"></div>' +
+            '<div class="form-group"><label for="inq-company">Company</label><input type="text" id="inq-company" name="company" maxlength="150" autocomplete="organization"></div>' +
+            '<div class="form-group"><label for="inq-message">Anything we should know?</label><textarea id="inq-message" name="message" rows="3" maxlength="2000" placeholder="Your use, move-in timing, door or power needs"></textarea></div>' +
+            '<button type="submit" class="btn btn--gold btn--full" id="inquirySubmit">Send Inquiry</button>' +
+            '<p class="form-error as-inquiry__error" id="inquiryError" role="alert" hidden></p>' +
+            '<p class="as-inquiry__alt">Prefer email or phone? <a id="inquiryMailto" href="mailto:info@oxfordra.net">info@oxfordra.net</a> &middot; <a href="tel:+13015126125">301.512.6125</a></p>' +
+          '</form>' +
+          '<div class="form-success as-inquiry__success" id="inquirySuccess" role="status" tabindex="-1" hidden></div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function (e) { if (e.target.closest('[data-inquiry-close]')) closeInquiry(); });
+    el('inquiryForm').addEventListener('submit', submitInquiry);
+    return overlay;
+  }
+
+  function openInquiry(p, suite, trigger) {
+    var detail = el('detailOverlay');
+    if (detail && detail.classList.contains('open')) {
+      // Opened from the detail panel: close it, but come back to whatever opened the panel.
+      trigger = detailLastFocused || trigger;
+      closeDetail();
+    }
+    var overlay = inquiryOverlay();
+    inquiryState = { p: p, trigger: trigger };
+    el('inquiryTitle').textContent = 'Inquire about ' + p.name;
+    el('inquiryWhere').textContent = p.city + ', ' + p.state + (p.subtitle ? ' · ' + p.subtitle : '');
+    var select = el('inq-space');
+    select.innerHTML = '';
+    p.units.forEach(function (u) {
+      var o = document.createElement('option');
+      o.value = u.suite;
+      o.textContent = unitLabel(u);
+      select.appendChild(o);
+    });
+    if (p.units.length > 1) {
+      var any = document.createElement('option');
+      any.value = '';
+      any.textContent = 'Not sure yet / any of these';
+      select.appendChild(any);
+    }
+    var known = p.units.some(function (u) { return u.suite === suite; });
+    select.value = known ? suite : (p.units.length === 1 ? p.units[0].suite : '');
+    var mailto = el('inquiryMailto');
+    mailto.href = 'mailto:info@oxfordra.net?subject=Inquiry%20-%20' + encodeURIComponent(known ? p.name + ' Suite ' + suite : p.name);
+    el('inquiryForm').hidden = false;
+    el('inquirySuccess').hidden = true;
+    el('inquiryError').hidden = true;
+    overlay.style.display = '';
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    el('inq-name').focus();
+
+    if (inquiryKeydownTrap) document.removeEventListener('keydown', inquiryKeydownTrap);
+    inquiryKeydownTrap = function (e) {
+      if (e.key !== 'Tab') return;
+      var list = focusableWithin(overlay);
+      if (!list.length) return;
+      var first = list[0];
+      var last = list[list.length - 1];
+      if (e.shiftKey ? (document.activeElement === first || !overlay.contains(document.activeElement)) : (document.activeElement === last || !overlay.contains(document.activeElement))) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
+    };
+    document.addEventListener('keydown', inquiryKeydownTrap);
+    if (window.gtag) window.gtag('event', 'listing_inquiry_open', { event_category: 'lead', event_label: p.slug || String(p.id) });
+  }
+
+  function closeInquiry() {
+    var overlay = el('inquiryOverlay');
+    if (!overlay || !overlay.classList.contains('open')) return;
+    overlay.classList.remove('open');
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+    if (inquiryKeydownTrap) { document.removeEventListener('keydown', inquiryKeydownTrap); inquiryKeydownTrap = null; }
+    var back = inquiryState && inquiryState.trigger;
+    inquiryState = null;
+    if (back && typeof back.focus === 'function') { try { back.focus(); } catch (e) {} }
+  }
+
+  function submitInquiry(e) {
+    e.preventDefault();
+    if (!inquiryState) return;
+    var form = el('inquiryForm');
+    var p = inquiryState.p;
+    var suite = el('inq-space').value;
+    var u = p.units.find(function (x) { return x.suite === suite; });
+    var source = typeof window.ORA_LEAD_SOURCE === 'function' ? window.ORA_LEAD_SOURCE() : {};
+    var params = new URLSearchParams();
+    params.append('form-name', 'listing-inquiry');
+    params.append('bot-field', form.elements['bot-field'].value);
+    params.append('listing', p.name + ', ' + p.city + ', ' + p.state + ' — ' + (u ? unitLabel(u) : 'any available space'));
+    ['name', 'email', 'phone', 'company', 'message'].forEach(function (k) { params.append(k, form.elements[k].value.trim()); });
+    params.append('lead-landing', source.landing || '');
+    params.append('lead-referrer', source.referrer || '');
+    var btn = el('inquirySubmit');
+    var errorBox = el('inquiryError');
+    errorBox.hidden = true;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() })
+      .then(function (res) {
+        if (!res.ok) throw new Error('status ' + res.status);
+        form.hidden = true;
+        form.elements.message.value = '';
+        var done = el('inquirySuccess');
+        done.textContent = 'Thank you. We received your inquiry about ' + (u ? 'Suite ' + u.suite + ' at ' : '') + p.name +
+          ' and respond within one business day. Prefer to talk? Call 301.512.6125.';
+        done.hidden = false;
+        done.focus();
+        if (window.gtag) window.gtag('event', 'listing_inquiry_submit', { event_category: 'lead', event_label: p.slug || String(p.id) });
+      })
+      .catch(function () {
+        errorBox.textContent = 'We could not send your inquiry just now. Please email info@oxfordra.net or call 301.512.6125.';
+        errorBox.hidden = false;
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = 'Send Inquiry';
+      });
   }
 
   // ── View toggle ───────────────────────────────────────────────────────────────
@@ -784,7 +944,22 @@
     if (closeBtn) closeBtn.addEventListener('click', closeDetail);
     var overlay = el('detailOverlay');
     if (overlay) overlay.addEventListener('click', function (e) { if (e.target === overlay) closeDetail(); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDetail(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      var inq = el('inquiryOverlay');
+      if (inq && inq.classList.contains('open')) closeInquiry();
+      else closeDetail();
+    });
+    // Inquire links: a plain click opens the inquiry form; modified clicks (new tab, etc.) keep the mailto: link.
+    document.addEventListener('click', function (e) {
+      var link = e.target.closest ? e.target.closest('a[data-inquire]') : null;
+      if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var id = link.getAttribute('data-inquire');
+      var p = LISTINGS.find(function (x) { return String(x.id) === id; });
+      if (!p) return;
+      e.preventDefault();
+      openInquiry(p, link.getAttribute('data-suite') || '', link);
+    });
 
     handleHash();
     window.addEventListener('hashchange', handleHash);

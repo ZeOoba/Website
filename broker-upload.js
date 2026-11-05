@@ -76,7 +76,7 @@
     var res = await fetch('/api/broker-finalize', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ intakeToken: intakeToken, name: fields.name, company: fields.company, email: fields.email, phone: fields.phone, market: fields.market, message: fields.message }),
+      body: JSON.stringify({ intakeToken: intakeToken, name: fields.name, company: fields.company, email: fields.email, phone: fields.phone, market: fields.market, referralSource: fields.referralSource, message: fields.message, leadLanding: fields.leadLanding, leadReferrer: fields.leadReferrer }),
     });
     var json = await readJson(res);
     if (!res.ok) throw new Error(json.error || 'finalize_failed');
@@ -91,6 +91,9 @@
       phone: formEl.querySelector('[name="phone"]').value,
       market: formEl.querySelector('[name="market"]').value,
       referralSource: (formEl.querySelector('[name="referral-source"]') || {}).value || '',
+      // Where this visit started (script.js, loaded before this file); blank if unavailable.
+      leadLanding: (typeof window.ORA_LEAD_SOURCE === 'function' && window.ORA_LEAD_SOURCE().landing) || '',
+      leadReferrer: (typeof window.ORA_LEAD_SOURCE === 'function' && window.ORA_LEAD_SOURCE().referrer) || '',
       message: formEl.querySelector('[name="message"]').value,
       website: formEl.querySelector('[name="website"]').value,
       recaptchaToken: (window.grecaptcha && window.grecaptcha.enterprise && window.grecaptcha.enterprise.getResponse && window.ORA_RECAPTCHA_WIDGET_ID !== null) ? window.grecaptcha.enterprise.getResponse(window.ORA_RECAPTCHA_WIDGET_ID) : '',

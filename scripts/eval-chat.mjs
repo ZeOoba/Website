@@ -8,6 +8,11 @@
  *   node scripts/eval-chat.mjs                              # hits prod
  *   node scripts/eval-chat.mjs --base=https://preview-url   # hits a preview
  *   node scripts/eval-chat.mjs --concurrency=4              # default 3
+ *   node scripts/eval-chat.mjs --category="^Refusal"        # only categories matching the regex
+ *
+ * /api/chat allows CHAT_RATE_LIMIT_PER_10MIN requests per client (default 30), fewer than the 44 fixtures, so a
+ * full run from one machine records the tail as 429 failures. Run it in two --category batches at least 10
+ * minutes apart, e.g. "^(On-site|Off-site|Refusal)" then "^(Lead|Prompt|Off-topic|Link)".
  */
 
 import { promises as fs } from 'node:fs';
@@ -136,8 +141,10 @@ async function runCase(c, idx, total) {
 
 async function main() {
   const fixtures = JSON.parse(await fs.readFile(FIXTURES_PATH, 'utf8'));
-  const cases = fixtures.cases;
-  console.log(`[eval-chat] base=${BASE} cases=${cases.length} concurrency=${CONCURRENCY}`);
+  const only = argv.category ? new RegExp(argv.category, 'i') : null;
+  const cases = only ? fixtures.cases.filter((c) => only.test(c.category)) : fixtures.cases;
+  if (!cases.length) { console.error(`[eval-chat] no fixture category matches ${argv.category}`); process.exit(2); }
+  console.log(`[eval-chat] base=${BASE} cases=${cases.length}${only ? ` (category ${only})` : ''} concurrency=${CONCURRENCY}`);
 
   const results = new Array(cases.length);
   let cursor = 0;
@@ -188,6 +195,7 @@ async function main() {
   await fs.writeFile(outPath, JSON.stringify({
     base: BASE,
     timestamp: new Date().toISOString(),
+    ...(only ? { categoryFilter: String(only) } : {}),
     overall: { passed, total, pct: overallPct, acceptance },
     byCategory: byCat,
     cases: results,

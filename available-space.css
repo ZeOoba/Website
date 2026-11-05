@@ -1448,3 +1448,45 @@
   border-color: #C9A96E;
   color: #1B2A4A;
 }
+
+/* ==========================================================================
+   INQUIRY FORM (listings.js openInquiry): the detail panel's shell, narrower
+   ========================================================================== */
+.as-overlay--inquiry .as-overlay__panel {
+  max-width: 520px;
+}
+
+.as-overlay--inquiry .as-overlay__body {
+  padding-top: 72px; /* clears the close button */
+  padding-bottom: 104px; /* lets the last line scroll clear of the floating Ask ORA button */
+}
+
+.as-overlay--inquiry .as-overlay__backdrop {
+  cursor: pointer;
+}
+
+.as-inquiry__form .form-group {
+  margin-bottom: 16px;
+}
+
+.as-inquiry__error {
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+.as-inquiry__alt {
+  margin: 16px 0 0;
+  font-family: var(--as-font-body);
+  font-size: 13px;
+  color: var(--as-slate);
+}
+
+.as-inquiry__alt a {
+  color: var(--as-navy);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.as-inquiry__success {
+  text-align: left;
+}

@@ -54,6 +54,38 @@ test('runScoring writes a ready result and sends the follow-up email on a clean 
   assert.match(emails[0].subject, /Acme/);
 });
 
+test('the score email names the submission id and scorecard version, and the ledger score row records the version', async () => {
+  const emails = [];
+  const rows = [];
+  const deps = makeDeps({
+    sendMailImpl: async (args) => emails.push(args),
+    forwardToNetlifyFormImpl: async (siteUrl, formName, fields) => { rows.push({ formName, fields }); return true; },
+  });
+  const result = await runScoring({ submissionId: 'sub-ver', itemPath: 'Broker Submissions/x/om.pdf', fields: { company: 'Acme' } }, deps);
+  assert.equal(result.ok, true);
+  const { SCORECARD_VERSION } = require('../../netlify/functions/_shared/broker-score-constants.js');
+  assert.match(emails[0].html, /Submission ID/);
+  assert.match(emails[0].html, /sub-ver/);
+  assert.match(emails[0].html, /Scorecard Version/);
+  assert.ok(emails[0].html.includes(SCORECARD_VERSION));
+  const ledger = rows.find((r) => r.formName === 'broker-network-ledger');
+  assert.equal(ledger.fields['score-version'], SCORECARD_VERSION, 'a later recalibration must be able to segment rows by scorecard version');
+  assert.equal(rows.filter((r) => r.formName === 'pipeline-failures').length, 0);
+});
+
+test('a failed ledger score-row write leaves a pipeline-failures row instead of vanishing', async () => {
+  const rows = [];
+  const deps = makeDeps({
+    forwardToNetlifyFormImpl: async (siteUrl, formName, fields) => { rows.push({ formName, fields }); return formName !== 'broker-network-ledger'; },
+  });
+  const result = await runScoring({ submissionId: 'sub-ledger', itemPath: 'Broker Submissions/x/om.pdf', fields: { company: 'Acme' } }, deps);
+  assert.equal(result.ok, true, 'the score is still delivered to the broker');
+  const failure = rows.find((r) => r.formName === 'pipeline-failures');
+  assert.ok(failure, 'the lost score row must be logged');
+  assert.equal(failure.fields['error-code'], 'ledger_score_write_failed');
+  assert.equal(failure.fields['submission-id'], 'sub-ledger');
+});
+
 test('runScoring skips entirely if the item path was already scored (idempotency)', async () => {
   const writes = [];
   const deps = makeDeps({

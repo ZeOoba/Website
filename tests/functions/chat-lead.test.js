@@ -49,6 +49,109 @@ test('a burst of leads from one IP is rate limited: 5 accepted, the 6th is 429 w
   assert.equal(other.statusCode, 200);
 });
 
+// ---- No silent lead loss (2026-11-05 review) ----
+// Netlify's native email notification for the `chat-lead` form only fires when the Forms row exists. When the
+// server-side forward fails, the lead used to be dropped while the visitor was told "we will be in touch".
+const { _resetCacheForTests: resetGraphToken } = require('../../netlify/functions/_shared/graph-auth.js');
+const GRAPH_ENV = { GRAPH_SEND_FROM: 'no-reply@oxfordra.net', GRAPH_TENANT_ID: 't', GRAPH_CLIENT_ID: 'c', GRAPH_CLIENT_SECRET: 's' };
+function withGraphEnv(fn) {
+  const prev = {};
+  for (const k of Object.keys(GRAPH_ENV)) { prev[k] = process.env[k]; process.env[k] = GRAPH_ENV[k]; }
+  resetGraphToken();
+  return Promise.resolve(fn()).finally(() => {
+    for (const k of Object.keys(GRAPH_ENV)) { if (prev[k] === undefined) delete process.env[k]; else process.env[k] = prev[k]; }
+    resetGraphToken();
+  });
+}
+// Routes the handler's outbound calls: the chat-lead Forms row, the pipeline-failures row, the Graph token and sendMail.
+function router({ formsStatus = 200, mailStatus = 202 } = {}) {
+  const calls = [];
+  const fetchImpl = async (url, opts = {}) => {
+    const u = String(url);
+    const body = String(opts.body || '');
+    calls.push({ url: u, body });
+    if (u.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (u.includes('/sendMail')) return { ok: mailStatus < 300, status: mailStatus };
+    if (body.includes('form-name=chat-lead')) return { ok: formsStatus < 300, status: formsStatus };
+    return { ok: true, status: 200 }; // pipeline-failures row
+  };
+  return { calls, fetchImpl };
+}
+const leadFrom = (ip) => lead(ip, { 'x-nf-client-connection-ip': `192.0.2.${ip}` });
+
+test('a stored chat lead sends no email of its own (Netlify\'s native chat-lead notification covers it)', () => withGraphEnv(async () => {
+  const { calls, fetchImpl } = router();
+  const r = await handler(leadFrom(10), { fetchImpl });
+  assert.equal(r.statusCode, 200);
+  assert.deepEqual(JSON.parse(r.body), { ok: true });
+  assert.equal(calls.filter((c) => c.url.includes('/sendMail')).length, 0);
+}));
+
+test('a failed Forms forward emails the lead to Gabriel and Eric, logs pipeline-failures, and still tells the visitor ok', () => withGraphEnv(async () => {
+  const { calls, fetchImpl } = router({ formsStatus: 500 });
+  const r = await handler(leadFrom(11), { fetchImpl });
+  assert.equal(r.statusCode, 200);
+  assert.deepEqual(JSON.parse(r.body), { ok: true });
+  const mail = calls.find((c) => c.url.includes('/sendMail'));
+  assert.ok(mail, 'the lead must be emailed when the Forms row could not be written');
+  const msg = JSON.parse(mail.body).message;
+  assert.deepEqual(msg.toRecipients.map((t) => t.emailAddress.address), ['ggoldberg@oxfordra.net', 'egoldberg@oxfordra.net']);
+  assert.match(msg.body.content, /l11@example\.com/);
+  assert.match(msg.subject, /Chat Lead/);
+  const failure = calls.find((c) => c.body.includes('form-name=pipeline-failures'));
+  assert.ok(failure, 'the failed forward must leave a pipeline-failures row');
+  assert.match(failure.body, /source-function=chat-lead/);
+  assert.match(failure.body, /error-code=forms_forward_failed/);
+}));
+
+test('a thrown Forms forward is treated like a failed one', () => withGraphEnv(async () => {
+  const calls = [];
+  const fetchImpl = async (url, opts = {}) => {
+    const u = String(url); const body = String(opts.body || '');
+    calls.push({ url: u, body });
+    if (body.includes('form-name=chat-lead')) throw new Error('network down');
+    if (u.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    return { ok: true, status: 202 };
+  };
+  const r = await handler(leadFrom(12), { fetchImpl });
+  assert.equal(r.statusCode, 200);
+  assert.ok(calls.some((c) => c.url.includes('/sendMail')));
+}));
+
+test('a hung Forms forward is abandoned in time for the email fallback (bounded wait)', () => withGraphEnv(async () => {
+  const prev = process.env.CHAT_LEAD_FORMS_TIMEOUT_MS;
+  process.env.CHAT_LEAD_FORMS_TIMEOUT_MS = '50';
+  try {
+    const calls = [];
+    const fetchImpl = (url, opts = {}) => {
+      const u = String(url); const body = String(opts.body || '');
+      calls.push({ url: u, body });
+      if (body.includes('form-name=chat-lead')) {
+        // Never answers; only the abort signal ends it.
+        return new Promise((resolve, reject) => { opts.signal.addEventListener('abort', () => reject(opts.signal.reason)); });
+      }
+      if (u.includes('login.microsoftonline.com')) return Promise.resolve({ ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) });
+      return Promise.resolve({ ok: true, status: 202 });
+    };
+    const t0 = Date.now();
+    const r = await handler(leadFrom(14), { fetchImpl });
+    assert.equal(r.statusCode, 200);
+    assert.ok(Date.now() - t0 < 2000, 'the hung forward must be abandoned, not awaited');
+    assert.ok(calls.some((c) => c.url.includes('/sendMail')), 'the lead must still be emailed');
+  } finally {
+    if (prev === undefined) delete process.env.CHAT_LEAD_FORMS_TIMEOUT_MS; else process.env.CHAT_LEAD_FORMS_TIMEOUT_MS = prev;
+  }
+}));
+
+test('when the Forms forward AND the fallback email both fail, the visitor is told it did not go through', () => withGraphEnv(async () => {
+  const { calls, fetchImpl } = router({ formsStatus: 503, mailStatus: 500 });
+  const r = await handler(leadFrom(13), { fetchImpl });
+  assert.equal(r.statusCode, 502);
+  assert.deepEqual(JSON.parse(r.body), { ok: false, error: 'unavailable' });
+  // assets/chat.js shows "Could not submit. Please email ..." for any ok:false, so the visitor has a way through.
+  assert.ok(calls.some((c) => c.body.includes('error-code=fallback_email_failed')));
+}));
+
 test('the limiter is checked before body parsing, so malformed spam cannot bypass it', async () => {
   const ip = { 'x-nf-client-connection-ip': '203.0.113.51' };
   for (let i = 0; i < 5; i++) await handler(lead(i, ip));

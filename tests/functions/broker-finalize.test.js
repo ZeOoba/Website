@@ -359,6 +359,31 @@ const allowAll = {
   checkAndRecordDailyCapImpl: async () => ({ allowed: true }),
 };
 
+test('the ledger row carries referral source and the internal email carries it plus the submission id (join key for outcomes)', () => withEnv(ENV, async () => {
+  const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-11-05_Acme_ab12/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
+  const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com', market: 'Columbus', message: 'See attached', referralSource: 'LoopNet / CoStar' }) };
+  let ledgerBody = '';
+  let mailBody = '';
+  const fetchImpl = async (url, opts = {}) => {
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes('/root:/')) return { ok: true, status: 200, json: async () => ({ id: 'item-1', size: 30_000_000, webUrl: 'https://contoso.sharepoint.com/x/om.pdf' }) };
+    if (url.includes('sendMail')) { mailBody = String(opts.body || ''); return { ok: true, status: 202 }; }
+    if (url === 'https://oxfordra.net/') { if (String(opts.body).includes('form-name=broker-network-ledger')) ledgerBody = String(opts.body); return { ok: true, status: 200 }; }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const res = await callFinalize(event, { fetchImpl });
+  assert.equal(res.statusCode, 200);
+  const { submissionId } = JSON.parse(res.body);
+  const ledger = new URLSearchParams(ledgerBody);
+  assert.equal(ledger.get('referral-source'), 'LoopNet / CoStar');
+  assert.equal(ledger.get('submission-id'), submissionId);
+  const html = JSON.parse(mailBody).message.body.content;
+  assert.match(html, /Referral Source/);
+  assert.match(html, /LoopNet \/ CoStar/);
+  assert.match(html, /Submission ID/);
+  assert.ok(html.includes(submissionId), 'the email must name the submission id so an outcome can be tied back to the ledger');
+}));
+
 test('finalize triggers background scoring and returns a submissionId', () => withEnv(ENV, async () => {
   const token = signIntakeToken({ type: 'upload', path: 'Broker Submissions/2026-07-18_Acme_ab12/om.pdf', size: 30_000_000, exp: Date.now() + 60_000 }, 'intake-secret');
   const event = { httpMethod: 'POST', body: JSON.stringify({ intakeToken: token, name: 'Bob Broker', company: 'Acme', email: 'b@acme.com', phone: '555-1234', market: 'Columbus', message: 'See attached' }) };

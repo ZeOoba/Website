@@ -21,6 +21,11 @@ https://www.oxfordra.net/* https://oxfordra.net/:splat 301!
 /sell               /sell-your-building 301
 /portfolio-1/4595-east-fifth-pbabg /properties/4595-e-fifth-avenue 301
 
+# Short URL printed on the owner-outreach letters (2026-11-05). The tags mark the visit as direct mail, and the
+# owner form's lead source (script.js) carries them into the submission, so the letters' web response is measurable.
+# 302, not 301: browsers cache a 301 forever, and the tags may change. Kept out of the sitemap (a redirect, not a page).
+/owners            /sell-your-building?utm_source=owner-letter&utm_medium=direct-mail&utm_campaign=owner-outreach 302
+
 # Broker OM upload pipeline (Task 9/10) — clean paths over the raw function URLs
 /api/broker-upload-session  /.netlify/functions/broker-upload-session  200
 /api/broker-finalize        /.netlify/functions/broker-finalize        200

@@ -181,6 +181,22 @@ test('mints a session and a verifiable intake token for a valid request, logging
   assert.ok(loggedIntake.includes('referral-source=LinkedIn'), 'intake row must carry the optional "how did you hear about us" answer');
 }));
 
+test('a failed intake-row write is logged to pipeline-failures and does not block the upload', () => withEnv(ENV, async () => {
+  const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.8' }, body: JSON.stringify({ name: 'Bob', company: 'Acme', email: 'b@acme.com', fileName: 'om.pdf', fileSize: 1000, contentType: 'application/pdf', recaptchaToken: 'good-token' }) };
+  let failureBody = '';
+  const fetchImpl = withRecaptchaPass(async (url, opts = {}) => {
+    const body = String(opts.body || '');
+    if (url === 'https://oxfordra.net/' && body.includes('broker-submission-intake')) return { ok: false, status: 500 };
+    if (url === 'https://oxfordra.net/' && body.includes('pipeline-failures')) { failureBody = body; return { ok: true, status: 200 }; }
+    if (url.includes('login.microsoftonline.com')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.includes(':/createUploadSession')) return { ok: true, status: 200, json: async () => ({ uploadUrl: 'https://contoso.sharepoint.com/upload/s2', expirationDateTime: '2026-11-06T00:00:00Z' }) };
+    throw new Error(`unexpected fetch: ${url}`);
+  });
+  const res = await handler(event, { fetchImpl });
+  assert.equal(res.statusCode, 200, 'the broker can still upload; the intake row is context, not a gate');
+  assert.match(failureBody, /error-code=intake_write_failed/);
+}));
+
 test('logs the submission intake even when minting the Graph upload session fails', () => withEnv(ENV, async () => {
   const event = { httpMethod: 'POST', headers: { 'x-forwarded-for': '9.9.9.9' }, body: JSON.stringify({ name: 'Bob', company: 'Acme', email: 'b@acme.com', fileName: 'om.pdf', fileSize: 1000, contentType: 'application/pdf', recaptchaToken: 'good-token' }) };
   let loggedIntake = false;

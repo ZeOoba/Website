@@ -43,9 +43,17 @@
       var split = splitTrailingPunctuation(u);
       return '<a href="https://' + split.url + '" target="_blank" rel="noopener noreferrer">' + split.url + '</a>' + split.trailing;
     });
-    safe = safe.replace(/\b([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function (e) {
-      return '<a href="mailto:' + e + '">' + e + '</a>';
-    });
+    // Emails: autolink only OUTSIDE the anchors produced above. Without this the
+    // address inside href="mailto:..." (and in a link label or a bare URL's query
+    // string) is re-matched and the markup corrupts into a nested <a>. Every '<'
+    // in `safe` here comes from our own markup (user text was escaped first), so
+    // splitting on the anchor pattern cleanly separates our anchors from text.
+    safe = safe.split(/(<a\b[^>]*>[\s\S]*?<\/a>)/).map(function (seg, i) {
+      if (i % 2 === 1) return seg; // odd indexes are the captured anchors
+      return seg.replace(/\b([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function (e) {
+        return '<a href="mailto:' + e + '">' + e + '</a>';
+      });
+    }).join('');
     // bold + italic
     safe = safe.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
     safe = safe.replace(/(^|\W)\*([^*\n]+)\*(\W|$)/g, '$1<em>$2</em>$3');

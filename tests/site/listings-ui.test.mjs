@@ -326,10 +326,27 @@ test('Inquire opens a prefilled form that posts listing-inquiry with the suite a
   const declared = await page.evaluate(() => [...document.querySelector('form[name="listing-inquiry"]').elements].map((e) => e.name));
   for (const key of body.keys()) assert.ok(declared.includes(key), `posted field "${key}" is not declared in the listing-inquiry form`);
   assert.match(await page.locator('#inquirySuccess').innerText(), /one business day/);
+  for (let i = 0; i < 4; i += 1) {
+    await page.keyboard.press('Tab');
+    assert.ok(await page.evaluate(() => document.getElementById('inquiryOverlay').contains(document.activeElement)), `after sending, focus escaped the dialog on Tab #${i + 1}`);
+  }
   await page.keyboard.press('Escape');
   assert.ok(!(await dialog.isVisible()), 'Escape did not close the inquiry form');
   assert.equal(await page.evaluate(() => document.body.style.overflow), '', 'scrolling was not restored');
   assert.equal(await page.evaluate((id) => document.activeElement && document.activeElement.closest('.as-card') && document.activeElement.closest('.as-card').dataset.id, String(p.id)), String(p.id), 'focus returns to the card that opened the form');
+  await context.close();
+});
+
+test('a name or email of only spaces is not sent (required alone accepts it)', async () => {
+  const { page, context } = await open();
+  const posts = await capturePosts(page);
+  await page.locator('#listingsPanel a[data-inquire]').first().click();
+  await page.fill('#inq-name', '   ');
+  await page.fill('#inq-email', 'pat@example.com');
+  await page.click('#inquirySubmit');
+  await page.waitForSelector('#inquiryError:not([hidden])');
+  assert.equal(posts.length, 0, 'a blank name must not post');
+  assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.id), 'inq-name');
   await context.close();
 });
 

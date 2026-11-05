@@ -21,23 +21,42 @@ export function webhookTargets(sources) {
   return out.sort((a, b) => a.fn.localeCompare(b.fn));
 }
 
-function urlPath(raw) {
-  try { return new URL(raw).pathname; } catch { return ''; }
+// Hosts that serve this site's production functions. A hook aimed anywhere else (a deploy preview, a typo, plain
+// http) never runs the production function, so it does not count as wiring it (2026-11-05 review).
+const SITE_HOSTS = new Set(['oxfordra.net', 'www.oxfordra.net', 'snazzy-frangipane-de3841.netlify.app']);
+
+function parse(raw) {
+  try { return new URL(raw); } catch { return null; }
 }
 function hostOf(raw) {
-  try { return new URL(raw).hostname; } catch { return '(invalid url)'; }
+  const u = parse(raw);
+  return u ? u.hostname : '(invalid url)';
 }
 const live = (h) => h && h.event === 'submission_created' && h.disabled !== true;
 const covers = (h, form) => h.form_name == null || h.form_name === form;
-const fnOf = (h) => {
-  const m = FN_PATH.exec(urlPath(h.data && h.data.url));
+// The function a hook's URL names, wherever it points (used only to explain a misaimed hook).
+const pathFnOf = (h) => {
+  const u = parse(h.data && h.data.url);
+  const m = u && FN_PATH.exec(u.pathname);
   return m ? m[1] : null;
 };
-// Email addresses are reported masked: the report may land in a scheduled-task log or a chat transcript.
+// The production function a hook actually runs: https, on one of this site's hosts.
+const fnOf = (h) => {
+  const u = parse(h.data && h.data.url);
+  if (!u) return null;
+  if (!SITE_HOSTS.has(u.hostname) || u.protocol !== 'https:') return null;
+  const m = FN_PATH.exec(u.pathname);
+  return m ? m[1] : null;
+};
+// Email addresses are reported masked (each one, if Netlify stores a list): the report may land in a
+// scheduled-task log or a chat transcript.
 export function maskEmail(email) {
-  const s = String(email || '');
-  const at = s.indexOf('@');
-  return at > 0 ? `${s[0]}***${s.slice(at)}` : '***';
+  const parts = String(email || '').split(/[\s,;]+/).filter(Boolean);
+  if (!parts.length) return '***';
+  return parts.map((s) => {
+    const at = s.indexOf('@');
+    return at > 0 ? `${s[0]}***${s.slice(at)}` : '***';
+  }).join(', ');
 }
 
 // forms: every Netlify form name the site registers (from the repo's data-netlify forms).
@@ -52,6 +71,7 @@ export function auditFormHooks({ hooks, targets, forms }) {
 
   for (const t of targets) {
     const pointing = urlHooks.filter((h) => fnOf(h) === t.fn);
+    const misaimed = urlHooks.filter((h) => fnOf(h) !== t.fn && pathFnOf(h) === t.fn);
     if (!pointing.some((h) => covers(h, t.form))) {
       problems.push({
         kind: 'unregistered',
@@ -59,6 +79,8 @@ export function auditFormHooks({ hooks, targets, forms }) {
         form: t.form,
         detail: pointing.length
           ? `${t.fn} has a hook, but scoped to ${pointing.map((h) => h.form_name).join(', ')}, never "${t.form}": it never runs for the form it handles`
+          : misaimed.length
+          ? `the hook for /.netlify/functions/${t.fn} points at ${misaimed.map((h) => `${parse(h.data.url).protocol}//${hostOf(h.data.url)}`).join(', ')}, not this site over https: the production function never runs`
           : `no submission_created hook points at /.netlify/functions/${t.fn}: it never runs, so "${t.form}" submissions get none of its email or failure logging`,
         fix: `Netlify > Forms > Form notifications > Add notification > HTTP POST request: event "New form submission", form "${t.form}", URL https://oxfordra.net/.netlify/functions/${t.fn}, JWS secret = the same value as NETLIFY_WEBHOOK_SECRET`,
       });

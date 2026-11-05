@@ -169,8 +169,15 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     message: sanitizeField(body.message, 2000),
     fileName,
   });
-  // Context, not a gate: the upload proceeds, but a lost intake row must leave a trace.
-  if (!intakeOk) await logFailure(fetchImpl, { errorCode: 'intake_write_failed', detail: folderPath });
+  // Context, not a gate: the upload proceeds, but a lost intake row must leave a trace. Bounded (1.5 s): the
+  // trace goes to the same Forms endpoint that just failed, and must not push the broker past the 10 s limit.
+  if (!intakeOk) {
+    let timer;
+    await Promise.race([
+      logFailure(fetchImpl, { errorCode: 'intake_write_failed', detail: folderPath }),
+      new Promise((resolve) => { timer = setTimeout(resolve, 1500); }),
+    ]).finally(() => clearTimeout(timer));
+  }
 
   let session;
   try {

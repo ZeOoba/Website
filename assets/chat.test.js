@@ -202,6 +202,7 @@ function tokenizeTags(html) {
   const n = html.length;
   const ws = (c) => c === '\t' || c === '\n' || c === '\f' || c === '\r' || c === ' ';
   const alpha = (c) => c !== undefined && /[A-Za-z]/.test(c);
+  const lower = (c) => (c >= 'A' && c <= 'Z' ? c.toLowerCase() : c); // ASCII-only, as the tokenizer does
   let i = 0;
   while (i < n) {
     const lt = html.indexOf('<', i);
@@ -230,7 +231,7 @@ function tokenizeTags(html) {
           if (ws(c)) state = 'beforeAttrName';
           else if (c === '/') state = 'selfClosing';
           else if (c === '>') closed = true;
-          else tag.name += c.toLowerCase();
+          else tag.name += lower(c);
           break;
         case 'beforeAttrName':
           if (ws(c)) break;
@@ -240,7 +241,7 @@ function tokenizeTags(html) {
         case 'attrName':
           if (ws(c) || c === '/' || c === '>') { state = 'afterAttrName'; p--; break; }
           if (c === '=') { state = 'beforeAttrValue'; break; }
-          attr.name += c.toLowerCase(); break;
+          attr.name += lower(c); break;
         case 'afterAttrName':
           if (ws(c)) break;
           if (c === '/') { state = 'selfClosing'; break; }

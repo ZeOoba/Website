@@ -65,8 +65,11 @@ after(async () => {
   if (server) await server.close();
 });
 
-for (const width of [1280, 1440]) {
-  test(`the desktop header fits at ${width}px: one row, clear of the logo, inside the bar`, { timeout: 120_000 }, async () => {
+// Headless Chromium hides scrollbars, so a 1280px viewport lays out 1280px. A Windows browser at 1280px (e.g. a
+// 1920x1080 laptop at 150%) still gets the desktop header (media queries count the scrollbar) but only ~1263px of
+// layout: `scrollbar` narrows the fixed header by 17px to stand in for that.
+for (const { width, scrollbar } of [{ width: 1280, scrollbar: 0 }, { width: 1280, scrollbar: 17 }, { width: 1440, scrollbar: 0 }]) {
+  test(`the desktop header fits at ${width}px${scrollbar ? ` with a ${scrollbar}px scrollbar` : ''}: one row, clear of the logo, inside the bar`, { timeout: 120_000 }, async () => {
     const ctx = await browser.newContext({ viewport: { width, height: 800 } });
     await ctx.route('**/*', (route) => (new URL(route.request().url()).origin === server.url ? route.continue() : route.abort()));
     const page = await ctx.newPage();
@@ -74,6 +77,7 @@ for (const width of [1280, 1440]) {
       for (const p of ['/', '/sell-your-building', '/for-brokers']) {
         await page.goto(server.url + p, { waitUntil: 'load' });
         await page.evaluate(() => document.fonts && document.fonts.ready);
+        if (scrollbar) await page.addStyleTag({ content: `.nav{right:${scrollbar}px!important}` });
         const m = await page.evaluate(() => {
           const links = document.querySelector('.nav__links');
           const bar = document.querySelector('.nav__inner');
@@ -99,3 +103,50 @@ for (const width of [1280, 1440]) {
     }
   });
 }
+
+test('the 404 header keeps every label on one line: fits from 1280px, scrolls sideways below that', { timeout: 120_000 }, async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await ctx.route('**/*', (route) => (new URL(route.request().url()).origin === server.url ? route.continue() : route.abort()));
+  const page = await ctx.newPage();
+  try {
+    for (const width of [1280, 1366, 1024, 390]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(server.url + '/404.html', { waitUntil: 'load' });
+      await page.evaluate(() => document.fonts && document.fonts.ready);
+      const m = await page.evaluate(() => {
+        const list = document.querySelector('.site-nav__links');
+        const links = [...list.querySelectorAll('a')];
+        const tallest = Math.max(...links.map((a) => a.getBoundingClientRect().height));
+        const single = Math.min(...links.map((a) => a.getBoundingClientRect().height));
+        return { wrappedLabel: tallest > single * 1.5, overflow: list.scrollWidth - list.clientWidth, scrolls: getComputedStyle(list).overflowX };
+      });
+      assert.ok(!m.wrappedLabel, `404 at ${width}px: a nav label wraps onto two lines`);
+      if (width >= 1280) assert.ok(m.overflow <= 1, `404 at ${width}px: the nav does not fit (${m.overflow}px hidden)`);
+      else assert.equal(m.scrolls, 'auto', `404 at ${width}px: the nav must become a sideways-scrolling strip`);
+    }
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('on a short phone the open mobile menu scrolls, so its last item can be reached', { timeout: 120_000 }, async () => {
+  // ~550px is what an iPhone SE-class Safari shows; opening the menu locks the page behind it, so the menu must scroll.
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 550 }, isMobile: true, hasTouch: true });
+  await ctx.route('**/*', (route) => (new URL(route.request().url()).origin === server.url ? route.continue() : route.abort()));
+  const page = await ctx.newPage();
+  try {
+    await page.goto(server.url + '/', { waitUntil: 'load' });
+    await page.click('.nav__mobile-btn');
+    const m = await page.evaluate(() => {
+      const menu = document.getElementById('mobileNav');
+      menu.scrollTop = menu.scrollHeight;
+      const last = menu.lastElementChild.getBoundingClientRect();
+      return { open: menu.classList.contains('is-open'), lastBottom: last.bottom, vh: innerHeight, overflowY: getComputedStyle(menu).overflowY };
+    });
+    assert.ok(m.open, 'the menu did not open');
+    assert.equal(m.overflowY, 'auto', 'the open menu must scroll on its own');
+    assert.ok(m.lastBottom <= m.vh, `the last menu item ends at ${Math.round(m.lastBottom)}px, below the ${m.vh}px viewport`);
+  } finally {
+    await ctx.close();
+  }
+});

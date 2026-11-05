@@ -9,7 +9,7 @@
  *
  * Run: npm run test:site      List only: node scripts/run-site-tests.mjs --list
  */
-import { promises as fs } from 'node:fs';
+import fsSync, { promises as fs } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import url from 'node:url';
@@ -29,7 +29,23 @@ export async function listSiteTests(root) {
     .map((n) => `tests/site/${n}`);
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === url.fileURLToPath(import.meta.url);
+// Compare real paths: reaching the checkout through a junction/symlink, or spelling the cwd/drive
+// differently, must not make this look "imported" and exit 0 having run nothing.
+function samePath(a, b) {
+  try {
+    return fsSync.realpathSync(a) === fsSync.realpathSync(b);
+  } catch {
+    return path.resolve(a) === path.resolve(b);
+  }
+}
+const SELF = url.fileURLToPath(import.meta.url);
+const argv1 = process.argv[1];
+const isMain = Boolean(argv1) && samePath(argv1, SELF);
+// Invoked by this file's name but identity unconfirmed: fail loudly, never a silent green no-op.
+if (!isMain && argv1 && path.basename(argv1) === path.basename(SELF)) {
+  console.error(`[run-site-tests] FAIL: invoked as ${argv1} but could not confirm it is ${SELF}; refusing a silent no-op.`);
+  process.exit(1);
+}
 if (isMain) {
   const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
   const files = await listSiteTests(ROOT);

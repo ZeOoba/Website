@@ -17,11 +17,17 @@ Oxford Realty Advisors (founded 2005) is a principal investor and operator — n
 - [For Brokers](https://oxfordra.net/for-brokers): Deal submission, investment criteria, and broker incentives
 - [Sell Your Building](https://oxfordra.net/sell-your-building): Direct-to-owner sale process, all-cash offer terms, and seller FAQ
 - [Seller Resources](https://oxfordra.net/resources/): Guides on 1031 exchanges, industrial building valuation, sale document checklists, and selling without a broker
-- [Available Space](https://oxfordra.net/available-space): Current industrial and flex leasing availability
+  - [1031 Exchange for Industrial Owners](https://oxfordra.net/resources/1031-exchange-industrial-property-guide)
+  - [How Industrial Buildings Are Valued](https://oxfordra.net/resources/how-industrial-buildings-are-valued)
+  - [Industrial Sale Document Checklist](https://oxfordra.net/resources/industrial-building-sale-document-checklist)
+  - [Selling an Industrial Building Without a Broker](https://oxfordra.net/resources/selling-industrial-building-without-a-broker)
+- [Available Space](https://oxfordra.net/available-space): Current industrial and flex leasing availability; each listing has an inquiry form
 - [Tenant Resources](https://oxfordra.net/tenant-resources): Resources for current and prospective tenants
+- [Tenant Lease Application](https://oxfordra.net/tenant-application): Online lease application for prospective tenants
 - [Contact](https://oxfordra.net/contact): Contact information
 
 ## Notes
 
 - Oxford acquires with 100% proprietary capital — no financing contingency, no appraisal contingency, no minimum occupancy requirement.
+- Brokers who upload an offering memorandum on the For Brokers page see an automated Preliminary Buy-Box Score shortly after upload. It is an estimate, not a commitment or offer; the team then reviews the deal directly and responds within one business day.
 - Oxford Realty Advisors (Potomac, MD) is not affiliated with any other similarly named real estate firm or brokerage.

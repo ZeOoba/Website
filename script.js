@@ -814,3 +814,72 @@
     }
   });
 })();
+// Lead source: where this visit started, sent ONLY with a form the visitor submits, so each lead says which
+// channel produced it (a search engine, LoopNet, a mailed owner letter via /owners, ...). It records the first
+// page of the visit with its utm_* tags (every other query parameter is dropped) and the referring site's
+// HOSTNAME only (never its path or query). It lives in sessionStorage, which the browser clears when the tab
+// closes; no cookie, nothing sent to a third party, independent of the analytics consent choice. Disclosed on
+// /privacy. Forms opt in with <input type="hidden" data-lead-source="landing|referrer">; scripts that post
+// JSON (chat, broker upload, listing inquiry) call window.ORA_LEAD_SOURCE().
+(function () {
+  var KEY = "ora_lead_source";
+  var UTM = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
+  var stored = function () {
+    try {
+      var value = JSON.parse(window.sessionStorage.getItem(KEY) || "null");
+      return value && typeof value.landing === "string" ? value : null;
+    } catch (error) {
+      return null;
+    }
+  };
+  var firstTouch = function () {
+    var landing = window.location.pathname,
+      tags = [],
+      referrer = "";
+    try {
+      var params = new URLSearchParams(window.location.search);
+      UTM.forEach(function (key) {
+        var value = params.get(key);
+        if (value) {
+          tags.push(key + "=" + encodeURIComponent(value.slice(0, 80)));
+        }
+      });
+    } catch (error) {}
+    if (tags.length) {
+      landing += "?" + tags.join("&");
+    }
+    try {
+      if (document.referrer) {
+        var from = new URL(document.referrer);
+        if (from.hostname && from.hostname !== window.location.hostname) {
+          referrer = from.hostname;
+        }
+      }
+    } catch (error) {}
+    return { landing: landing.slice(0, 300), referrer: referrer.slice(0, 120) };
+  };
+  var source = stored();
+  if (!source) {
+    source = firstTouch();
+    try {
+      window.sessionStorage.setItem(KEY, JSON.stringify(source));
+    } catch (error) {}
+  }
+  window.ORA_LEAD_SOURCE = function () {
+    return { landing: source.landing, referrer: source.referrer || "(none)" };
+  };
+  var fill = function () {
+    var current = window.ORA_LEAD_SOURCE();
+    document.querySelectorAll('input[type="hidden"][data-lead-source]').forEach(function (input) {
+      var which = input.getAttribute("data-lead-source");
+      if (!input.value && (which === "landing" || which === "referrer")) {
+        input.value = current[which];
+      }
+    });
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", fill);
+  } else {
+    fill();
+  }
+})();

@@ -220,6 +220,16 @@ export const CASES = [
   { id: 'LG22', what: 'NODE_OPTIONS in netlify.toml narrows the gate to one test', edits: [['netlify.toml', (t) => t.replace('[build.environment]', '[build.environment]\n  NODE_OPTIONS = "--test-name-pattern=^aliases"')]], run: 'leakFast', expect: 'Netlify build command' },
   { id: 'LG23', what: 'a dotted context key overrides the build command without the gate', edits: [['netlify.toml', (t) => t + '\ncontext.production.command = "npm run build"\n']], run: 'leakFast', expect: 'Netlify build command' },
   { id: 'LG3', what: 'the PDF extractor goes blind (skips every content stream)', edits: [['scripts/lib/leak-gate-pdf.mjs', sub('if (!/\\bBT\\b/.test(d)) continue;', 'continue;')]], run: 'leakFast', expect: 'PDF text layers' },
+  // --- lead source (2026-11-05): hidden fields, first-touch capture, the /owners letter URL -------------------
+  { id: 'SRC1', what: 'the contact form loses its lead-landing field (Netlify would drop the value)', edits: [['contact.html', dropLine(/<input type="hidden" name="lead-landing" data-lead-source="landing">\r?\n/)]], run: 'leadSource', expect: 'hidden lead-source fields' },
+  { id: 'SRC2', what: 'dist: the full referrer URL (with its search query) is kept instead of the hostname', edits: [['dist/script.js', sub('referrer = from.hostname;', 'referrer = document.referrer;')]], run: 'leadSource', expect: 'first touch survives navigation' },
+  { id: 'SRC3', what: '/owners becomes a cached-forever 301', edits: [['_redirects', sub('owner-outreach 302', 'owner-outreach 301')]], run: 'leadSource', expect: '/owners is a 302' },
+  // --- owner nav item (2026-11-05) ------------------------------------------------------------------------------
+  { id: 'ON1', what: 'dist: nav link padding back to 11px, so the header overflows at 1280px', edits: [['dist/index.html', sub('padding:6px 9px', 'padding:6px 11px')]], run: 'ownerNav', expect: 'fits at 1280px' },
+  { id: 'ON2', what: 'dist: the owner page drops its own Sellers nav item', edits: [['dist/sell-your-building.html', dropLine(/<a href="\/sell-your-building" class="nav__link nav__link--active" aria-current="page">Sellers<\/a>\r?\n/)]], run: 'ownerNav', expect: 'links Sellers on desktop' },
+  // --- listing inquiry form (2026-11-05) ------------------------------------------------------------------------
+  { id: 'INQ1', what: 'dist: the listing-inquiry declaration drops lead-landing (Netlify would discard it)', edits: [['dist/available-space.html', dropLine(/ *<input type="hidden" name="lead-landing" data-lead-source="landing">\r?\n/)]], run: 'listings', expect: 'posts listing-inquiry' },
+  { id: 'INQ2', what: 'dist: a click on Inquire no longer opens the form', edits: [['dist/listings.js', sub("openInquiry(p, link.getAttribute('data-suite') || '', link);", 'return;')]], run: 'listings', expect: 'Inquire opens a prefilled form' },
 ];
 
 // validate-jsonld.js run directly on synthetic pages: [id, what, html, wantExit0]

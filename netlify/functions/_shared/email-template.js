@@ -23,6 +23,8 @@ const LABELS = {
   'typed-signature': 'Signed By', 'signature-date': 'Signature Date',
   name: 'Name', company: 'Company', email: 'Email', phone: 'Phone', market: 'Market', message: 'Message',
   'submission-score': 'Score', 'scorecard-coverage': 'Scorecard Coverage', 'gate-property-type': 'Property Type Gate', 'gate-market': 'Market Gate',
+  'submission-id': 'Submission ID', 'scorecard-version': 'Scorecard Version',
+  'lead-landing': 'Landing Page', 'lead-referrer': 'Referred From',
 };
 
 const DOC_LABELS = {
@@ -78,7 +80,7 @@ function renderBrokerEmail({ fields, links }) {
   };
 }
 
-function renderScoreFollowupEmail({ fields, score }) {
+function renderScoreFollowupEmail({ fields, score, submissionId }) {
   const company = (fields && fields.company) || 'Unknown Company';
   const gateNote = score.gateFailed ? ' (capped — outside core criteria)' : '';
   const coverage = score.coveragePct == null ? null : `${score.coveragePct}%`;
@@ -92,6 +94,8 @@ function renderScoreFollowupEmail({ fields, score }) {
     ...(coverage ? { 'scorecard-coverage': coverage } : {}),
     'gate-property-type': score.gates.propertyType,
     'gate-market': score.gates.market,
+    ...(submissionId ? { 'submission-id': submissionId } : {}),
+    ...(score.scorecardVersion ? { 'scorecard-version': score.scorecardVersion } : {}),
   });
   const breakdownRows = (score.categories || []).map((c) => `<tr><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:13px;color:#596B7D;">${escapeHtml(c.label)}</td><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:13px;color:#2D2D2D;">${c.excluded ? 'N/A' : `${c.earned}/${c.possible}`}</td><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:12px;color:#596B7D;">${escapeHtml(c.internalNote || c.note)}</td></tr>`).join('');
   return {

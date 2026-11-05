@@ -2,17 +2,56 @@
  * /api/chat-lead — Captures a lead from the chat widget.
  *
  * Forwards into the Netlify-Forms-registered hidden form `chat-lead`
- * (declared in chat-lead-form.html). Once a submission lands there,
- * the existing scheduled task (sync-lease-applications model) can pull
- * + email Gabriel + Eric. For v1.0 we ALSO do a server-side fetch to
- * Netlify's form-submission endpoint as a safety net so submissions are
- * captured even if the client-side POST is blocked.
+ * (declared in chat-lead-form.html). The notification is NOT sent from this
+ * repo: the site's Netlify form notifications email ggoldberg@ and egoldberg@
+ * for every `chat-lead` row (read from the live hooks list, 2026-11-05), so a
+ * stored row is the whole happy path.
  *
- * Always returns 200 {ok: true} unless the request is malformed — never
- * leak internal errors to the client.
+ * That notification only exists if the row does. When the forward fails or
+ * throws, this function emails the lead itself through Microsoft Graph and logs
+ * a `pipeline-failures` row, so a lead is never dropped while the visitor is
+ * told "we will be in touch". Only when the row AND the fallback email both
+ * fail does the visitor get {ok:false}; assets/chat.js then shows its
+ * email-us-directly message. Error detail never reaches the client.
  */
 
+const { sendMail } = require('./_shared/graph-mail.js');
+const { forwardToNetlifyForm } = require('./_shared/netlify-forms.js');
+
 const NETLIFY_FORM_NAME = 'chat-lead';
+// Same recipients as the native chat-lead notification and every other lead notice.
+const NOTIFY_TO = ['ggoldberg@oxfordra.net', 'egoldberg@oxfordra.net'];
+
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderFallbackEmail(fields) {
+  const rows = Object.entries(fields)
+    .filter(([, v]) => v !== '' && v != null)
+    .map(([k, v]) => `<tr><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:13px;color:#596B7D;white-space:nowrap;vertical-align:top;">${escapeHtml(k)}</td><td style="padding:6px 12px;border-bottom:1px solid #E8E4DE;font-family:Arial,sans-serif;font-size:13px;color:#2D2D2D;white-space:pre-wrap;">${escapeHtml(v)}</td></tr>`)
+    .join('');
+  return {
+    subject: `New Chat Lead — ${fields.Role || 'Unknown role'} (${fields.Name || 'Unknown'})`,
+    html: `<!doctype html><html><body style="margin:0;padding:0;background:#F5F3EF;">
+<div style="max-width:640px;margin:0 auto;font-family:Georgia,'Times New Roman',serif;">
+  <div style="background:#1B2A4A;padding:24px 32px;"><h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:400;">Chat Lead</h1></div>
+  <div style="background:#ffffff;padding:24px 32px;"><table style="width:100%;border-collapse:collapse;">${rows}</table></div>
+  <div style="padding:16px 32px;font-family:Arial,sans-serif;font-size:11px;color:#596B7D;">Oxford Realty Advisors — sent directly because the Netlify Forms row could not be written, so the usual form notification will not arrive for this lead.</div>
+</div></body></html>`,
+  };
+}
+
+function logFailure(fetchImpl, siteUrl, errorCode, detail) {
+  return forwardToNetlifyForm(siteUrl, 'pipeline-failures', {
+    'source-function': 'chat-lead', 'error-code': errorCode, 'submission-id': '', detail: detail || '', 'occurred-at': new Date().toISOString(),
+  }, { fetchImpl });
+}
 
 // ---------- CORS ----------
 // The widget (assets/chat.js) calls this as a RELATIVE path, so every
@@ -92,7 +131,8 @@ function respond(event, statusCode, body, extraHeaders) {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const ROLES = new Set(['Broker', 'Prospective Tenant', 'Capital Partner', 'Vendor', 'Other']);
 
-exports.handler = async (event) => {
+// Netlify passes (event, context); context has no fetchImpl, so production uses the global fetch.
+exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   const ok = (extra) => respond(event, 200, { ok: true, ...(extra || {}) });
   const bad = (reason) => respond(event, 400, { ok: false, error: reason });
 
@@ -123,6 +163,11 @@ exports.handler = async (event) => {
   const role    = typeof body.role === 'string' ? body.role.trim() : '';
   const message = typeof body.message === 'string' ? body.message.trim() : '';
   const sessionId = typeof body.sessionId === 'string' ? body.sessionId.slice(0, 64) : '';
+  // First page of the visit (utm_* only) and the referring HOSTNAME, from script.js's window.ORA_LEAD_SOURCE().
+  // eslint-disable-next-line no-control-regex
+  const clean = (v, max) => (typeof v === 'string' ? v.replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, max) : '');
+  const leadLanding = clean(body.leadLanding, 300);
+  const leadReferrer = clean(body.leadReferrer, 120);
   const transcript = Array.isArray(body.transcript)
     ? body.transcript.slice(-10).filter((t) => t && typeof t.role === 'string' && typeof t.content === 'string')
     : [];
@@ -151,20 +196,41 @@ exports.handler = async (event) => {
   params.append('session-id', sessionId);
   params.append('transcript', transcriptText);
   params.append('submitted-at', new Date().toISOString());
+  params.append('lead-landing', leadLanding);
+  params.append('lead-referrer', leadReferrer);
 
+  let storeDetail = '';
   try {
-    const r = await fetch(`${siteUrl}/`, {
+    // Bounded: a hung Forms write must leave time in the function's ~10 s budget for the email fallback below.
+    const timeoutMs = Number(process.env.CHAT_LEAD_FORMS_TIMEOUT_MS) || 4000;
+    const r = await fetchImpl(`${siteUrl}/`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: params.toString(),
+      signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!r.ok) {
-      console.error('[chat-lead] netlify form post failed', r.status);
-    }
+    if (r.ok) return ok();
+    storeDetail = `status ${r.status}`;
+    console.error('[chat-lead] netlify form post failed', r.status);
   } catch (e) {
-    console.error('[chat-lead] netlify form post threw', String(e));
+    storeDetail = String(e);
+    console.error('[chat-lead] netlify form post threw', storeDetail);
   }
 
-  // Always return ok — never leak internal errors to the client.
+  // The row was not stored, so no native notification will fire: email the lead directly, then record why.
+  try {
+    const { subject, html } = renderFallbackEmail({
+      Name: name, Email: email, Phone: phone, Role: role, Message: message,
+      'Landing Page': leadLanding, 'Referred From': leadReferrer,
+      'Session ID': sessionId, Transcript: transcriptText,
+    });
+    await sendMail({ subject, html, to: NOTIFY_TO }, { fetchImpl });
+  } catch (err) {
+    console.error('[chat-lead] fallback email failed', String(err));
+    await logFailure(fetchImpl, siteUrl, 'fallback_email_failed', `forward: ${storeDetail}; email: ${String(err)}`);
+    // Nothing captured the lead: say so (generically) so the widget offers the direct email address.
+    return respond(event, 502, { ok: false, error: 'unavailable' });
+  }
+  await logFailure(fetchImpl, siteUrl, 'forms_forward_failed', `${storeDetail} (lead emailed directly)`);
   return ok();
 };

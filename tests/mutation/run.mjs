@@ -76,6 +76,8 @@ const CMDS = {
   nav: test('mobile-nav.test.mjs'),
   budget: test('upload-budget.test.mjs'),
   listings: test('listings-ui.test.mjs'),
+  leadSource: test('lead-source.test.mjs'),
+  ownerNav: test('owner-nav.test.mjs'),
   csp: test('csp-hashes.test.mjs'),
   cspPages: test('csp-all-pages.test.mjs'),
   leak: test('leak-gate.test.mjs'),

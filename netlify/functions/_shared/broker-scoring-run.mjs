@@ -113,7 +113,7 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
     const siteUrl = process.env.URL || 'https://oxfordra.net';
 
     try {
-      const { subject, html } = renderScoreFollowupEmail({ fields, score: result });
+      const { subject, html } = renderScoreFollowupEmail({ fields, score: result, submissionId });
       await sendMailImpl({ subject, html, to: ['ggoldberg@oxfordra.net', 'egoldberg@oxfordra.net'] }, { fetchImpl });
     } catch (err) {
       // Scoring already succeeded and is persisted for the broker's poll to
@@ -121,8 +121,10 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
       await logFailure(forwardToNetlifyFormImpl, fetchImpl, { submissionId, errorCode: 'followup_email_failed', detail: String(err) });
     }
 
-    await forwardToNetlifyFormImpl(siteUrl, 'broker-network-ledger', {
+    const ledgerOk = await forwardToNetlifyFormImpl(siteUrl, 'broker-network-ledger', {
       'submission-id': submissionId,
+      // Lets a later recalibration segment rows by the scorecard that produced them.
+      'score-version': result.scorecardVersion || '',
       'score-total': result.finalScore == null ? '' : result.finalScore,
       'score-coverage': result.coveragePct,
       // A needs-review hold and a low-coverage withhold both leave score-total empty; this tells them apart
@@ -132,6 +134,11 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
       'score-gate-market': result.gates.market,
       'score-breakdown': JSON.stringify(result.categories),
     }, { fetchImpl });
+    // The score blob expires, so this row is the only durable record of the score: a lost write must be visible.
+    // `=== false` because forwardToNetlifyForm returns a boolean; an injected stub that returns nothing is not a failure.
+    if (ledgerOk === false) {
+      await logFailure(forwardToNetlifyFormImpl, fetchImpl, { submissionId, errorCode: 'ledger_score_write_failed', detail: itemPath });
+    }
 
     return { ok: true, result };
   } catch (err) {

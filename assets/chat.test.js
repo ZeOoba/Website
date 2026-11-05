@@ -178,10 +178,19 @@ const HOSTILE_INPUTS = [
   '[see https://e.com and x@y.com](mailto:x@y.com)',
   '[see oxfordra.net/x](https://oxfordra.net/x)',
   '[x](https://e.com/?next=http://y/?z=oxfordra.net/a=b@c.de)',
+  // A line terminator inside a link label: the anchor pattern must span it, or
+  // that anchor is not skipped and D1 re-opens (REFUTE round 2: anchor bodies
+  // `.*?` and `[^\n]*?` both survived the rest of this suite).
+  '[a\nb](https://e.com/?u=https://x/onmouseover=window.__pwn=1//)',
+  '[a\rb](https://e.com/?u=https://x/onmouseover=window.__pwn=1//)',
+  '[a\u2028b](https://e.com/?u=https://x/style=position:fixed;inset:0//)',
+  '[a\u2029b](https://e.com/?u=https://x/onmouseover=window.__pwn=1//)',
 ];
 
+// JSON.stringify leaves U+2028/U+2029 raw; escape them so the test names stay readable.
+const showInput = (s) => JSON.stringify(s).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
 for (const input of HOSTILE_INPUTS) {
-  test(`sanitizer invariant holds for ${JSON.stringify(input)}`, () => {
+  test(`sanitizer invariant holds for ${showInput(input)}`, () => {
     const html = renderMarkdown(input);
     assertAllowedAttributes(html);
     assertSafeMarkup(html);

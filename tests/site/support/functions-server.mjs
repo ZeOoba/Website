@@ -42,7 +42,7 @@ export function freePort() {
 }
 
 /** Real CLI launcher: returns the child and a getter for everything it printed. */
-export function spawnFunctionsCli({ cli, cwd, env = process.env }) {
+export function spawnFunctionsCli({ cli, cwd, env = process.env, formsUrl = null }) {
   return (port, base) => {
     const child = spawn(
       process.execPath,
@@ -51,9 +51,9 @@ export function spawnFunctionsCli({ cli, cwd, env = process.env }) {
         cwd,
         env: {
           ...env,
-          // Pin the function's own Netlify-Forms POST target at the local server
-          // so it loops back to localhost and never reaches oxfordra.net.
-          URL: base,
+          // Pin the function's own Netlify-Forms POST target at localhost so it never reaches oxfordra.net:
+          // a test's own Forms sink when it passes one (it answers, so the happy path runs), else this server.
+          URL: formsUrl || base,
           NETLIFY_TELEMETRY_DISABLED: '1',
           CI: '1',
         },

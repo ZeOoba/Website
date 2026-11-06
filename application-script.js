@@ -206,6 +206,7 @@
     fields.forEach(function(f){
       if(f.type === 'file' || f.type === 'password') return;
       if(f.name === 'bot-field') return;
+      if(f.hasAttribute('data-lead-source')) return; // session-only by policy (script.js fills it each visit)
       if(f.type === 'checkbox' || f.type === 'radio'){
         if(f.checked) data[f.name] = f.value;
       } else if(f.name) {

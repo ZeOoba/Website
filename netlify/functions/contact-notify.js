@@ -3,13 +3,12 @@
  * netlify/functions/contact-notify.js
  *
  * Netlify `submission-created` outgoing-webhook target for the `contact` form
- * on /contact (see contact.html). Wired the same way as owner-lead-notify.js
- * and tenant-application-processor.js — as a Netlify "Outgoing webhook" deploy
- * notification (Site settings → Build & deploy → Post processing → Deploy
- * notifications), NOT the bare `submission-created.js` filename convention.
- * That means this endpoint receives a POST for EVERY form submitted anywhere
- * on the site, so the form_name gate below is not optional: without it, this
- * function would notify on every unrelated submission site-wide.
+ * on /contact (see contact.html). Wired as a Netlify form notification ("HTTP
+ * POST request" on New form submission), NOT the bare `submission-created.js`
+ * filename convention. On 2026-11-05 its hook was scoped to the `contact` form;
+ * a hook scoped to "any form" would deliver EVERY submission on the site, so the
+ * form_name gate below is not optional. `node scripts/check-form-hooks.mjs`
+ * reports the live wiring (the hooks live in Netlify, not in this repo).
  *
  * Before this function existed, a contact submission depended entirely on
  * Netlify's dashboard-configured native email notification: invisible to the
@@ -29,6 +28,8 @@ const LABELS = {
   subject: 'Subject',
   'referral-source': 'How They Heard About Us',
   message: 'Message',
+  'lead-landing': 'Landing Page',
+  'lead-referrer': 'Referred From',
 };
 
 function escapeHtml(value) {

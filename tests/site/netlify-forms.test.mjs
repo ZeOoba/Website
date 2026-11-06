@@ -17,9 +17,9 @@ import { createRequire } from 'node:module';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const { stripHtmlComments } = createRequire(import.meta.url)('../../scripts/validate-jsonld.js');
 
-// Hidden detection stubs that are intentionally not wired. available-space's
-// listing-inquiry stub is dead: every Inquire button on that page is a mailto:.
-const EXEMPT = new Set(['available-space.html#listing-inquiry']);
+// Hidden detection stubs that are intentionally not wired. (available-space's listing-inquiry was one until
+// 2026-11-05; listings.js now posts it, so it is a registered form like the others.)
+const EXEMPT = new Set([]);
 
 // Every HTML file that can ship, at any depth. Netlify's form detection parses
 // the whole publish directory, and build-dist.mjs copies assets/ (and the other
@@ -65,6 +65,7 @@ function formName(form) {
 // from a page used to pass: the form simply vanished from the check. Adding or
 // retiring a form means editing this list on purpose.
 const EXPECTED_NETLIFY_FORMS = [
+  'available-space.html#listing-inquiry',
   'broker-intake-form.html#broker-submission-intake',
   'broker-ledger-form.html#broker-network-ledger',
   'chat-lead-form.html#chat-lead',
@@ -342,7 +343,8 @@ const PRODUCER_FLOOR = {
   'netlify/functions/_shared/broker-scoring-run.mjs': ['pipeline-failures', 'broker-network-ledger'],
   'netlify/functions/broker-finalize.mjs': ['pipeline-failures', 'broker-network-ledger'],
   'netlify/functions/broker-upload-session.js': ['pipeline-failures', 'broker-submission-intake'],
-  'netlify/functions/chat-lead.js': ['chat-lead'],
+  // pipeline-failures since 2026-11-05: a failed chat-lead forward is emailed directly and logged.
+  'netlify/functions/chat-lead.js': ['chat-lead', 'pipeline-failures'],
   'netlify/functions/checklist-notify.js': ['checklist-download', 'pipeline-failures'],
   'netlify/functions/contact-notify.js': ['contact', 'pipeline-failures'],
   'netlify/functions/owner-lead-notify.js': ['owner-submission-intake', 'pipeline-failures'],
@@ -395,7 +397,7 @@ test('every pipeline-failures post writes exactly the fields the stub declares',
   const counted = {};
   for (const s of sites) counted[s.file] = (counted[s.file] ?? 0) + 1;
   assert.deepEqual(counted, perFile, 'pipeline-failures call sites per file changed (a dropped or renamed site, or a new one, must update this pin on purpose)');
-  assert.equal(sites.length, 7, 'expected 7 pipeline-failures call sites');
+  assert.equal(sites.length, 8, 'expected 8 pipeline-failures call sites');
   const bad = sites.filter((s) => JSON.stringify(s.keys) !== JSON.stringify(declared)).map((s) => `${s.file}: ${s.keys.join(',')}`);
   assert.deepEqual(bad, [], `these call sites write fields that differ from the stub's declared set (${declared.join(', ')}); Netlify drops undeclared fields and blanks missing ones`);
 });

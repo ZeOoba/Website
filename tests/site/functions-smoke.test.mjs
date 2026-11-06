@@ -31,9 +31,30 @@
 
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import path from 'node:path';
 import url from 'node:url';
 import { startFunctionsServer, spawnFunctionsCli } from './support/functions-server.mjs';
+
+// A local stand-in for Netlify Forms (the function POSTs its row to `${URL}/`). Since 2026-11-05 chat-lead treats
+// an unanswered Forms write as a failure and falls back to email, so the sink must answer for the happy path to
+// run; it also lets the test see the row the function forwards. Nothing reaches oxfordra.net.
+const formPosts = [];
+let formsSink;
+function startFormsSink() {
+  return new Promise((resolve) => {
+    formsSink = http.createServer((req, res) => {
+      let body = '';
+      req.on('data', (d) => { body += d; });
+      req.on('end', () => {
+        if (req.method === 'POST' && req.url === '/') formPosts.push(new URLSearchParams(body));
+        res.writeHead(req.method === 'POST' ? 200 : 404, { 'content-type': 'text/plain' });
+        res.end('ok');
+      });
+    });
+    formsSink.listen(0, '127.0.0.1', () => resolve(`http://127.0.0.1:${formsSink.address().port}`));
+  });
+}
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..', '..');
 const CLI = path.join(ROOT, 'node_modules', 'netlify-cli', 'bin', 'run.js');
@@ -59,8 +80,9 @@ const jsonPost = (body) => ({
 // signature, and retries on a fresh port if something else owns the port or the CLI dies. See
 // tests/site/support/functions-server.mjs and its unit tests (tests/scripts/functions-server.test.js).
 before(async () => {
+  const formsUrl = await startFormsSink();
   const server = await startFunctionsServer({
-    spawnServer: spawnFunctionsCli({ cli: CLI, cwd: ROOT }),
+    spawnServer: spawnFunctionsCli({ cli: CLI, cwd: ROOT, formsUrl }),
     readyTimeoutMs: READY_TIMEOUT_MS,
   });
   base = server.base;
@@ -69,6 +91,7 @@ before(async () => {
 
 after(() => {
   if (child && !child.killed) child.kill();
+  if (formsSink) formsSink.close();
 });
 
 test('CORS preflight returns 204 through the Netlify runtime', async () => {
@@ -131,10 +154,18 @@ test('a well-formed lead is accepted with 200 {ok:true}', async () => {
       message: 'CI smoke test submission, at least ten characters long.',
       sessionId: 'ci-smoke',
       transcript: [{ role: 'user', content: 'hello' }],
+      leadLanding: '/sell-your-building?utm_source=owner-letter',
+      leadReferrer: 'www.google.com',
     })
   );
   assert.equal(r.status, 200);
   assert.deepEqual(await r.json(), { ok: true });
+  // Through Netlify's runtime the function forwarded exactly one chat-lead row, lead source included.
+  const rows = formPosts.filter((p) => p.get('form-name') === 'chat-lead' && p.get('session-id') === 'ci-smoke');
+  assert.equal(rows.length, 1, 'expected one chat-lead row at the Forms sink');
+  assert.equal(rows[0].get('email'), 'broker@example.com');
+  assert.equal(rows[0].get('lead-landing'), '/sell-your-building?utm_source=owner-letter');
+  assert.equal(rows[0].get('lead-referrer'), 'www.google.com');
 });
 
 test('a filled honeypot is silently accepted (200) and never errors', async () => {

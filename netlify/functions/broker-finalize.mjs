@@ -188,6 +188,12 @@ export async function handleBrokerFinalize(req, {
     phone: sanitizeField(body.phone, 40),
     market: sanitizeField(body.market, 60),
     message: sanitizeField(body.message, 2000),
+    // The optional "how did you hear about us" answer. Until 2026-11-05 it reached only the pre-upload
+    // intake row (broker-upload-session.js), never the ledger or the email Gabriel and Eric read.
+    'referral-source': sanitizeField(body.referralSource, 60),
+    // Where the visit started (first page with utm_* tags only, and the referring hostname): script.js's lead source.
+    'lead-landing': sanitizeField(body.leadLanding, 300),
+    'lead-referrer': sanitizeField(body.leadReferrer, 120),
   };
 
   // The id is minted BEFORE the contact row so this row and the later score row share a join key
@@ -204,7 +210,9 @@ export async function handleBrokerFinalize(req, {
   }
 
   try {
-    const { subject, html } = renderBrokerEmail({ fields, links: { document: item.webUrl } });
+    // The submission id is the join key between this email, both ledger rows and the score blob: naming it here
+    // lets an outcome (pursued / passed) be tied back to the scored submission later.
+    const { subject, html } = renderBrokerEmail({ fields: { ...fields, 'submission-id': submissionId }, links: { document: item.webUrl } });
     await sendMail({ subject, html, to: ['ggoldberg@oxfordra.net', 'egoldberg@oxfordra.net'] }, { fetchImpl });
   } catch (err) {
     console.error('[broker-finalize] email failed', String(err));

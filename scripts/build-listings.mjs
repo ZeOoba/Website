@@ -149,7 +149,7 @@ function card(p) {
       L.push(`                <div class="as-unit__sf"><span class="as-unit__label">Size</span>${esc(u.sfLabel)}</div>`);
       L.push(`                <div class="as-unit__use"><span class="as-unit__label">Use</span>${esc(u.use)}</div>`);
       L.push(`                <div class="as-unit__rate"><span class="as-unit__label">Asking</span>${esc(u.rate)} <span class="as-unit__rate-type">${esc(u.rateType)}</span></div>`);
-      L.push(`                <a href="${mailto(p.name + ' Suite ' + u.suite)}" class="as-unit__inquire" aria-label="Inquire about Suite ${esc(u.suite)} at ${esc(p.name)}">Inquire</a>`);
+      L.push(`                <a href="${mailto(p.name + ' Suite ' + u.suite)}" class="as-unit__inquire" data-inquire="${p.id}" data-suite="${esc(u.suite)}" aria-label="Inquire about Suite ${esc(u.suite)} at ${esc(p.name)}">Inquire</a>`);
       L.push('              </div>');
     }
     L.push('            </div>');
@@ -164,8 +164,10 @@ function card(p) {
     L.push('            </div>');
   }
   L.push('            <div class="as-card__footer">');
-  L.push(`              <a href="${mailto(p.name)}" class="as-card__cta" aria-label="Inquire about ${esc(p.name)}">Inquire</a>`);
-  L.push('              <a href="tel:+13015126125" class="as-card__phone" title="Call 301.512.6125">');
+  // A single-suite card names its suite (mailto subject; listings.js preselects it in the inquiry form).
+  const only = multi ? null : p.units[0];
+  L.push(`              <a href="${mailto(only ? p.name + ' Suite ' + only.suite : p.name)}" class="as-card__cta" data-inquire="${p.id}"${only ? ` data-suite="${esc(only.suite)}"` : ''} aria-label="Inquire about ${esc(p.name)}">Inquire</a>`);
+  L.push('              <a href="tel:+13015126125" class="as-card__phone" title="Call 301.512.6125" aria-label="Call 301.512.6125">');
   L.push(`                ${PHONE_SVG}`);
   L.push('              </a>');
   L.push('            </div>');

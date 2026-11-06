@@ -4,9 +4,10 @@
  *
  * Netlify `submission-created` outgoing-webhook target for the
  * `checklist-download` form on /resources/industrial-building-sale-document-checklist.
- * Wired like owner-lead-notify.js: an "Outgoing webhook" deploy notification that
- * receives a POST for EVERY form on the site, so the form_name gate below is not
- * optional.
+ * Wired as a Netlify form notification ("HTTP POST request" on New form
+ * submission), scoped to `checklist-download` on 2026-11-05. A hook scoped to
+ * "any form" would deliver EVERY submission on the site, so the form_name gate
+ * below is not optional. `node scripts/check-form-hooks.mjs` reports the live wiring.
  *
  * Recipient is Gabriel only. A checklist download is a low-intent top-of-funnel
  * lead (unlike an owner intake or a broker deal, which notify both principals), so
@@ -31,6 +32,11 @@ function escapeHtml(value) {
 function renderChecklistEmail({ fields }) {
   const name = (fields && fields.name) || 'Unknown';
   const email = (fields && fields.email) || '';
+  const landing = (fields && fields['lead-landing']) || '';
+  const referrer = (fields && fields['lead-referrer']) || '';
+  const source = landing || referrer
+    ? `<p style="margin:12px 0 0;font-size:12px;color:#596B7D;">Landing page: ${escapeHtml(landing || 'unknown')} &middot; Referred from: ${escapeHtml(referrer || 'unknown')}</p>`
+    : '';
   return {
     subject: `Checklist Requested — ${name}`,
     html: `<!doctype html><html><body style="margin:0;padding:0;background:#F5F3EF;">
@@ -40,7 +46,7 @@ function renderChecklistEmail({ fields }) {
   </div>
   <div style="background:#ffffff;padding:24px 32px;font-family:Arial,sans-serif;font-size:14px;color:#2D2D2D;line-height:1.6;">
     <p style="margin:0 0 8px;"><strong>${escapeHtml(name)}</strong></p>
-    <p style="margin:0;"><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>
+    <p style="margin:0;"><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>${source}
   </div>
   <div style="padding:16px 32px;font-family:Arial,sans-serif;font-size:11px;color:#596B7D;">Oxford Realty Advisors — automated submission notice (document checklist download).</div>
 </div></body></html>`,
@@ -80,7 +86,12 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   }
 
   const data = submission.data || {};
-  const fields = { name: sanitizeField(String(data.name || ''), 150), email: sanitizeField(String(data.email || ''), 200) };
+  const fields = {
+    name: sanitizeField(String(data.name || ''), 150),
+    email: sanitizeField(String(data.email || ''), 200),
+    'lead-landing': sanitizeField(String(data['lead-landing'] || ''), 300),
+    'lead-referrer': sanitizeField(String(data['lead-referrer'] || ''), 120),
+  };
 
   try {
     const { subject, html } = renderChecklistEmail({ fields });

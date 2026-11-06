@@ -290,6 +290,8 @@
       var btn = card.querySelector('[data-action="submit"]');
       btn.disabled = true;
       btn.textContent = 'Sending…';
+      // Where this visit started (script.js); absent on a page without script.js, which is fine.
+      var source = typeof window.ORA_LEAD_SOURCE === 'function' ? window.ORA_LEAD_SOURCE() : {};
       fetch('/.netlify/functions/chat-lead', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -297,6 +299,7 @@
           name: name, email: email, phone: phone, role: role, message: message,
           website: website, sessionId: sessionId,
           transcript: history.slice(-10),
+          leadLanding: source.landing || '', leadReferrer: source.referrer || '',
         }),
       })
         .then(function (r) { return r.json().catch(function () { return { ok: r.ok }; }); })

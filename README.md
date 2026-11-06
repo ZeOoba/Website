@@ -102,16 +102,18 @@ flowchart TD
   EDGE -->|"POST /v1/messages"| ANTH["api.anthropic.com"]
   KBJ["knowledge-base.json (build artifact)"] --> EDGE
 
-  V -->|"lead capture (assets/chat.js)"| CL["functions/chat-lead.js"]
+  V -->|"lead capture (assets/chat.js)"| CL["functions/chat-lead.js\nif the Forms row fails: emails the lead via Graph + pipeline-failures row"]
   CL -->|"urlencoded POST to site root (_shared/netlify-forms.js)"| NF["Netlify Forms"]
 
-  V -->|"native form POST: contact, leasing-inquiry, tenant-application, owner-submission-intake, checklist-download"| NF
+  V -->|"form POST: contact, leasing-inquiry, listing-inquiry (listings.js Inquire form), tenant-application, owner-submission-intake, checklist-download; each carries lead-landing + lead-referrer (script.js)"| NF
   V -. "Netlify-native reCAPTCHA (contact, tenant-application)" .-> RC["google.com/recaptcha"]
-  NF -->|"submission-created outgoing webhook: fires for EVERY form; each fn gates on form_name"| WH{"form_name gate"}
-  WH -->|"contact"| CN["contact-notify.js"]
-  WH -->|"commercial-lease-application"| TA["tenant-application-processor.js"]
-  WH -->|"owner-submission-intake"| OL["owner-lead-notify.js"]
-  WH -->|"checklist-download"| CK["checklist-notify.js"]
+  NF -->|"Netlify email notifications (live 2026-11-05): every form -> ggoldberg@; chat-lead -> ggoldberg@ + egoldberg@"| MAIL["Gabriel / Eric inbox"]
+  NF -->|"external URL hook: commercial-lease-application -> hooks.zapier.com (not in this repo)"| ZAP["Zapier"]
+  NF -->|"submission_created URL hooks (Netlify UI; node scripts/check-form-hooks.mjs audits them)"| WH{"form_name gate"}
+  WH -->|"contact (hook scoped to contact)"| CN["contact-notify.js"]
+  WH -->|"commercial-lease-application (hook on every form)"| TA["tenant-application-processor.js"]
+  WH -.->|"owner-submission-intake: NO HOOK as of 2026-11-05, never runs"| OL["owner-lead-notify.js"]
+  WH -->|"checklist-download (hook scoped to checklist-download)"| CK["checklist-notify.js"]
   CN & TA & OL & CK --> GRAPH["Microsoft Graph (mail + SharePoint files)"]
   CN & TA & OL & CK -. "signature rejected" .-> SA["signature-alert.mjs\nthrottled alert (1 per UTC hour, Blobs create-only)"]
   SA --> BLOB
@@ -135,7 +137,7 @@ flowchart TD
   PF --> FG["edge forms-guard.mjs\n403 on unsigned POSTs to the internal forms"] --> NF
 ```
 
-**Reading the diagram:** most of what the visitor touches is same-origin, but the browser itself makes two direct cross-origin calls in these flows: it loads Google's reCAPTCHA widget during the broker-upload honeypot step, and it `PUT`s a broker's offering memorandum straight to SharePoint in 5 MiB chunks — both `www.google.com` and `oxfordraeg.sharepoint.com` sit in the `connect-src` allowlist in `_headers` for exactly these reasons (a third entry, `*.tile.openstreetmap.org`, backs the markets-page maps and is unrelated to this flow). Server-side, the only outbound calls are Microsoft Graph (auth, SharePoint file writes, and all outbound mail), the Anthropic API (the `/api/chat` assistant and the broker deal-term extraction), and Google's reCAPTCHA siteverify endpoint — enforced, 403 on failure (`broker-upload-session.js`; disabled 2026-07-19 to 2026-09-07 after a client-side site-key typo, re-enabled once fixed and verified); there is no database — durable state is Netlify Blobs (broker score results, the `broker-finalize` per-IP rate limit and daily cap, dedupe markers) plus Netlify Forms, which doubles as the failure log every function writes to via the `pipeline-failures` form. Four functions are never linked from a page or called by client JS: `tenant-application-processor.js`, `owner-lead-notify.js`, `contact-notify.js` and `checklist-notify.js` are wired as Netlify `submission-created` outgoing webhooks — Netlify itself POSTs to each function's URL on every form submitted anywhere on the site, and each gates on `form_name` — that gate is load-bearing, not defensive. The `/api/chat` and `broker-upload-session` per-IP limiters are in-memory per instance (not shared across instances or durable). Analytics runs through Google Consent Mode v2: the inline gtag script on each page defaults analytics storage to denied, `script.js` grants it only on a cookie-banner Accept, and Decline leaves the default in place. The map pages (`available-space.html`, and `portfolio.js` on the portfolio page) load Leaflet from `unpkg.com`. The broker pipeline is the only multi-step flow: session, direct upload, finalize, then an out-of-band background scoring job the page polls for.
+**Reading the diagram:** most of what the visitor touches is same-origin, but the browser itself makes two direct cross-origin calls in these flows: it loads Google's reCAPTCHA widget during the broker-upload honeypot step, and it `PUT`s a broker's offering memorandum straight to SharePoint in 5 MiB chunks — both `www.google.com` and `oxfordraeg.sharepoint.com` sit in the `connect-src` allowlist in `_headers` for exactly these reasons (a third entry, `*.tile.openstreetmap.org`, backs the markets-page maps and is unrelated to this flow). Server-side, the only outbound calls are Microsoft Graph (auth, SharePoint file writes, and all outbound mail), the Anthropic API (the `/api/chat` assistant and the broker deal-term extraction), and Google's reCAPTCHA siteverify endpoint — enforced, 403 on failure (`broker-upload-session.js`; disabled 2026-07-19 to 2026-09-07 after a client-side site-key typo, re-enabled once fixed and verified); there is no database — durable state is Netlify Blobs (broker score results, the `broker-finalize` per-IP rate limit and daily cap, dedupe markers) plus Netlify Forms, which doubles as the failure log every function writes to via the `pipeline-failures` form. Four functions are never linked from a page or called by client JS: `tenant-application-processor.js`, `owner-lead-notify.js`, `contact-notify.js` and `checklist-notify.js` are meant to be `submission_created` URL hooks configured in the Netlify UI (Forms > Form notifications), which this repo cannot see. Read live on 2026-11-05: `tenant-application-processor` receives every form, `contact-notify` and `checklist-notify` are scoped to their own form, and `owner-lead-notify` had **no hook at all**, so it had never run (owner leads reached Gabriel only through Netlify's generic all-forms email, and never Eric). Each function gates on `form_name` because a hook on "any form" delivers every submission. `node scripts/check-form-hooks.mjs` compares the live hooks with these functions and with every registered form, and fails on a function with no hook or a form that notifies no one; run it after changing a notify function or a Netlify notification. Every lead form also carries two hidden fields, `lead-landing` (the first page of the visit, with only its `utm_*` tags) and `lead-referrer` (the referring hostname), filled by `script.js` from sessionStorage; JSON-posting clients (`assets/chat.js`, `broker-upload.js`, `listings.js`) read `window.ORA_LEAD_SOURCE()`. `/owners` (printed on the owner-outreach letters) is a 302 to `/sell-your-building` tagged `utm_source=owner-letter&utm_medium=direct-mail&utm_campaign=owner-outreach`. The `/api/chat` and `broker-upload-session` per-IP limiters are in-memory per instance (not shared across instances or durable). Analytics runs through Google Consent Mode v2: the inline gtag script on each page defaults analytics storage to denied, `script.js` grants it only on a cookie-banner Accept, and Decline leaves the default in place. The map pages (`available-space.html`, and `portfolio.js` on the portfolio page) load Leaflet from `unpkg.com`. The broker pipeline is the only multi-step flow: session, direct upload, finalize, then an out-of-band background scoring job the page polls for.
 
 ## Repo layout
 
@@ -167,6 +169,7 @@ flowchart TD
 │   ├── geocode-listing.mjs    US Census geocoder lookup for a new listing's lat/lng
 │   ├── csp-hashes.mjs         Computes/checks/writes the inline-script hashes in _headers
 │   ├── verify-live-csp.mjs    Post-deploy check of the CSP actually served (live site or a deploy preview)
+│   ├── check-form-hooks.mjs   Live check that Netlify's form notifications reach every notify function and form (netlify CLI login; read-only)
 │   ├── lighthouse-summary.mjs Summarises Lighthouse reports against the budget (informational)
 │   ├── lighthouse-run.mjs     Runs Lighthouse against the built pages
 │   ├── stamp-asset-versions.mjs Stamps asset version query strings into built pages
@@ -296,10 +299,10 @@ All live in `netlify/functions/` unless noted. The four `submission-created` web
 
 | Function | Purpose |
 |---|---|
-| `chat-lead.js` | Captures leads submitted via the chat assistant into the `chat-lead` form |
+| `chat-lead.js` | Captures leads submitted via the chat assistant into the `chat-lead` form (Netlify's own email notification on that form tells Gabriel and Eric); if the Forms row cannot be written it emails the lead directly and logs `pipeline-failures`, and tells the visitor it failed only when both fail |
 | `broker-upload-session.js` / `broker-finalize.mjs` | Broker OM (offering memorandum) upload intake pipeline (session mint with reCAPTCHA + rate limit; finalize with signed intake token, per-IP limit and daily cap) |
 | `broker-score-background.mjs` / `broker-score-status.mjs` | Async scoring of submitted broker deals against ORA's buy-box (V2 functions; Netlify Blobs for results) |
-| `owner-lead-notify.js` | `submission-created` webhook: notifies on direct-to-owner ("sell your building") submissions (`owner-submission-intake`) |
+| `owner-lead-notify.js` | `submission-created` webhook: notifies Gabriel and Eric on direct-to-owner ("sell your building") submissions (`owner-submission-intake`). **Not wired in Netlify as of 2026-11-05** (no hook points at it); `scripts/check-form-hooks.mjs` prints the setting to add |
 | `tenant-application-processor.js` | `submission-created` webhook: processes tenant lease applications (`commercial-lease-application`) |
 | `contact-notify.js` | `submission-created` webhook: emails on `contact` form submissions |
 | `checklist-notify.js` | `submission-created` webhook: notifies on `checklist-download` form submissions from the sale-document checklist guide |
@@ -313,7 +316,8 @@ Shared helpers in `netlify/functions/_shared/`: Microsoft Graph auth, mail and f
 `data/listings.json` is the single source of truth for available space. `node scripts/build-listings.mjs` (`npm run build:listings`) regenerates three committed copies: the `LISTINGS` block in `listings.js`, the static fallback cards in `available-space.html` (what crawlers see before JS runs), and the `listing-schema` JSON-LD `ItemList`. `--check` (run by `npm run build`) exits 1 on drift, so a listings PR shows the exact served markup in its diff. Validation rejects missing fields, lat/lng with fewer than 4 decimals, coordinates outside the listing's state, and unknown rate types.
 
 - New listing coordinates: `node scripts/geocode-listing.mjs "<street>, <city>, <ST>"` (US Census geocoder; interpolates along the street, so confirm the pin against parcel or aerial data).
-- `scripts/sync-listings.mjs` reconciles a LoopNet read (supplied as JSON by an external browser-based scheduled task, read twice and required to agree) against `data/listings.json`; outcomes are noop, apply, or alert (guard tripped, fails closed). That scheduled task is not defined in this repo.
+- `scripts/sync-listings.mjs` reconciles a LoopNet read (supplied as JSON by an external browser-based scheduled task, read twice and required to agree) against `data/listings.json`; outcomes are noop, apply, or alert (guard tripped, fails closed). That scheduled task is not defined in this repo. Its output reaches the site only when its PR merges: on 2026-11-05 the live page was a month behind LoopNet because two weekly sync PRs had sat unmerged.
+- Every Inquire link (static cards, JS cards, table rows, the detail panel) keeps a `mailto:` href, the no-JS path. With JS, a plain click opens a short form prefilled with the property and suite (`openInquiry()` in `listings.js`) that posts the `listing-inquiry` Netlify form; the form's fields are declared in the hidden form in `available-space.html`, and Netlify drops any field not declared there, so change both together (`tests/site/listings-ui.test.mjs` checks it).
 
 `data/portfolio.json` is the equivalent source for the portfolio page. `node scripts/build-portfolio.mjs` rewrites the grid, market mix and `ItemList` JSON-LD in `portfolio.html` between its `portfolio:*:begin/end` markers, regenerates each `properties/*.html` detail page, and stamps `sitemap.xml` `<lastmod>` for every page it changes; `--check` (run by `npm run build`) exits 1 on drift. A `properties/` page that the data no longer generates fails the build rather than being deleted. `build-listings.mjs` also regenerates `portfolio.html` (through `renderPortfolioPage`), which keeps the availability badges current after the weekly sync.
 

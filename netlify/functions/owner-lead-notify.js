@@ -2,18 +2,17 @@
 /**
  * netlify/functions/owner-lead-notify.js
  *
- * Netlify `submission-created` outgoing-webhook target for the
- * `owner-submission-intake` form on /sell-your-building (see
- * sell-your-building.html). Wired the same way as
- * tenant-application-processor.js — as a Netlify "Outgoing webhook" deploy
- * notification (Site settings → Build & deploy → Post processing → Deploy
- * notifications), NOT the bare `submission-created.js` filename convention.
- * That means this endpoint receives a POST for EVERY form submitted
- * anywhere on the site (contact, chat-lead, broker-submission-intake,
- * broker-network-ledger, pipeline-failures, commercial-lease-application,
- * owner-submission-intake, etc.) — the form_name gate below is therefore
- * not optional: without it, this function would double- (or n-tuple-)
- * notify on every unrelated submission site-wide.
+ * Netlify `submission-created` webhook target for the `owner-submission-intake`
+ * form on /sell-your-building (see sell-your-building.html), meant to be wired
+ * like contact-notify.js: a Netlify form notification ("HTTP POST request" on
+ * New form submission), NOT the bare `submission-created.js` filename convention.
+ *
+ * NOT WIRED as of 2026-11-05: no hook pointed at this function, so it had never
+ * run in production. Owner leads reached Gabriel only through Netlify's generic
+ * all-forms email, and never Eric. `node scripts/check-form-hooks.mjs` fails until
+ * the hook exists (its output gives the exact Netlify setting). A hook scoped to
+ * "any form" delivers EVERY submission on the site, so the form_name gate below
+ * is not optional.
  */
 const { verifyNetlifyWebhookSignature, sanitizeField } = require('./_shared/validate.js');
 const { alertInvalidSignature } = require('./_shared/signature-alert.js');
@@ -34,6 +33,8 @@ const LABELS = {
   'asking-price-expectation': 'Asking Price Expectation',
   'referral-source': 'How They Heard About Us',
   'tcpa-consent': 'TCPA/SMS Consent',
+  'lead-landing': 'Landing Page',
+  'lead-referrer': 'Referred From',
 };
 
 function escapeHtml(value) {

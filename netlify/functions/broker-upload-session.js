@@ -159,7 +159,7 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
   const dateStamp = new Date().toISOString().slice(0, 10);
   const folderPath = `Broker Submissions/${dateStamp}_${slugify(company)}_${crypto.randomBytes(4).toString('hex')}`;
 
-  await logIntake(fetchImpl, {
+  const intakeOk = await logIntake(fetchImpl, {
     name: sanitizeField(body.name, 150),
     company,
     email: sanitizeField(body.email, 200),
@@ -169,6 +169,15 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
     message: sanitizeField(body.message, 2000),
     fileName,
   });
+  // Context, not a gate: the upload proceeds, but a lost intake row must leave a trace. Bounded (1.5 s): the
+  // trace goes to the same Forms endpoint that just failed, and must not push the broker past the 10 s limit.
+  if (!intakeOk) {
+    let timer;
+    await Promise.race([
+      logFailure(fetchImpl, { errorCode: 'intake_write_failed', detail: folderPath }),
+      new Promise((resolve) => { timer = setTimeout(resolve, 1500); }),
+    ]).finally(() => clearTimeout(timer));
+  }
 
   let session;
   try {

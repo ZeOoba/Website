@@ -70,6 +70,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Invariant 3 pre-push gate (scripts/prepush_confidential_scan.py): end-to-end tests
+      # that run real `git push`es through the shipped shim. Stdlib Python only; the probe
+      # picks python3 on Linux and python on a Windows self-hosted runner.
+      - name: Pre-push confidentiality gate tests
+        shell: bash
+        run: |
+          PY=$(command -v python3 || command -v python)
+          "$PY" scripts/test_prepush_confidential_scan.py
+
       # --with-deps installs Linux OS packages; it is meaningless on a Windows
       # runner, which only needs the browser itself.
       - name: Install Chromium for the CSP smoke test (Linux)

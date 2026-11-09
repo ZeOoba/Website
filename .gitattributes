@@ -9,3 +9,6 @@
 # language-stats views, so a PR touching a handful of source files doesn't get dominated by a
 # wall of binary image diffs. Display only -- no effect on git itself, builds, or deploys.
 images/** linguist-generated=true
+
+# Git hook shims are run by sh and must stay LF in every working tree.
+scripts/git-hooks/* text eol=lf

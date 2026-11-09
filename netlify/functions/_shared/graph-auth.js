@@ -2,7 +2,8 @@
 
 let cached = null; // { token, expiresAt }
 
-async function getGraphToken({ fetchImpl = fetch, now = () => Date.now() } = {}) {
+// `signal` (optional) bounds the token request; an aborted request rejects and caches nothing.
+async function getGraphToken({ fetchImpl = fetch, now = () => Date.now(), signal } = {}) {
   if (cached && cached.expiresAt - 300_000 > now()) {
     return cached.token;
   }
@@ -22,6 +23,7 @@ async function getGraphToken({ fetchImpl = fetch, now = () => Date.now() } = {})
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
+    signal,
   });
   if (!res.ok) {
     throw new Error(`graph-auth: token request failed (${res.status})`);

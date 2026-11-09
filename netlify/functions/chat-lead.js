@@ -230,7 +230,10 @@ exports.handler = async (event, { fetchImpl = fetch } = {}) => {
       'Landing Page': leadLanding, 'Referred From': leadReferrer,
       'Session ID': sessionId, Transcript: transcriptText,
     });
-    await sendMail({ subject, html, to: NOTIFY_TO }, { fetchImpl });
+    // One deadline across the Graph token AND sendMail: Forms 4 s + Graph 3.5 s + failure log 1.5 s = 9 s worst
+    // case, under the ~10 s function limit, so a timed-out email still reaches the failure row and a JSON reply.
+    const graphTimeoutMs = Number(process.env.CHAT_LEAD_GRAPH_TIMEOUT_MS) || 3500;
+    await sendMail({ subject, html, to: NOTIFY_TO }, { fetchImpl, signal: AbortSignal.timeout(graphTimeoutMs) });
   } catch (err) {
     console.error('[chat-lead] fallback email failed', String(err));
     await logFailure(fetchImpl, siteUrl, 'fallback_email_failed', `forward: ${storeDetail}; email: ${String(err)}`);

@@ -342,14 +342,14 @@ body{padding-top:36px}.nav{top:36px!important}
 </div>
 
 <script defer src="/script.js?v=20"></script>
-<!-- Analytics: GA4 runs in a Partytown web worker (/assets/partytown/, @qwik.dev/partytown 0.14.4, MIT), so
+<!-- Analytics: GA4 runs in a Partytown web worker (/assets/partytown/, @qwik.dev/partytown 1.0.5, MIT), so
      gtag.js never parses or executes on the main thread. page_view still comes solely from
      gtag('config'). If the service worker can't start, Partytown's fallbackTimeout (10s) runs both
      scripts on the main thread instead.
      Consent Mode v2: the denied-by-default consent call is in the SAME inline script, ahead of
      gtag('config'), so the order holds in both modes (a separate async script would not). -->
 <script>partytown={lib:'/assets/partytown/',forward:['dataLayer.push','gtag']};</script>
-<script defer src="/assets/partytown/partytown.js?v=0.14.4"></script>
+<script defer src="/assets/partytown/partytown.js?v=1.0.5"></script>
 <script type="text/partytown" src="https://www.googletagmanager.com/gtag/js?id=G-YDSX0RW5HC"></script>
 <script type="text/partytown">
 window.dataLayer=window.dataLayer||[];

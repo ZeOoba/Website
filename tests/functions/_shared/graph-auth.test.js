@@ -56,3 +56,28 @@ test('throws when the token endpoint rejects the request', async () => {
     await assert.rejects(() => getGraphToken({ fetchImpl }), /token request failed \(401\)/);
   });
 });
+
+test('forwards an optional abort signal to the token request', async () => {
+  _resetCacheForTests();
+  const signal = new AbortController().signal;
+  let seen;
+  const fetchImpl = async (url, opts) => { seen = opts.signal; return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) }; };
+  await withEnv({ GRAPH_TENANT_ID: 't', GRAPH_CLIENT_ID: 'c', GRAPH_CLIENT_SECRET: 's' }, () => getGraphToken({ fetchImpl, signal }));
+  assert.equal(seen, signal);
+  _resetCacheForTests();
+});
+
+test('an aborted token request rejects and leaves nothing cached', async () => {
+  _resetCacheForTests();
+  const ac = new AbortController();
+  const fetchImpl = (url, opts) => new Promise((resolve, reject) => { opts.signal.addEventListener('abort', () => reject(opts.signal.reason)); });
+  const p = withEnv({ GRAPH_TENANT_ID: 't', GRAPH_CLIENT_ID: 'c', GRAPH_CLIENT_SECRET: 's' }, () => getGraphToken({ fetchImpl, signal: ac.signal }));
+  ac.abort();
+  await assert.rejects(p);
+  let calls = 0;
+  const ok = async () => { calls += 1; return { ok: true, status: 200, json: async () => ({ access_token: 'fresh', expires_in: 3600 }) }; };
+  const t = await withEnv({ GRAPH_TENANT_ID: 't', GRAPH_CLIENT_ID: 'c', GRAPH_CLIENT_SECRET: 's' }, () => getGraphToken({ fetchImpl: ok }));
+  assert.equal(t, 'fresh');
+  assert.equal(calls, 1);
+  _resetCacheForTests();
+});

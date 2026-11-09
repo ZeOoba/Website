@@ -159,7 +159,62 @@ test('a hung Forms endpoint (row AND failure log) still answers the visitor ok o
   }
 }));
 
-test('when the Forms forward AND the fallback email both fail, the visitor is told it did not go through', () => withGraphEnv(async () => {
+// ---- Bounded Graph fallback (2026-11-08) ----
+// The fallback email used to call Graph with no abort signal. A hung Forms write (4 s) followed by a slow Graph
+// token or sendMail ran the function into the platform timeout: a non-JSON 502, no pipeline-failures row, and a
+// visitor shown nothing useful. Both Graph calls must share one bounded deadline so the failure path still runs.
+function hungGraphCase(hang) {
+  return () => withGraphEnv(async () => {
+    const keys = ['CHAT_LEAD_FORMS_TIMEOUT_MS', 'CHAT_LEAD_LOG_TIMEOUT_MS', 'CHAT_LEAD_GRAPH_TIMEOUT_MS'];
+    const prev = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+    for (const k of keys) process.env[k] = '50';
+    const never = () => new Promise(() => {});
+    // Settles only when the caller's abort signal fires; with no signal it never settles, so a missing bound
+    // hangs this test (caught by the guard below) instead of passing it.
+    const untilAborted = (signal) => (signal
+      ? new Promise((resolve, reject) => { signal.addEventListener('abort', () => reject(signal.reason)); })
+      : never());
+    try {
+      const calls = [];
+      const graphSignals = [];
+      const fetchImpl = (url, opts = {}) => {
+        const u = String(url); const body = String(opts.body || '');
+        calls.push({ url: u, body });
+        if (body.includes('form-name=chat-lead')) return untilAborted(opts.signal);
+        if (body.includes('form-name=pipeline-failures')) return Promise.resolve({ ok: true, status: 200 });
+        if (u.includes('login.microsoftonline.com')) {
+          graphSignals.push(opts.signal);
+          if (hang === 'token') return untilAborted(opts.signal);
+          return Promise.resolve({ ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) });
+        }
+        if (u.includes('/sendMail')) {
+          graphSignals.push(opts.signal);
+          return untilAborted(opts.signal);
+        }
+        return Promise.resolve({ ok: true, status: 200 });
+      };
+      let guard;
+      const hung = new Promise((resolve) => { guard = setTimeout(() => resolve('HUNG'), 2000); });
+      const outcome = await Promise.race([handler(leadFrom(hang === 'token' ? 15 : 16), { fetchImpl }), hung]);
+      clearTimeout(guard);
+      assert.notEqual(outcome, 'HUNG', `the handler must not wait on a hung Graph ${hang}`);
+      assert.ok(graphSignals.length > 0 && graphSignals.every((s) => s instanceof AbortSignal), 'every Graph call must carry an abort signal');
+      assert.equal(outcome.statusCode, 502);
+      assert.equal(outcome.headers['content-type'], 'application/json');
+      assert.deepEqual(JSON.parse(outcome.body), { ok: false, error: 'unavailable' });
+      const failure = calls.find((c) => c.body.includes('form-name=pipeline-failures'));
+      assert.ok(failure, 'a Graph timeout must still leave a pipeline-failures row');
+      assert.match(failure.body, /error-code=fallback_email_failed/);
+    } finally {
+      for (const k of keys) { if (prev[k] === undefined) delete process.env[k]; else process.env[k] = prev[k]; }
+    }
+  });
+}
+
+test('hung Forms + hung Graph token: JSON failure within budget, pipeline-failures row written', hungGraphCase('token'));
+test('hung Forms + hung Graph sendMail: JSON failure within budget, pipeline-failures row written', hungGraphCase('sendMail'));
+
+test('when the Forms forward AND the fallback email both fail, the visitor is told it did not go through',() => withGraphEnv(async () => {
   const { calls, fetchImpl } = router({ formsStatus: 503, mailStatus: 500 });
   const r = await handler(leadFrom(13), { fetchImpl });
   assert.equal(r.statusCode, 502);

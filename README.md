@@ -183,6 +183,10 @@ flowchart TD
 │   ├── validate-jsonld.js     Validates JSON-LD structured data on ONE page
 │   ├── netlify-guard.js       Blocks indirected/obfuscated `netlify deploy --prod` calls
 │   ├── patch-netlify-shim.js  postinstall hook wiring netlify-guard.js into netlify-cli's bin
+│   ├── prepush_confidential_scan.py  Fail-closed git pre-push gate (Invariant 3; repo is public): blocks a push carrying any
+│   │                          active ~/.claude/hooks/confidential-terms.json term; never prints terms. Install once per clone:
+│   │                          python scripts/install_prepush_hook.py (shim: git-hooks/pre-push). Tests (CI):
+│   │                          test_prepush_confidential_scan.py. Same file as in ora-skills and ora-pm
 │   └── meta.md                Canonical firm facts fed into the chat assistant's knowledge base
 ├── tests/functions/            node:test unit tests for netlify/functions/ (and _shared/)
 ├── tests/listings/             Unit tests for build-listings, sync-listings, geocode-listing

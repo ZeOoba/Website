@@ -1,0 +1,22 @@
+{
+  "_synthetic": true,
+  "_comment": "SYNTHETIC test fixture for the RCT replacement-cost benchmark schema. Every figure here is invented and is NOT the ratified RCT table, and the two non-core market names are placeholders. The real table is governor-level data that lives only in the RCT_BENCHMARK_JSON Netlify env var (docs/rct-benchmark-config.md); never paste real figures into this file. loadRctBenchmark refuses this file in production because of _synthetic.",
+  "rctVersion": "synthetic-test-fixture",
+  "marketToRctLowPerSF": {
+    "Columbus": 200.00,
+    "Maryland": 210.00,
+    "Synthetic Market A": 220.00,
+    "Synthetic Proxy B": 190.00
+  },
+  "proxyMarkets": ["Synthetic Proxy B"],
+  "vintageFloor": {
+    "earlyYear": 1990,
+    "earlyPct": 0.60,
+    "lateYear": 2010,
+    "latePct": 0.50
+  },
+  "marketHints": {
+    "Maryland": "Maryland (synthetic hint: covers the whole state)",
+    "Columbus": "Columbus OH"
+  }
+}

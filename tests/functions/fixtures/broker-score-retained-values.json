@@ -54,13 +54,6 @@
       "yearBuiltFutureYears": 2
     }
   },
-  "vintageFloor": {
-    "earlyYear": 1995,
-    "lateYear": 2005,
-    "earlyPct": 0.65,
-    "latePct": 0.6
-  },
-  "vintageFloorRatified": "2026-07-14 (RCT v03 ramp recalibration; SKILL.md STAGE 1)",
   "versionHistory": {
     "site-1.1": "d9d02e29964d745fae343e979839ff435ded7462c0e3db3e1ba2e30ad64c6753",
     "site-1.1.1": "931e47eee41b42477b4955e9a5eda3eb4b561e798ece94dd25db946076cde41b"

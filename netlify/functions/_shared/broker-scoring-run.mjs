@@ -13,7 +13,9 @@ import { writeScoreResult, hasBeenScored, markScored } from './broker-score-stor
 import { forwardToNetlifyForm } from './netlify-forms.js';
 import { sendMail } from './graph-mail.js';
 import { renderScoreFollowupEmail } from './email-template.js';
-import rctBenchmark from './rct-benchmark-data.js';
+import rctBenchmarkConfig from './rct-benchmark.js';
+
+const { loadRctBenchmark } = rctBenchmarkConfig;
 
 function extFromPath(p) {
   const m = /\.([a-z0-9]+)$/i.exec(p || '');
@@ -41,12 +43,28 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
     markScoredImpl = markScored,
     forwardToNetlifyFormImpl = forwardToNetlifyForm,
     sendMailImpl = sendMail,
+    loadRctBenchmarkImpl = loadRctBenchmark,
   } = deps;
 
   try {
     if (await hasBeenScoredImpl(itemPath)) {
       return { ok: true, skipped: 'already_scored' };
     }
+
+    // Fail closed on the replacement-cost table (RCT_BENCHMARK_JSON, see rct-benchmark.js). Without it there is
+    // no basis floor AND no market list, so a partial score would wrongly fail the market gate for every OM and
+    // cap it at 30. Withhold the whole score instead, before any download or paid extraction call; the broker
+    // sees the same "unavailable" as any other scoring failure and the team gets a pipeline-failures row.
+    // Checked BEFORE markScored: a misconfigured variable is an operator error, so the item stays re-scorable
+    // once the variable is fixed instead of being burned as "already scored".
+    const bench = loadRctBenchmarkImpl();
+    if (!bench || !bench.ok) {
+      const detail = (bench && bench.reason) || 'RCT benchmark loader returned nothing';
+      await writeScoreResultImpl(submissionId, { status: 'unavailable', reason: 'benchmark_unavailable' });
+      await logFailure(forwardToNetlifyFormImpl, fetchImpl, { submissionId, errorCode: 'benchmark_unavailable', detail });
+      return { ok: false, reason: 'benchmark_unavailable' };
+    }
+    const rctBenchmark = bench.benchmark;
     await markScoredImpl(itemPath);
 
     let item;
@@ -100,7 +118,7 @@ async function runScoring({ submissionId, itemPath, fields }, deps = {}) {
 
     let extracted;
     try {
-      extracted = await extractDealTermsImpl(content, { fetchImpl });
+      extracted = await extractDealTermsImpl(content, { fetchImpl, rctBenchmark });
     } catch (err) {
       await writeScoreResultImpl(submissionId, { status: 'unavailable', reason: 'llm_extraction_failed' });
       await logFailure(forwardToNetlifyFormImpl, fetchImpl, { submissionId, errorCode: 'llm_extraction_failed', detail: String(err) });

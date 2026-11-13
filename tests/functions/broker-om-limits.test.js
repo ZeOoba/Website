@@ -11,6 +11,8 @@ const limits = require('../../netlify/functions/_shared/broker-limits.js');
 const graphFiles = require('../../netlify/functions/_shared/graph-files.js');
 const { extractDealTerms } = require('../../netlify/functions/_shared/broker-llm-extract.js');
 const { signIntakeToken } = require('../../netlify/functions/_shared/validate.js');
+// Scoring runs get the SYNTHETIC RCT table injected (never the ratified one; see rct-test-env.js).
+const { loadSyntheticRct, syntheticBenchmark } = require('./fixtures/rct-test-env.js');
 
 const FN_DIR = path.join(__dirname, '..', '..', 'netlify', 'functions');
 const load = (rel) => import(pathToFileURL(path.join(FN_DIR, rel)).href);
@@ -611,7 +613,7 @@ test('extractDealTerms never sends text over the cap: an over-cap string is cut 
     sent = JSON.parse(opts.body);
     return { ok: true, status: 200, json: async () => ({ content: [{ type: 'tool_use', name: 'record_deal_terms', input: {} }] }) };
   };
-  await extractDealTerms({ kind: 'text', text: 'q'.repeat(limits.MAX_EXTRACTED_CHARS * 3) }, { fetchImpl });
+  await extractDealTerms({ kind: 'text', text: 'q'.repeat(limits.MAX_EXTRACTED_CHARS * 3) }, { fetchImpl, rctBenchmark: syntheticBenchmark });
   const prompt = sent.messages[0].content[0].text;
   assert.ok(prompt.length < limits.MAX_EXTRACTED_CHARS + 2000, `prompt ${prompt.length} chars`);
   assert.match(prompt, MARKER);
@@ -867,6 +869,7 @@ test('runScoring: a stored item over the scoring ceiling is marked unavailable w
   const { runScoring } = await load('_shared/broker-scoring-run.mjs');
   const results = []; let downloaded = false;
   const r = await runScoring({ submissionId: 'sub-1', itemPath: P, fields: {} }, {
+    loadRctBenchmarkImpl: loadSyntheticRct,
     hasBeenScoredImpl: async () => false, markScoredImpl: async () => {},
     getItemByPathImpl: async () => ({ size: limits.MAX_SCORING_BYTES + 1 }),
     getFileContentImpl: async () => { downloaded = true; return Buffer.alloc(1); },
@@ -882,6 +885,7 @@ test('runScoring: the download is bounded by maxBytes, and a too_large error bec
   const { runScoring } = await load('_shared/broker-scoring-run.mjs');
   const results = []; let opts;
   const r = await runScoring({ submissionId: 'sub-2', itemPath: P, fields: {} }, {
+    loadRctBenchmarkImpl: loadSyntheticRct,
     hasBeenScoredImpl: async () => false, markScoredImpl: async () => {},
     getItemByPathImpl: async () => ({ size: 1000 }), // Graph under-reported; the stream is bigger
     getFileContentImpl: async (p, o) => { opts = o; throw Object.assign(new Error('big'), { code: 'too_large' }); },
@@ -898,6 +902,7 @@ test('runScoring: end to end, a zip-bomb xlsx never reaches the LLM and lands on
   const bomb = buildZip([CT, { name: 'xl/worksheets/sheet1.xml', data: Buffer.alloc(8 * 1024 * 1024), declaredSize: 10 }]);
   const results = []; let llm = 0;
   const r = await runScoring({ submissionId: 'sub-3', itemPath: 'Broker Submissions/2026-10-18_Acme_ab12cd34/rr.xlsx', fields: {} }, {
+    loadRctBenchmarkImpl: loadSyntheticRct,
     hasBeenScoredImpl: async () => false, markScoredImpl: async () => {},
     getItemByPathImpl: async () => ({ size: bomb.length }),
     getFileContentImpl: async () => bomb,

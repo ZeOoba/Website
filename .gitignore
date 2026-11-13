@@ -16,6 +16,12 @@ deno.lock
 .env.*
 !.env.example
 
+# Real RCT replacement-cost table (governor-level). Lives only in the RCT_BENCHMARK_JSON Netlify env var;
+# this local copy feeds the public-surface leak test (tests/functions/rct-public-leak.test.js). Never commit it.
+/.rct-benchmark.local.json
+# Key for the RCT table's HMAC pin (RCT_BENCHMARK_PIN_KEY). Lives in the Netlify env; never commit it.
+/.rct-benchmark-pin-key.local
+
 # Claude Code local tooling state (machine-local, never committed)
 .claude/launch.json
 

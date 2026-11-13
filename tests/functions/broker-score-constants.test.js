@@ -3,7 +3,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { SCORECARD_VERSION, SOURCE, VALUES } = require('../../netlify/functions/_shared/broker-score-constants.js');
 const engine = require('../../netlify/functions/_shared/broker-score-engine.js');
-const rctBenchmark = require('../../netlify/functions/_shared/rct-benchmark.json');
+// SYNTHETIC benchmark: the real RCT table is governor-level runtime config (RCT_BENCHMARK_JSON), never in source.
+const rctBenchmark = require('./fixtures/rct-benchmark.synthetic.json');
 const retained = require('./fixtures/broker-score-retained-values.json');
 const crypto = require('node:crypto');
 
@@ -27,11 +28,6 @@ test('version and provenance match the fixture revision', () => {
 
 test('category weights total 100', () => {
   assert.equal(Object.values(retained.values.weights).reduce((a, b) => a + b, 0), 100);
-});
-
-test('rct-benchmark vintage floor ramp matches the retained-values fixture', () => {
-  assert.deepEqual(rctBenchmark.vintageFloor, retained.vintageFloor,
-    'netlify/functions/_shared/rct-benchmark.json vintageFloor drifted from the retained-values fixture (tests/functions/fixtures/broker-score-retained-values.json). Revert it, or update both files together with Gabriel approval.');
 });
 
 test('constants are frozen (no runtime mutation)', () => {
@@ -64,7 +60,7 @@ test('scoreDeal output carries the scorecard version', () => {
 test('basis taper midpoint, closing-cost multiplier and comfort factor are pinned by the fixture', () => {
   const v = retained.values;
   const low = rctBenchmark.marketToRctLowPerSF.Columbus;
-  const vf = retained.vintageFloor;
+  const vf = rctBenchmark.vintageFloor;
   const floorPct = vf.earlyPct - ((2000 - vf.earlyYear) / (vf.lateYear - vf.earlyYear)) * (vf.earlyPct - vf.latePct);
   const floor = low * (1 - floorPct);
   const comfortable = floor * v.basis.comfortableFloorFactor;
@@ -122,7 +118,7 @@ test('dense sweeps: every taper matches the fixture-derived reference', () => {
     assert.equal(engine.scoreClearHeight(h).earned, e, `clear height @ ${h}`);
   }
   const low = rctBenchmark.marketToRctLowPerSF.Columbus;
-  const vf = retained.vintageFloor;
+  const vf = rctBenchmark.vintageFloor;
   const floor = low * (1 - (vf.earlyPct - ((2000 - vf.earlyYear) / (vf.lateYear - vf.earlyYear)) * (vf.earlyPct - vf.latePct)));
   const comfortable = floor * v.basis.comfortableFloorFactor;
   const sf = 10_000;
@@ -195,7 +191,7 @@ test('taper half-point flip points match the fixture-derived reference', () => {
 
 test('basis note tier follows the fixture at the exact floor and comfort edges', () => {
   const v = retained.values;
-  const vf = retained.vintageFloor;
+  const vf = rctBenchmark.vintageFloor;
   const low = rctBenchmark.marketToRctLowPerSF.Columbus;
   const floor = low * (1 - (vf.earlyPct - ((2000 - vf.earlyYear) / (vf.lateYear - vf.earlyYear)) * (vf.earlyPct - vf.latePct)));
   const comfortable = floor * v.basis.comfortableFloorFactor;
@@ -209,15 +205,19 @@ test('basis note tier follows the fixture at the exact floor and comfort edges',
 });
 
 test('exact floating-point equality at the floor and comfort edges keeps its tier', () => {
-  // Integer inputs whose implied basis lands exactly on the floor / comfort floor (found by exhaustive
-  // search against the pre-extraction engine). Equality at the floor is labelled as such (earned 0, PR #176); equality at the comfort floor earns full credit.
-  assert.match(engine.scoreBasis(2772343, 34680, null, 'Maryland', rctBenchmark).note, /at the replacement-cost floor/);
-  assert.match(engine.scoreBasis(2912125, 40000, 2000, 'Maryland', rctBenchmark).note, /meaningful margin/);
+  // Integer inputs whose implied basis lands exactly on the floor / comfort floor of the SYNTHETIC benchmark
+  // (found by exhaustive search). Equality at the floor is labelled as such (earned 0, PR #176); equality at
+  // the comfort floor earns full credit.
+  const floorAt = (year) => rctBenchmark.marketToRctLowPerSF.Maryland * (1 - engine.vintageFloorPct(year, rctBenchmark.vintageFloor));
+  assert.equal((2471000 * retained.values.basis.closingCostMultiplier) / 30005, floorAt(null), 'search precondition: exactly on the floor');
+  assert.equal((2362815 * retained.values.basis.closingCostMultiplier) / 30004, floorAt(2000) * retained.values.basis.comfortableFloorFactor, 'search precondition: exactly on the comfort floor');
+  assert.match(engine.scoreBasis(2471000, 30005, null, 'Maryland', rctBenchmark).note, /at the replacement-cost floor/);
+  assert.match(engine.scoreBasis(2362815, 30004, 2000, 'Maryland', rctBenchmark).note, /meaningful margin/);
 });
 
 test('basis taper and final-score rounding match the fixture-derived reference at integer resolution', () => {
   const v = retained.values;
-  const vf = retained.vintageFloor;
+  const vf = rctBenchmark.vintageFloor;
   const sf = 10_000;
   for (const [market, year] of [['Columbus', 2000], ['Maryland', null]]) {
     const low = rctBenchmark.marketToRctLowPerSF[market];
@@ -400,8 +400,8 @@ const hashValues = (o) => crypto.createHash('sha256').update(canon(o)).digest('h
 
 // Released version hashes are hard-coded HERE (not only in the fixture) so that silently rewriting a released
 // entry in the fixture also needs a visible edit to this file. Append a new entry when a version ships.
-// NOT covered by the hash: vintageFloor (rct-benchmark.json, pinned separately above) and the per-market $/SF
-// figures in rct-benchmark.json, which have their own provenance and tests.
+// NOT covered by the hash: the RCT table (per-market LOW $/SF, vintage-floor ramp, proxy markets). It is
+// governor-level runtime config in the RCT_BENCHMARK_JSON env var (netlify/functions/_shared/rct-benchmark.js).
 const RELEASED = { 'site-1.1': 'd9d02e29964d745fae343e979839ff435ded7462c0e3db3e1ba2e30ad64c6753', 'site-1.1.1': '931e47eee41b42477b4955e9a5eda3eb4b561e798ece94dd25db946076cde41b' };
 
 test('version history is append-only and tied to VALUES (a value change needs a visible version/hash edit)', () => {

@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { signIntakeToken } = require('../../netlify/functions/_shared/validate.js');
+// Scoring runs get the SYNTHETIC RCT table injected (never the ratified one; see rct-test-env.js).
+const { loadSyntheticRct, SYNTHETIC_RCT_ENV_VALUE } = require('./fixtures/rct-test-env.js');
 
 // broker-scoring-run is ESM (it imports broker-score-store.mjs, which must be
 // ESM so esbuild bundles @netlify/blobs). Load it lazily and delegate, so the
@@ -34,6 +36,7 @@ function makeDeps(overrides = {}) {
     writeScoreResultImpl: async () => {},
     forwardToNetlifyFormImpl: async () => {},
     sendMailImpl: async () => {},
+    loadRctBenchmarkImpl: loadSyntheticRct,
     ...overrides,
   };
 }
@@ -326,4 +329,50 @@ test('the ledger row carries score-needs-review: true for a needs-review result,
   const scored = await run(base);
   assert.equal(typeof scored['score-total'], 'number');
   assert.equal(scored['score-needs-review'], 'false');
+});
+
+// RCT table moved to runtime config (2026-11-13). Without a valid RCT_BENCHMARK_JSON there is no basis floor
+// and no market list, so the run must withhold the whole score before any download or paid LLM call.
+test('runScoring fails closed when RCT_BENCHMARK_JSON is missing, malformed, synthetic or not the pinned table: unavailable, logged, nothing downloaded or extracted', async () => {
+  for (const value of [undefined, '', 'not json', JSON.stringify({ rctVersion: 'x', marketToRctLowPerSF: {} }), JSON.stringify({ ...JSON.parse(SYNTHETIC_RCT_ENV_VALUE), _synthetic: true }), SYNTHETIC_RCT_ENV_VALUE, JSON.stringify({ ...JSON.parse(SYNTHETIC_RCT_ENV_VALUE), rctVersion: 'replacement-cost.v3.1' })]) {
+    const prev = process.env.RCT_BENCHMARK_JSON;
+    if (value === undefined) delete process.env.RCT_BENCHMARK_JSON; else process.env.RCT_BENCHMARK_JSON = value;
+    try {
+      const writes = [];
+      const failures = [];
+      const touched = [];
+      const marks = [];
+      const deps = makeDeps({
+        loadRctBenchmarkImpl: undefined, // the real, hash-pinned production loader
+        markScoredImpl: async (p) => { marks.push(p); },
+        writeScoreResultImpl: async (id, result) => writes.push(result),
+        forwardToNetlifyFormImpl: async (siteUrl, formName, fields) => { if (formName === 'pipeline-failures') failures.push(fields); else touched.push(formName); },
+        getItemByPathImpl: async () => { touched.push('lookup'); return { id: 'i', size: 1 }; },
+        getFileContentImpl: async () => { touched.push('download'); return Buffer.from('x'); },
+        extractDealTermsImpl: async () => { touched.push('llm'); return READY_EXTRACTION; },
+        sendMailImpl: async () => { touched.push('mail'); },
+      });
+      const r = await runScoring({ submissionId: 'sub-rct', itemPath: 'Broker Submissions/x/om.pdf', fields: {} }, deps);
+      assert.deepEqual(r, { ok: false, reason: 'benchmark_unavailable' }, `value ${String(value).slice(0, 30)}`);
+      assert.deepEqual(writes, [{ status: 'unavailable', reason: 'benchmark_unavailable' }]);
+      assert.equal(failures.length, 1);
+      assert.equal(failures[0]['error-code'], 'benchmark_unavailable');
+      assert.match(failures[0].detail, /^RCT_BENCHMARK_JSON /);
+      assert.deepEqual(touched, [], 'no lookup, download, LLM call, mail or ledger row');
+      assert.deepEqual(marks, [], 'not marked scored, so the item can be re-scored once the variable is fixed');
+    } finally {
+      process.env.RCT_BENCHMARK_JSON = prev;
+    }
+  }
+});
+
+test('runScoring passes the loaded benchmark to both the extractor and the engine', async () => {
+  const seen = {};
+  const deps = makeDeps({
+    extractDealTermsImpl: async (content, opts) => { seen.extract = opts.rctBenchmark; return READY_EXTRACTION; },
+    scoreDealImpl: (extracted, bench) => { seen.score = bench; return { scorecardVersion: 'v', finalScore: 1, coveragePct: 100, needsReview: false, gates: { propertyType: 'PASS', market: 'PASS' }, categories: [] }; },
+  });
+  await runScoring({ submissionId: 'sub-pass', itemPath: 'Broker Submissions/x/om.pdf', fields: {} }, deps);
+  assert.deepEqual(seen.extract.marketToRctLowPerSF, JSON.parse(SYNTHETIC_RCT_ENV_VALUE).marketToRctLowPerSF);
+  assert.equal(seen.score, seen.extract, 'the same loaded object feeds both');
 });

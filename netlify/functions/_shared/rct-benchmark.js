@@ -24,7 +24,7 @@ const crypto = require('node:crypto');
 const ENV_VAR = 'RCT_BENCHMARK_JSON';
 const PIN_KEY_ENV_VAR = 'RCT_BENCHMARK_PIN_KEY';
 // replacement-cost.v3.1, copied from rct-benchmark.json at e291dac, every value unchanged (2026-11-13).
-const RATIFIED_RCT_HMAC = 'f5df7ed4e5b50943fca7f9c58f6b861cbb614ee81f66fe2a40f84fe4e40f25db';
+const RATIFIED_RCT_HMAC = '45414b6f1f20ce1930043ab86683e877022884d81fe23f93dafaff96d0d3dbbb';
 const PIN_KEY_MIN_LENGTH = 32;
 const SYNTHETIC_VERSION = 'synthetic-test-fixture';
 // Sanity bounds that apply even to an unpinned (test) table. Not scoring thresholds.

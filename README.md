@@ -226,6 +226,7 @@ Set these in the Netlify site environment. Names only; values are never committe
 | `INTAKE_TOKEN_SECRET` | HMAC for broker intake tokens and signature alerts |
 | `FORMS_INTERNAL_SECRET` | Internal-forms HMAC header (falls back to `INTAKE_TOKEN_SECRET`) |
 | `CHAT_LEAD_FORMS_TIMEOUT_MS`, `CHAT_LEAD_GRAPH_TIMEOUT_MS`, `CHAT_LEAD_LOG_TIMEOUT_MS` | Optional chat-lead timeouts |
+| `RCT_BENCHMARK_JSON`, `RCT_BENCHMARK_PIN_KEY` | Broker scoring: the RCT replacement-cost floor table and market list (governor-level; JSON, Functions scope), and the key for its HMAC pin. Missing, malformed or not the pinned table → every score is withheld as `unavailable`. See `docs/rct-benchmark-config.md` |
 | `LEAK_GATE_KEY` | Only when `scripts/leak-gate-hashes.json` is generated in keyed mode (GitHub secret and Netlify build env; see `docs/leak-gate.md`) |
 
 ## npm scripts

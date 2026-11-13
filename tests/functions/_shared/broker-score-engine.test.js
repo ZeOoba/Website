@@ -2,32 +2,32 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { vintageFloorPct } = require('../../../netlify/functions/_shared/broker-score-engine.js');
-const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
 
-test('vintageFloorPct returns 0.65 for a building built at or before 1995', () => {
-  assert.equal(vintageFloorPct(1995, rctBenchmark.vintageFloor), 0.65);
-  assert.equal(vintageFloorPct(1980, rctBenchmark.vintageFloor), 0.65);
+// The real RCT table (LOW $/SF and vintage ramp) is governor-level and lives only in the RCT_BENCHMARK_JSON
+// env var; these tests run against the SYNTHETIC fixture (ramp 1990 @ 0.60 -> 2010 @ 0.50), never real figures.
+test('the benchmark used by tests is the synthetic fixture, never the ratified table', () => {
+  assert.equal(rctBenchmark._synthetic, true);
+  assert.equal(rctBenchmark.rctVersion, 'synthetic-test-fixture');
 });
 
-test('vintageFloorPct returns 0.60 for a building built in or after 2005', () => {
-  assert.equal(vintageFloorPct(2005, rctBenchmark.vintageFloor), 0.60);
-  assert.equal(vintageFloorPct(2024, rctBenchmark.vintageFloor), 0.60);
+test('vintageFloorPct returns the early pct for a building built at or before earlyYear', () => {
+  assert.equal(vintageFloorPct(1990, rctBenchmark.vintageFloor), 0.60);
+  assert.equal(vintageFloorPct(1980, rctBenchmark.vintageFloor), 0.60);
 });
 
-test('vintageFloorPct interpolates linearly between 1995 and 2005', () => {
-  assert.equal(vintageFloorPct(2000, rctBenchmark.vintageFloor), 0.625);
+test('vintageFloorPct returns the late pct for a building built in or after lateYear', () => {
+  assert.equal(vintageFloorPct(2010, rctBenchmark.vintageFloor), 0.50);
+  assert.equal(vintageFloorPct(2024, rctBenchmark.vintageFloor), 0.50);
 });
 
-test('vintageFloorPct defaults to the conservative 1995 floor when year built is missing', () => {
-  assert.equal(vintageFloorPct(null, rctBenchmark.vintageFloor), 0.65);
-  assert.equal(vintageFloorPct(undefined, rctBenchmark.vintageFloor), 0.65);
+test('vintageFloorPct interpolates linearly between earlyYear and lateYear', () => {
+  assert.ok(Math.abs(vintageFloorPct(2000, rctBenchmark.vintageFloor) - 0.55) < 1e-12);
 });
 
-test('rct-benchmark.json has the four ratified RCT v03 LOW $/SF figures', () => {
-  assert.equal(rctBenchmark.marketToRctLowPerSF['Maryland'], 232.97);
-  assert.equal(rctBenchmark.marketToRctLowPerSF['Columbus'], 229.65);
-  assert.equal(rctBenchmark.marketToRctLowPerSF['Kansas City'], 227.90);
-  assert.equal(rctBenchmark.marketToRctLowPerSF['Indianapolis'], 253.83);
+test('vintageFloorPct defaults to the conservative early floor when year built is missing', () => {
+  assert.equal(vintageFloorPct(null, rctBenchmark.vintageFloor), 0.60);
+  assert.equal(vintageFloorPct(undefined, rctBenchmark.vintageFloor), 0.60);
 });
 
 const { evaluatePropertyTypeGate, evaluateMarketGate } = require('../../../netlify/functions/_shared/broker-score-engine.js');
@@ -99,21 +99,21 @@ test('scoreClearHeight gives full credit at 18ft+, tapers 14-18, zero below 14',
 });
 
 test('scoreBasis gives full credit when priced comfortably below the RCT v03 floor', () => {
-  const rctBenchmark = { marketToRctLowPerSF: { 'Columbus': 229.65 }, vintageFloor: { earlyYear: 1995, earlyPct: 0.65, lateYear: 2005, latePct: 0.60 } };
-  // floor = 229.65 * (1 - 0.65) = 80.3775; comfortable = floor * 0.85 = 68.32
+  const rctBenchmark = { marketToRctLowPerSF: { 'Columbus': 200 }, vintageFloor: { earlyYear: 1990, earlyPct: 0.60, lateYear: 2010, latePct: 0.50 } };
+  // synthetic: floor = 200 * (1 - 0.60) = 80; comfortable = floor * 0.85 = 68
   const r = scoreBasis(2_000_000, 40_000, 1990, 'Columbus', rctBenchmark);
   assert.equal(r.possible, 25);
-  assert.equal(r.earned, 25); // implied $/SF = 2,040,000/40,000 = $51 — well under $68.32
+  assert.equal(r.earned, 25); // implied $/SF = 2,040,000/40,000 = $51 — well under $68
 });
 
 test('scoreBasis gives zero when priced above the RCT v03 floor', () => {
-  const rctBenchmark = { marketToRctLowPerSF: { 'Columbus': 229.65 }, vintageFloor: { earlyYear: 1995, earlyPct: 0.65, lateYear: 2005, latePct: 0.60 } };
+  const rctBenchmark = { marketToRctLowPerSF: { 'Columbus': 200 }, vintageFloor: { earlyYear: 1990, earlyPct: 0.60, lateYear: 2010, latePct: 0.50 } };
   const r = scoreBasis(4_000_000, 40_000, 1990, 'Columbus', rctBenchmark);
-  assert.equal(r.earned, 0); // implied $/SF = 4,080,000/40,000 = $102 — over $80.38 floor
+  assert.equal(r.earned, 0); // implied $/SF = 4,080,000/40,000 = $102 — over the $80 floor
 });
 
 test('scoreBasis is excluded when asking price, size, or matched market is missing', () => {
-  const rctBenchmark = { marketToRctLowPerSF: { 'Columbus': 229.65 }, vintageFloor: { earlyYear: 1995, earlyPct: 0.65, lateYear: 2005, latePct: 0.60 } };
+  const rctBenchmark = { marketToRctLowPerSF: { 'Columbus': 200 }, vintageFloor: { earlyYear: 1990, earlyPct: 0.60, lateYear: 2010, latePct: 0.50 } };
   assert.equal(scoreBasis(null, 40_000, 1990, 'Columbus', rctBenchmark).excluded, true);
   assert.equal(scoreBasis(2_000_000, null, 1990, 'Columbus', rctBenchmark).excluded, true);
   assert.equal(scoreBasis(2_000_000, 40_000, 1990, null, rctBenchmark).excluded, true);
@@ -140,7 +140,7 @@ test('scoreComplexity is excluded when no signals were extracted at all', () => 
 });
 
 test('scoreDeal: a clean in-box Columbus deal scores high with both gates PASS', () => {
-  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
   const extracted = {
     askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'industrial', buildingGrade: 'B',
     clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
@@ -155,7 +155,7 @@ test('scoreDeal: a clean in-box Columbus deal scores high with both gates PASS',
 });
 
 test('scoreDeal: a multifamily deal in a target city still gets capped at <=30 by the property-type gate', () => {
-  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
   const extracted = {
     askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'multifamily', buildingGrade: 'B',
     clearHeightFt: null, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
@@ -168,7 +168,7 @@ test('scoreDeal: a multifamily deal in a target city still gets capped at <=30 b
 });
 
 test('scoreDeal: a Class A industrial building passes the property-type gate normally (grade does not gate)', () => {
-  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
   const extracted = {
     askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'industrial', buildingGrade: 'A',
     clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 2010,
@@ -180,7 +180,7 @@ test('scoreDeal: a Class A industrial building passes the property-type gate nor
 });
 
 test('scoreDeal: a rent-roll-only submission with no price/type/location re-normalizes around what IS known', () => {
-  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
   const extracted = {
     askingPrice: null, buildingSizeSF: 30_000, assetClass: null, buildingGrade: null,
     clearHeightFt: 20, city: null, state: null, matchedRctMarket: null, yearBuilt: null,
@@ -198,7 +198,7 @@ test('scoreDeal: a rent-roll-only submission with no price/type/location re-norm
 
 // 2026-09-30 audit (oxfordra.net items 3 and 4).
 test('scoreDeal: the broker-facing basis note never discloses the replacement-cost floor in dollars', () => {
-  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
   const over = scoreDeal({
     askingPrice: 4_000_000, buildingSizeSF: 10_000, assetClass: 'industrial', buildingGrade: 'B',
     clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
@@ -220,7 +220,7 @@ test('scoreDeal: the broker-facing basis note never discloses the replacement-co
 });
 
 test('scoreDeal: a complete extraction reports full coverage and a numeric score', () => {
-  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
   const r = scoreDeal({
     askingPrice: 2_000_000, buildingSizeSF: 40_000, assetClass: 'industrial', buildingGrade: 'B',
     clearHeightFt: 20, city: 'Columbus', state: 'OH', matchedRctMarket: 'Columbus', yearBuilt: 1990,
@@ -232,7 +232,7 @@ test('scoreDeal: a complete extraction reports full coverage and a numeric score
 });
 
 test('scoreDeal: a near-empty extraction withholds the score instead of printing 100/100', () => {
-  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
   const r = scoreDeal({
     askingPrice: null, buildingSizeSF: 30_000, assetClass: null, buildingGrade: null,
     clearHeightFt: 20, city: null, state: null, matchedRctMarket: null, yearBuilt: null,
@@ -244,7 +244,7 @@ test('scoreDeal: a near-empty extraction withholds the score instead of printing
 });
 
 test('scoreDeal: a fully empty extraction is insufficient data, not a verified zero', () => {
-  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
   const r = scoreDeal({
     askingPrice: null, buildingSizeSF: null, assetClass: null, buildingGrade: null,
     clearHeightFt: null, city: null, state: null, matchedRctMarket: null, yearBuilt: null,
@@ -256,7 +256,7 @@ test('scoreDeal: a fully empty extraction is insufficient data, not a verified z
 });
 
 test('scoreDeal: a verified gate failure keeps its capped numeric score even on thin data', () => {
-  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
   const r = scoreDeal({
     askingPrice: null, buildingSizeSF: 40_000, assetClass: 'multifamily', buildingGrade: null,
     clearHeightFt: null, city: null, state: null, matchedRctMarket: null, yearBuilt: null,
@@ -272,7 +272,7 @@ test('scoreDeal: a verified gate failure keeps its capped numeric score even on 
 // must be scored; dealSize + buildingSize = 45 must be withheld. A flipped comparison would pass the
 // other tests (independent review, 2026-09-30).
 test('scoreDeal: exactly 60% coverage is scored, 45% is withheld', () => {
-  const rctBenchmark = require('../../../netlify/functions/_shared/rct-benchmark.json');
+  const rctBenchmark = require('../fixtures/rct-benchmark.synthetic.json');
   const base = { assetClass: 'industrial', buildingGrade: 'B', city: null, state: null, matchedRctMarket: null, yearBuilt: null, valueAddSignals: [], notes: null };
   const at60 = scoreDeal({ ...base, askingPrice: 2_000_000, buildingSizeSF: 40_000, clearHeightFt: 20 }, rctBenchmark);
   assert.equal(at60.coveragePct, 60);
@@ -327,23 +327,19 @@ test('scoreDeal: 55% coverage is withheld, so the threshold cannot drift below 6
   assert.equal(r.finalScore, null);
 });
 
-// Market gate extension (2026-10-01). The broker benchmark only knew 4 markets while the acquisition
-// engine's ratified RCT v3.1 table has 10 (Gabriel, replacement-cost.v3.1), so an OM in Cincinnati,
-// Madison, Grand Rapids, Richmond, Des Moines or Louisville was capped at 30 and labelled "Outside Core
-// Box" although the site says Oxford evaluates other Midwest and Mid-Atlantic markets.
-test('rct-benchmark.json carries every LOW $/SF figure of the ratified RCT v3.1 table (10 markets)', () => {
-  // Source: oxford-command-center config/replacement-cost.v3.json, rctVersion replacement-cost.v3.1.
-  // Site keys: 'Maryland' is the engine's 'Mid-Atlantic'; the others drop the state suffix.
-  const expected = {
-    Maryland: 232.97, Columbus: 229.65, 'Kansas City': 227.90, Indianapolis: 253.83,
-    Cincinnati: 251.46, Madison: 229.08, 'Grand Rapids': 253.11, Richmond: 232.97,
-    'Des Moines': 231.66, Louisville: 237.07,
-  };
-  assert.deepEqual(rctBenchmark.marketToRctLowPerSF, expected);
+// Market gate extension (2026-10-01): every market in the benchmark must pass the gate and be scored.
+// The ratified market list and its figures are runtime config (RCT_BENCHMARK_JSON) and are not pinned here;
+// the fixture exercises the same shape (direct and proxy markets).
+test('the synthetic fixture has the production schema: direct and proxy markets, hints, a vintage ramp', () => {
+  const { validateRctBenchmark } = require('../../../netlify/functions/_shared/rct-benchmark.js');
+  assert.equal(validateRctBenchmark(rctBenchmark, { allowSynthetic: true, pinnedHmac: null }), null);
+  assert.ok(Object.keys(rctBenchmark.marketToRctLowPerSF).length >= 3);
+  assert.ok(rctBenchmark.proxyMarkets.length >= 1);
 });
 
 test('the extractor enum is derived from the benchmark keys, so the two can never drift apart', () => {
-  const { EXTRACTION_TOOL } = require('../../../netlify/functions/_shared/broker-llm-extract.js');
+  const { buildExtractionTool } = require('../../../netlify/functions/_shared/broker-llm-extract.js');
+  const EXTRACTION_TOOL = buildExtractionTool(rctBenchmark);
   const en = EXTRACTION_TOOL.input_schema.properties.matchedRctMarket.enum;
   assert.deepEqual(en.filter((x) => x !== null).sort(), Object.keys(rctBenchmark.marketToRctLowPerSF).sort());
   assert.ok(en.includes(null), 'null must stay valid for an unmatched market');
@@ -390,9 +386,9 @@ test('a proxy benchmark market is flagged in the internal note only, never in th
 // Independent review 2026-10-01, F1: the proxy test only exercised the above-floor branch, so a leak of
 // "proxy" into the public note, or drift of the proxy list, in the other two outcomes passed. Sweep all
 // three outcomes for every market and pin the proxy list to the engine's ratified flags.
-test('proxy markets are pinned to the engine list and never leak into a public note in ANY outcome', () => {
+test('proxy markets are pinned to the fixture list and never leak into a public note in ANY outcome', () => {
   const { scoreDeal } = require('../../../netlify/functions/_shared/broker-score-engine.js');
-  assert.deepEqual([...rctBenchmark.proxyMarkets].sort(), ['Des Moines', 'Grand Rapids', 'Madison', 'Richmond']);
+  assert.deepEqual([...rctBenchmark.proxyMarkets].sort(), ['Synthetic Proxy B']);
   for (const [market, low] of Object.entries(rctBenchmark.marketToRctLowPerSF)) {
     const floorPerSF = low * (1 - vintageFloorPct(1990, rctBenchmark.vintageFloor));
     const sf = 10_000;
@@ -623,7 +619,7 @@ test('scoreBasis: a basis exactly at the floor is labelled as not clearing (stri
   const sf = 10_000;
   const price = 1_000_000;
   const implied = (price * 1.02) / sf;
-  const bench = { marketToRctLowPerSF: { Columbus: implied * 2 }, vintageFloor: { earlyYear: 1995, earlyPct: 0.5, lateYear: 2005, latePct: 0.5 } };
+  const bench = { marketToRctLowPerSF: { Columbus: implied * 2 }, vintageFloor: { earlyYear: 1990, earlyPct: 0.5, lateYear: 2010, latePct: 0.5 } };
   const at = engine.scoreBasis(price, sf, 1990, 'Columbus', bench);
   assert.equal(at.earned, 0);
   assert.match(at.note, /at the replacement-cost floor/);
@@ -649,7 +645,7 @@ test('scoreDeal: undefined/null extraction does not throw and withholds the scor
 });
 
 test('scoreDeal: a malformed benchmark floor yields needs review with no NaN text', () => {
-  const bench = { marketToRctLowPerSF: { Columbus: 229.65 }, vintageFloor: { earlyYear: 1995, earlyPct: NaN, lateYear: 2005, latePct: 0.6 } };
+  const bench = { marketToRctLowPerSF: { Columbus: 200 }, vintageFloor: { earlyYear: 1990, earlyPct: NaN, lateYear: 2010, latePct: 0.6 } };
   const r = engine.scoreDeal(goodDeal, bench);
   assert.equal(r.needsReview, true);
   assert.equal(r.finalScore, null);
@@ -672,7 +668,8 @@ test('scoreComplexity: duplicate signals collapse to one signal, all schema valu
   for (const s of ['vacancy', 'deferred_maintenance', 'environmental_issue', 'legal_issue', 'below_market_leases', 'none_stabilized']) {
     assert.notEqual(engine.scoreComplexity([s]).invalid, true, s);
   }
-  const { EXTRACTION_TOOL } = require('../../../netlify/functions/_shared/broker-llm-extract.js');
+  const { buildExtractionTool } = require('../../../netlify/functions/_shared/broker-llm-extract.js');
+  const EXTRACTION_TOOL = buildExtractionTool(rctBenchmark);
   for (const s of EXTRACTION_TOOL.input_schema.properties.valueAddSignals.items.enum) {
     assert.notEqual(engine.scoreComplexity([s]).invalid, true, `extractor enum value ${s} must be accepted`);
   }
@@ -729,8 +726,8 @@ test('implausible price per SF with NO matched market is flagged in the basis ca
 });
 
 test('a broken vintageFloor config (pct outside (0,1), non-finite, bad years) needs review, never a score', () => {
-  const mk = (vf) => ({ marketToRctLowPerSF: { Columbus: 229.65 }, vintageFloor: vf });
-  const ok = { earlyYear: 1995, earlyPct: 0.65, lateYear: 2005, latePct: 0.6 };
+  const mk = (vf) => ({ marketToRctLowPerSF: { Columbus: 200 }, vintageFloor: vf });
+  const ok = { earlyYear: 1990, earlyPct: 0.6, lateYear: 2010, latePct: 0.5 };
   assert.equal(engine.scoreDeal(goodDeal, mk(ok)).needsReview, false);
   for (const bad of [
     { ...ok, earlyPct: -5 }, { ...ok, earlyPct: 1.5 }, { ...ok, earlyPct: 0 }, { ...ok, earlyPct: 1 }, { ...ok, latePct: -0.1 },
@@ -786,7 +783,7 @@ test('a bad yearBuilt is held even when price/market are missing, and a gate FAI
 
 test('valid and absent yearBuilt scores are unchanged (1800 through current year + 2, null, undefined)', () => {
   const thisYear = new Date().getFullYear();
-  for (const yb of [1800, 1900, 1950, 1995, 2000, 2005, thisYear, thisYear + 2, null, undefined]) {
+  for (const yb of [1800, 1900, 1950, 1990, 2000, 2010, thisYear, thisYear + 2, null, undefined]) {
     const r = engine.scoreDeal({ ...goodDeal, yearBuilt: yb }, rctBenchmark);
     assert.equal(r.needsReview, false, String(yb));
     assert.equal(typeof r.finalScore, 'number', String(yb));

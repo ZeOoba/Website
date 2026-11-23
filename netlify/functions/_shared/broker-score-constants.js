@@ -18,13 +18,13 @@ const SOURCE = Object.freeze({
   // Skill file revision this was cross-checked against. The skill file iterates (procedure edits) without
   // moving the ratified Buy Box revision; the revision above is what matters.
   skillFileRevisionChecked: 'v4.31 (2026-10-17)',
-  // PLAINLY: the site values are NOT derivable from Buy Box & Scorecard rev 1.1. Rev 1.1 is a 7-category
-  // scorecard (Basis 25 / Yield 20 / Product 20 / Market 12 / Seller 10 / Tenancy 7 / Value-add) with a different
-  // basis scale, size range ($500K-$10M) and height rule. The public site scorecard (5 categories,
-  // 25/25/20/15/15), the 0.85 comfort factor and the tapers are a separate, site-side scheme. "Keep every
-  // value as-is" was Gabriel's answer in parent session adfd24fd on 2026-10-17; this module only adds the
-  // version and provenance link. Ratifying the site weights themselves is an open item.
-  note: 'Site-side scorecard, independent of Buy Box & Scorecard rev 1.1 (not derivable from it); values retained as-is by Gabriel, 2026-10-17, parent session adfd24fd.',
+  // PLAINLY: the site values are NOT derivable from Buy Box & Scorecard rev 1.1. Rev 1.1 is a separate internal
+  // scheme; its categories, weights, size range and height rule are deliberately not restated here (this repo is
+  // PUBLIC, and tests/functions/governor-public-leak.test.js fails on an internal weight sequence). The public site
+  // scorecard (5 categories, 25/25/20/15/15), the 0.85 comfort factor and the tapers are a separate, site-side
+  // scheme. "Keep every value as-is" was Gabriel's answer on 2026-10-17; this module only adds the version and
+  // provenance link. Ratifying the site weights themselves is an open item.
+  note: 'Site-side scorecard, independent of Buy Box & Scorecard rev 1.1 (not derivable from it); values retained as-is by Gabriel, 2026-10-17.',
 });
 
 function deepFreeze(o) {
